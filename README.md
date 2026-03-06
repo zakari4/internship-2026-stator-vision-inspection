@@ -4,7 +4,7 @@ Automated Computer Vision pipeline for high-precision measurement of stator core
 
 ## Project Overview:
 
-  This project aims to develop a high-precision computer vision pipeline for the automated inspection and     measurement of electric motor stators. Using a combination of Deep Learning (Instance Segmentation) and Classical Computer Vision (Geometric Metrology), the system ensures that every stator moving through the assembly line meets strict mechanical tolerances.
+  This project aims to develop a high-precision computer vision pipeline for the automated inspection and measurement of airplane motor stators. Using a combination of Deep Learning (Instance Segmentation) and Classical Computer Vision, the system ensures that every stator moving through the assembly line meets strict mechanical tolerances.
 
 ## Key Objectives:
 
