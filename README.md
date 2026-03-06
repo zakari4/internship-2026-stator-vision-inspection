@@ -8,6 +8,6 @@ Project Overview:
 
 Key Objectives:
 
- - Precision: Achieve a measurement accuracy of $\pm 0.05\text{ mm}$.
+ - Precision: Achieve a measurement accuracy of $\pm 0.001\text{ mm}$.
  - Detection: Identification of core components, magnet alignment, and cable routing.
  - Automation: Real-time Pass/Fail decision making for factory integration.
