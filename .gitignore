@@ -1,0 +1,56 @@
+# ==============================================================================
+# Stator Case - Chignon Detection Benchmark
+# ==============================================================================
+
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# ---- Data (too large for git) ----
+/data/
+
+# ---- Virtual Environment ----
+venv/
+.venv/
+env/
+
+# ---- Agent / IDE artifacts ----
+.gemini/
+.agent/
+
+# ---- Model Weights ----
+weights/
+*.pt
+*.pth
+*.onnx
+
+# ---- Generated Outputs ----
+outputs/
+augmented_data/
+runs/
+
+# ---- Legacy paths (from old layout) ----
+yolo_dataset/
+benchmark/results/
+benchmark/runs/
+benchmark/*.log
+
+# ---- IDE & Editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Logs ----
+*.log
