@@ -1,0 +1,53 @@
+{
+  "model_name": "rcf",
+  "started_at": "2026-02-26T06:17:19.156162",
+  "ended_at": "2026-02-26T06:17:22.611825",
+  "total_epochs": 1,
+  "best_val_loss": 0.7646437585353851,
+  "best_val_accuracy": 0.2118077278137207,
+  "best_val_iou": 0.1266445629298687,
+  "best_epoch": 1,
+  "total_train_time_sec": 2.4154958724975586,
+  "total_val_time_sec": 0.8029720783233643,
+  "peak_gpu_memory_mb": 3895.4375,
+  "peak_cpu_percent": 27.0,
+  "peak_ram_mb": 11397.9765625,
+  "avg_gpu_utilization": 69.17647058823529,
+  "epochs": [
+    {
+      "epoch": 1,
+      "train": {
+        "loss": 0.7903751730918884,
+        "accuracy": 0.1619429588317871,
+        "iou": 0.14169831946492195,
+        "dice": 0.24727120995521545,
+        "precision": 0.14214655756950378,
+        "recall": 0.9802444279193878,
+        "f1": 0.24727118015289307,
+        "duration_sec": 2.4154958724975586,
+        "throughput": 646.6581118124344,
+        "avg_forward_ms": 441.21265411376953,
+        "avg_backward_ms": 677.0695447921753,
+        "gpu_mem_max_mb": 3895.4375,
+        "gpu_util_mean": 80.0,
+        "cpu_percent_mean": 23.85,
+        "learning_rate": 0.0001
+      },
+      "val": {
+        "loss": 0.7646437585353851,
+        "accuracy": 0.2118077278137207,
+        "iou": 0.1266445629298687,
+        "dice": 0.22426413744688034,
+        "precision": 0.1322188824415207,
+        "recall": 0.756706029176712,
+        "f1": 0.22426410764455795,
+        "duration_sec": 0.8029720783233643,
+        "throughput": 415.954687611809,
+        "avg_forward_ms": 352.7660369873047,
+        "gpu_mem_max_mb": 3895.4375,
+        "gpu_util_mean": 92.5,
+        "cpu_percent_mean": 24.049999999999997
+      }
+    }
+  ]
+}

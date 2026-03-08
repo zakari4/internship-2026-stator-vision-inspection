@@ -1,0 +1,26 @@
+{
+  "unet_lightweight": {
+    "model_type": "deep_learning",
+    "segmentation": {
+      "iou": 1.255878794263609e-05,
+      "dice": 2.5106484464285627e-05,
+      "precision": 0.00014125717275172714,
+      "recall": 1.427602458598825e-05,
+      "f1_score": 2.5105577822094067e-05,
+      "boundary_f1": 0.0,
+      "hausdorff_distance": 0.0
+    },
+    "latency": {
+      "inference_time_ms": 55.494412509533674,
+      "total_time_ms": 55.494412509533674,
+      "fps": 18.01983217370226,
+      "std_dev_ms": 5.323603405567062
+    },
+    "hardware": {
+      "gpu_memory_used_mb": 322.658977004717,
+      "gpu_memory_peak_mb": 322.84765625,
+      "gpu_utilization": 0.0
+    },
+    "measurement": null
+  }
+}

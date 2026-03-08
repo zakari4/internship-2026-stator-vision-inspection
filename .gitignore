@@ -12,8 +12,6 @@ __pycache__/
 dist/
 build/
 
-# ---- Data (too large for git) ----
-/data/
 
 # ---- Virtual Environment ----
 venv/
@@ -31,7 +29,6 @@ weights/
 *.onnx
 
 # ---- Generated Outputs ----
-outputs/
 augmented_data/
 runs/
 

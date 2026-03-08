@@ -1,0 +1,75 @@
+{
+  "epoch": 1,
+  "train_batches": [
+    {
+      "batch_idx": 0,
+      "timestamp": 1772086117.8146775,
+      "loss": 0.7516793012619019,
+      "forward_time_ms": 3642.282247543335,
+      "backward_time_ms": 3942.3491954803467,
+      "optimizer_time_ms": 40.71807861328125,
+      "data_load_time_ms": 31.957387924194336,
+      "total_time_ms": 7633.347988128662,
+      "cpu_percent": 24.4,
+      "ram_used_mb": 11878.52734375,
+      "gpu_memory_mb": 2335.75,
+      "gpu_utilization": 22,
+      "accuracy": 0.5993490219116211,
+      "iou": 0.02442462369799614,
+      "dice": 0.04768456891179085
+    },
+    {
+      "batch_idx": 1,
+      "timestamp": 1772086120.0856824,
+      "loss": 0.7187075614929199,
+      "forward_time_ms": 542.6738262176514,
+      "backward_time_ms": 1672.2352504730225,
+      "optimizer_time_ms": 9.154319763183594,
+      "data_load_time_ms": 36.34309768676758,
+      "total_time_ms": 2231.7287921905518,
+      "cpu_percent": 24.8,
+      "ram_used_mb": 11906.07421875,
+      "gpu_memory_mb": 2383.5,
+      "gpu_utilization": 100,
+      "accuracy": 0.548985481262207,
+      "iou": 0.05064518377184868,
+      "dice": 0.09640777856111526
+    }
+  ],
+  "val_batches": [
+    {
+      "batch_idx": 0,
+      "timestamp": 1772086120.7261467,
+      "loss": 0.6577399969100952,
+      "forward_time_ms": 564.4774436950684,
+      "backward_time_ms": 0.0,
+      "optimizer_time_ms": 0.0,
+      "data_load_time_ms": 27.87160873413086,
+      "total_time_ms": 571.8379020690918,
+      "cpu_percent": 36.3,
+      "ram_used_mb": 11888.49609375,
+      "gpu_memory_mb": 2383.5,
+      "gpu_utilization": 100,
+      "accuracy": 0.8139019012451172,
+      "iou": 0.026791680604219437,
+      "dice": 0.05218523368239403
+    },
+    {
+      "batch_idx": 1,
+      "timestamp": 1772086121.3300774,
+      "loss": 0.7263120412826538,
+      "forward_time_ms": 561.471700668335,
+      "backward_time_ms": 0.0,
+      "optimizer_time_ms": 0.0,
+      "data_load_time_ms": 30.22027015686035,
+      "total_time_ms": 570.0125694274902,
+      "cpu_percent": 23.3,
+      "ram_used_mb": 11898.3359375,
+      "gpu_memory_mb": 2381.1875,
+      "gpu_utilization": 91,
+      "accuracy": 0.6852693557739258,
+      "iou": 0.0575113445520401,
+      "dice": 0.10876733064651489
+    }
+  ]
+}
