@@ -28,9 +28,9 @@ echo ""
 # 1. Create virtual environment
 # ------------------------------------------------------------------
 if [ -d "$VENV_DIR" ]; then
-    echo "[1/7] Virtual environment already exists at: $VENV_DIR"
+    echo "[1/8] Virtual environment already exists at: $VENV_DIR"
 else
-    echo "[1/7] Creating virtual environment..."
+    echo "[1/8] Creating virtual environment..."
     python3 -m venv "$VENV_DIR"
     echo "      Created: $VENV_DIR"
 fi
@@ -43,16 +43,18 @@ echo "      Activated venv: $(which python)"
 # 2. Upgrade pip
 # ------------------------------------------------------------------
 echo ""
-echo "[2/7] Upgrading pip..."
+echo "[2/8] Upgrading pip..."
 pip install --upgrade pip --quiet
 
 # ------------------------------------------------------------------
 # 3. Install requirements
 # ------------------------------------------------------------------
 echo ""
-echo "[3/7] Installing requirements..."
+echo "[3/8] Installing requirements..."
 pip install -r "$REQ_FILE" --quiet
-pip install scikit-learn --quiet  # needed by contour extraction
+pip install scikit-learn --quiet              # needed by contour extraction
+pip install opencv-contrib-python --quiet     # needed for ArUco marker detection
+pip install timm --quiet                      # needed for MiDaS depth estimation backbone
 echo "      All dependencies installed."
 
 # ------------------------------------------------------------------
@@ -62,9 +64,9 @@ echo ""
 AUG_DIR="$PROJECT_DIR/outputs/augmented_data"
 if [ -d "$AUG_DIR" ] && [ "$(ls -A $AUG_DIR/*.png 2>/dev/null | head -1)" ]; then
     AUG_COUNT=$(ls -1 "$AUG_DIR"/*.png 2>/dev/null | wc -l)
-    echo "[4/7] Augmented data already exists ($AUG_COUNT images in $AUG_DIR)"
+    echo "[4/8] Augmented data already exists ($AUG_COUNT images in $AUG_DIR)"
 else
-    echo "[4/7] Augmenting data (72x)..."
+    echo "[4/8] Augmenting data (72x)..."
     python "$PROJECT_DIR/src/data/augmentation.py" \
         --input "$PROJECT_DIR/data" \
         --output "$AUG_DIR"
@@ -77,21 +79,21 @@ fi
 echo ""
 YOLO_DIR="$PROJECT_DIR/outputs/yolo_dataset"
 if [ -d "$YOLO_DIR" ] && [ -f "$YOLO_DIR/data.yaml" ]; then
-    echo "[5/7] YOLO dataset already exists at: $YOLO_DIR"
+    echo "[5/8] YOLO dataset already exists at: $YOLO_DIR"
 else
-    echo "[5/7] Preparing YOLO dataset from augmented data..."
+    echo "[5/8] Preparing YOLO dataset from augmented data..."
     python "$PROJECT_DIR/src/data/yolo_prep.py" \
         --source "$AUG_DIR" \
         --output "$YOLO_DIR" \
-        --labels chignon mecparts
-    echo "      YOLO dataset ready (Labels: chignon, mecparts)."
+        --labels michanical_part magnet circle
+    echo "      YOLO dataset ready (Labels: michanical_part, magnet, circle)."
 fi
 
 # ------------------------------------------------------------------
 # 6. Clean up corrupt model files (from interrupted downloads)
 # ------------------------------------------------------------------
 echo ""
-echo "[6/7] Cleaning up corrupt model files..."
+echo "[6/8] Cleaning up corrupt model files..."
 mkdir -p "$WEIGHTS_DIR"
 MIN_SIZE=5000000  # 5MB minimum for a valid .pt file
 
@@ -109,7 +111,7 @@ echo "      Cleanup complete."
 # 7. Download YOLO-seg and RT-DETR model weights
 # ------------------------------------------------------------------
 echo ""
-echo "[7/7] Downloading model weights to $WEIGHTS_DIR..."
+echo "[7/8] Downloading model weights to $WEIGHTS_DIR..."
 
 # All YOLO-seg and RT-DETR variants used in the benchmark
 YOLO_VARIANTS=(
@@ -183,6 +185,26 @@ echo "      --- RT-DETR weights ---"
 for variant in "${RTDETR_VARIANTS[@]}"; do
     download_rtdetr_model "$variant"
 done
+
+# ------------------------------------------------------------------
+# 8. Pre-download MiDaS depth estimation model
+# ------------------------------------------------------------------
+echo ""
+echo "[8/8] Pre-downloading MiDaS depth estimation model..."
+MIDAS_CHECKPOINT="$HOME/.cache/torch/hub/checkpoints/midas_v21_small_256.pt"
+if [ -f "$MIDAS_CHECKPOINT" ]; then
+    echo "      [SKIP] MiDaS_small already cached"
+else
+    echo "      Downloading MiDaS_small (~82MB)..."
+    python -c "
+import torch
+try:
+    model = torch.hub.load('intel-isl/MiDaS', 'MiDaS_small', trust_repo=True)
+    print('        OK: MiDaS_small downloaded and cached')
+except Exception as e:
+    print(f'        WARN: Could not download MiDaS: {e}')
+" 2>/dev/null || echo "        WARN: MiDaS download failed (will retry on first use)"
+fi
 
 # ------------------------------------------------------------------
 # Done

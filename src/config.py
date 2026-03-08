@@ -230,9 +230,18 @@ class MeasurementConfig:
     circle_fitting_enabled: bool = True
     
     # Dynamic calibration settings
-    reference_label_name: str = "mecparts"
+    reference_label_name: str = "michanical_part"
     reference_known_dimension_mm: float = 52.0
     reference_dimension_type: str = "diameter"
+    
+    # --- Method A: ArUco / Reference Object ---
+    aruco_marker_size_mm: float = 50.0
+    aruco_dictionary: str = "DICT_4X4_50"
+    
+    # --- Method B: Geometric Camera Calibration ---
+    sensor_width_mm: float = 6.17       # 1/2.3" sensor
+    focal_length_mm: float = 4.0
+    object_distance_mm: float = 300.0
 
 
 # ==============================================================================

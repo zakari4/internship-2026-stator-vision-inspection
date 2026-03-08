@@ -686,3 +686,349 @@ class CalibrationManager:
     def convert_to_mm(self, value_pixels: float) -> float:
         """Convert pixel value to millimeters."""
         return value_pixels * self.pixel_to_mm
+
+    # ==================================================================
+    # Method A: ArUco / Reference Object Calibration
+    # ==================================================================
+
+    def calibrate_from_aruco(
+        self,
+        image: np.ndarray,
+        marker_real_size_mm: float = None
+    ) -> Optional[float]:
+        """
+        Detect an ArUco marker in the image and calibrate using its known size.
+
+        Computes PPM = marker_width_px / marker_real_size_mm, then sets
+        pixel_to_mm = 1 / PPM.
+
+        :param image: BGR or grayscale input image.
+        :param marker_real_size_mm: Physical side length of the marker in mm.
+            Falls back to config.measurement.aruco_marker_size_mm if None.
+        :return: Updated pixel_to_mm factor, or None if no marker detected.
+        """
+        if marker_real_size_mm is None:
+            marker_real_size_mm = config.measurement.aruco_marker_size_mm
+
+        corners, ids = detect_aruco_markers(image)
+        if corners is None or len(corners) == 0:
+            print("  [ARUCO] No markers detected.")
+            return None
+
+        # Use the first detected marker
+        marker_corners = corners[0].reshape(4, 2)
+        marker_id = int(ids[0]) if ids is not None else -1
+
+        # Compute average side length in pixels
+        side_lengths = []
+        for i in range(4):
+            p1 = marker_corners[i]
+            p2 = marker_corners[(i + 1) % 4]
+            side_lengths.append(np.linalg.norm(p2 - p1))
+        avg_side_px = np.mean(side_lengths)
+
+        if avg_side_px < 1e-6:
+            print("  [ARUCO] Marker too small to calibrate.")
+            return None
+
+        ppm = avg_side_px / marker_real_size_mm
+        self.pixel_to_mm = 1.0 / ppm
+        self.calibration_method = 'aruco_marker'
+
+        print(f"  [ARUCO] Marker ID={marker_id}, side={avg_side_px:.1f}px, "
+              f"real={marker_real_size_mm:.1f}mm => PPM={ppm:.3f}, "
+              f"pixel_to_mm={self.pixel_to_mm:.5f}")
+        return self.pixel_to_mm
+
+    # ==================================================================
+    # Method B: Geometric Camera Calibration
+    # ==================================================================
+
+    def calibrate_from_camera_intrinsics(
+        self,
+        sensor_width_mm: float = None,
+        focal_length_mm: float = None,
+        object_distance_mm: float = None,
+        image_width_px: int = None,
+        image: np.ndarray = None
+    ) -> float:
+        """
+        Calibrate using the camera's physical parameters.
+
+        Computes pixel_size = (D * W_s) / (f * image_width_px) where:
+        - D = object distance from lens
+        - W_s = physical sensor width
+        - f = focal length
+
+        :param sensor_width_mm: Physical sensor width (default: from config).
+        :param focal_length_mm: Lens focal length (default: from config).
+        :param object_distance_mm: Distance from lens to object (default: from config).
+        :param image_width_px: Image width in pixels. Inferred from image if provided.
+        :param image: Optional image to infer width from.
+        :return: Computed pixel_to_mm factor.
+        """
+        cfg = config.measurement
+        W_s = sensor_width_mm if sensor_width_mm is not None else cfg.sensor_width_mm
+        f = focal_length_mm if focal_length_mm is not None else cfg.focal_length_mm
+        D = object_distance_mm if object_distance_mm is not None else cfg.object_distance_mm
+
+        if image_width_px is None and image is not None:
+            image_width_px = image.shape[1]
+        elif image_width_px is None:
+            raise ValueError("Either image_width_px or image must be provided.")
+
+        if f < 1e-6 or image_width_px < 1:
+            raise ValueError(f"Invalid parameters: focal={f}, width={image_width_px}")
+
+        pixel_size_mm = (D * W_s) / (f * image_width_px)
+        self.pixel_to_mm = pixel_size_mm
+        self.calibration_method = 'camera_intrinsics'
+
+        print(f"  [CAMERA] sensor={W_s:.2f}mm, focal={f:.2f}mm, "
+              f"distance={D:.1f}mm, img_width={image_width_px}px")
+        print(f"  [CAMERA] pixel_size={pixel_size_mm:.5f} mm/px")
+        return self.pixel_to_mm
+
+    # ==================================================================
+    # Method C: ML Depth Estimation
+    # ==================================================================
+
+    def calibrate_from_depth_estimation(
+        self,
+        image: np.ndarray,
+        sensor_width_mm: float = None,
+        focal_length_mm: float = None,
+        mask: np.ndarray = None,
+        model_type: str = "MiDaS_small"
+    ) -> Optional[float]:
+        """
+        Estimate object distance using a MiDaS/DPT monocular depth model,
+        then calibrate using camera intrinsics.
+
+        :param image: BGR input image.
+        :param sensor_width_mm: Sensor width (default: from config).
+        :param focal_length_mm: Focal length (default: from config).
+        :param mask: Optional binary mask to focus depth estimation on the
+            object region. If None, uses the center 50% of the image.
+        :param model_type: MiDaS model type ('DPT_Small', 'DPT_Hybrid', 'MiDaS_small').
+        :return: Computed pixel_to_mm factor, or None on failure.
+        """
+        try:
+            import torch
+        except ImportError:
+            print("  [DEPTH] PyTorch not available.")
+            return None
+
+        cfg = config.measurement
+        W_s = sensor_width_mm if sensor_width_mm is not None else cfg.sensor_width_mm
+        f = focal_length_mm if focal_length_mm is not None else cfg.focal_length_mm
+
+        print(f"  [DEPTH] Loading MiDaS model: {model_type}...")
+        try:
+            midas = torch.hub.load("intel-isl/MiDaS", model_type, trust_repo=True)
+            midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms", trust_repo=True)
+
+            if model_type in ("DPT_Large", "DPT_Hybrid"):
+                transform = midas_transforms.dpt_transform
+            else:
+                transform = midas_transforms.small_transform
+
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            midas.to(device).eval()
+        except Exception as e:
+            print(f"  [DEPTH] Failed to load MiDaS: {e}")
+            return None
+
+        # Run inference
+        img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        input_batch = transform(img_rgb).to(device)
+
+        with torch.no_grad():
+            depth_prediction = midas(input_batch)
+            depth_prediction = torch.nn.functional.interpolate(
+                depth_prediction.unsqueeze(1),
+                size=image.shape[:2],
+                mode="bicubic",
+                align_corners=False,
+            ).squeeze().cpu().numpy()
+
+        # Extract depth for region of interest
+        if mask is not None and mask.shape == depth_prediction.shape:
+            roi_mask = mask > 0
+        else:
+            # Use center 50% of image
+            h, w = depth_prediction.shape
+            roi_mask = np.zeros_like(depth_prediction, dtype=bool)
+            roi_mask[h // 4: 3 * h // 4, w // 4: 3 * w // 4] = True
+
+        roi_depths = depth_prediction[roi_mask]
+        if len(roi_depths) == 0:
+            print("  [DEPTH] No valid depth values in ROI.")
+            return None
+
+        # MiDaS outputs inverse depth (relative). Convert to approximate mm.
+        # The absolute scale requires calibration; we use median inverse depth
+        # as a relative distance proxy. For uncalibrated setups, we normalize
+        # against the focal length to get an approximate working distance.
+        median_inv_depth = np.median(roi_depths)
+        if median_inv_depth < 1e-6:
+            print("  [DEPTH] Estimated depth is too small.")
+            return None
+
+        # Approximate distance: D ≈ f * scale / median_inverse_depth
+        # Using a heuristic scale factor based on typical MiDaS output ranges
+        estimated_distance_mm = f * 1000.0 / median_inv_depth
+
+        print(f"  [DEPTH] Median inverse depth: {median_inv_depth:.4f}")
+        print(f"  [DEPTH] Estimated distance: {estimated_distance_mm:.1f} mm")
+
+        # Now use camera intrinsics formula
+        pixel_size_mm = (estimated_distance_mm * W_s) / (f * image.shape[1])
+        self.pixel_to_mm = pixel_size_mm
+        self.calibration_method = 'depth_estimation'
+        self._last_depth_map = depth_prediction
+        self._estimated_distance_mm = estimated_distance_mm
+
+        print(f"  [DEPTH] pixel_to_mm = {pixel_size_mm:.5f}")
+        return self.pixel_to_mm
+
+    def get_last_depth_map(self) -> Optional[np.ndarray]:
+        """Return the last depth map computed by calibrate_from_depth_estimation."""
+        return getattr(self, '_last_depth_map', None)
+
+
+# ==============================================================================
+# Standalone Utility Functions
+# ==============================================================================
+
+def detect_aruco_markers(
+    image: np.ndarray,
+    dictionary_name: str = None
+) -> Tuple[Optional[List[np.ndarray]], Optional[np.ndarray]]:
+    """
+    Detect ArUco markers in an image.
+
+    Tries the requested dictionary first, then falls back to scanning all
+    common ArUco dictionaries.
+
+    :param image: BGR or grayscale input image.
+    :param dictionary_name: ArUco dictionary name (e.g. 'DICT_4X4_50').
+        Falls back to config default, then scans all.
+    :return: Tuple of (corners_list, ids_array), or (None, None) if none found.
+    """
+    if dictionary_name is None:
+        dictionary_name = config.measurement.aruco_dictionary
+
+    gray = image if len(image.shape) == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Try to use cv2.aruco (OpenCV contrib)
+    try:
+        aruco = cv2.aruco
+    except AttributeError:
+        print("  [ARUCO] cv2.aruco not available. Install opencv-contrib-python.")
+        return None, None
+
+    detector_params = aruco.DetectorParameters()
+
+    # Dictionaries to try
+    dict_names = [dictionary_name] if dictionary_name else []
+    dict_names += [
+        "DICT_4X4_50", "DICT_5X5_50", "DICT_6X6_50", "DICT_7X7_50",
+        "DICT_4X4_100", "DICT_5X5_100", "DICT_ARUCO_ORIGINAL",
+    ]
+
+    for name in dict_names:
+        dict_id = getattr(aruco, name, None)
+        if dict_id is None:
+            continue
+
+        dictionary = aruco.getPredefinedDictionary(dict_id)
+
+        # Try new API first (OpenCV 4.7+), fall back to legacy
+        try:
+            detector = aruco.ArucoDetector(dictionary, detector_params)
+            corners, ids, _ = detector.detectMarkers(gray)
+        except AttributeError:
+            corners, ids, _ = aruco.detectMarkers(gray, dictionary, parameters=detector_params)
+
+        if ids is not None and len(ids) > 0:
+            return corners, ids
+
+    return None, None
+
+
+def undistort_image(
+    image: np.ndarray,
+    camera_matrix: np.ndarray,
+    dist_coeffs: np.ndarray,
+    new_camera_matrix: np.ndarray = None
+) -> np.ndarray:
+    """
+    Remove lens distortion from an image using known camera parameters.
+
+    :param image: Distorted input image.
+    :param camera_matrix: 3x3 intrinsic camera matrix.
+    :param dist_coeffs: Distortion coefficients (k1, k2, p1, p2[, k3...]).
+    :param new_camera_matrix: Optional new camera matrix for undistortion.
+        If None, uses the optimal matrix retaining all pixels.
+    :return: Undistorted image.
+    """
+    h, w = image.shape[:2]
+
+    if new_camera_matrix is None:
+        new_camera_matrix, roi = cv2.getOptimalNewCameraMatrix(
+            camera_matrix, dist_coeffs, (w, h), alpha=1.0, newImgSize=(w, h)
+        )
+
+    undistorted = cv2.undistort(image, camera_matrix, dist_coeffs, None, new_camera_matrix)
+    return undistorted
+
+
+def calibrate_camera_from_checkerboard(
+    images: List[np.ndarray],
+    board_size: Tuple[int, int] = (9, 6),
+    square_size_mm: float = 25.0
+) -> Tuple[np.ndarray, np.ndarray, float]:
+    """
+    Compute camera matrix and distortion coefficients from checkerboard images.
+
+    :param images: List of images containing the checkerboard pattern.
+    :param board_size: Internal corner count (columns, rows).
+    :param square_size_mm: Physical size of each square in mm.
+    :return: Tuple of (camera_matrix, dist_coeffs, reprojection_error).
+    :raises ValueError: If no checkerboard corners are found in any image.
+    """
+    # Prepare object points (0,0,0), (1,0,0), ... * square_size
+    objp = np.zeros((board_size[0] * board_size[1], 3), np.float32)
+    objp[:, :2] = np.mgrid[0:board_size[0], 0:board_size[1]].T.reshape(-1, 2)
+    objp *= square_size_mm
+
+    obj_points = []  # 3D world coordinates
+    img_points = []  # 2D image coordinates
+
+    for img in images:
+        gray = img if len(img.shape) == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        found, corners = cv2.findChessboardCorners(gray, board_size, None)
+
+        if found:
+            # Refine to sub-pixel accuracy
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+            corners_refined = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+            obj_points.append(objp)
+            img_points.append(corners_refined)
+
+    if not obj_points:
+        raise ValueError("No checkerboard corners found in any of the provided images.")
+
+    h, w = images[0].shape[:2]
+    ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
+        obj_points, img_points, (w, h), None, None
+    )
+
+    print(f"  [CHECKERBOARD] Calibrated from {len(obj_points)} images")
+    print(f"  [CHECKERBOARD] Reprojection error: {ret:.4f} px")
+    print(f"  [CHECKERBOARD] Camera Matrix:\n{camera_matrix}")
+    print(f"  [CHECKERBOARD] Distortion: {dist_coeffs.ravel()}")
+
+    return camera_matrix, dist_coeffs, ret
+

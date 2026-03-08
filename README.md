@@ -39,6 +39,11 @@ A comprehensive benchmarking framework for evaluating **30 segmentation and edge
   - [Contour Metrics](#contour-metrics)
   - [Latency & Hardware Metrics](#latency--hardware-metrics)
 - [Contour Extraction & Geometry Fitting](#contour-extraction--geometry-fitting)
+- [Measurement & Calibration Methodologies](#measurement--calibration-methodologies)
+  - [Method A: Reference Object (ArUco)](#method-a-reference-object-aruco-marker)
+  - [Method B: Camera Intrinsics](#method-b-geometric-camera-calibration)
+  - [Method C: ML Depth Estimation](#method-c-ml-depth-estimation-midas)
+  - [Lens Undistortion](#lens-undistortion)
 - [Visualization & Reporting](#visualization--reporting)
 - [Available Models](#available-models)
   - [Classical Models (7)](#classical-models-7)
@@ -80,6 +85,8 @@ chignon_detection/
 ├── scripts/                      # Entry-point scripts
 │   ├── train.py                  # Main training & benchmark runner (CLI)
 │   ├── test_best_model.py        # Evaluate best model on test set
+│   ├── test_measurements.py      # Test measurement methodologies (A/B/C)
+│   ├── audit_pipeline.py         # Comprehensive data pipeline audit
 │   ├── run_failed_models.py      # Re-run failed model training
 │   └── generate_viz.py           # Generate standalone visualizations
 │
@@ -121,7 +128,7 @@ The project is organized as a standard Python package under `src/`:
 | `src.evaluation` | `visualization.py` | Benchmark bar charts, heatmaps, comparison tables |
 | `src.utils` | `preprocessing.py` | `PreprocessingPipeline` with bilateral filtering, CLAHE, morphological cleanup |
 | `src.utils` | `contour.py` | `ContourExtractor` and `GeometryFitter` for post-processing |
-| `src.utils` | `measurements.py` | `MeasurementComputer` and `CalibrationManager` for geometric measurements |
+| `src.utils` | `measurements.py` | `MeasurementComputer`, `CalibrationManager` (ArUco PPM, camera intrinsics, ML depth estimation), lens undistortion, checkerboard calibration |
 
 ### Data Flow
 
@@ -241,7 +248,7 @@ python src/data/yolo_prep.py --source outputs/augmented_data --output outputs/yo
 
 The dataset uses **LabelMe JSON** annotations with paired files (`.png` + `.json`). Each JSON file contains shapes with:
 - **Shape types**: `polygon`, `linestrip`, `line`
-- **Labels**: `chignon`, `mecparts`, `d_intern_chignon`, `d_intern_chignon_hrz`, `blue_file`, `yellow_file`, `Frame1`, `Frame2`
+- **Labels**: `michanical_part`, `magnet`, `circle`
 
 ### Mask Generation
 
@@ -259,8 +266,8 @@ The `src/data/dataset.py` module converts annotations to binary segmentation mas
 The `--labels` flag allows training on specific object types only:
 
 ```bash
-# Train on chignon and mecparts only
-python scripts/train.py --mode train --labels chignon mecparts
+# Train on specific labels only
+python scripts/train.py --mode train --labels michanical_part magnet
 
 # Train on all labels (default)
 python scripts/train.py --mode train
@@ -385,7 +392,7 @@ python scripts/train.py --mode train --optimizer adamw --early-stopping 10
 python scripts/train.py --mode train --models unet_lightweight --epochs 30
 
 # Train with label filtering
-python scripts/train.py --mode train --labels chignon mecparts
+python scripts/train.py --mode train --labels michanical_part magnet
 
 # Run inference benchmark only
 python scripts/train.py --mode benchmark
@@ -623,6 +630,108 @@ Computes geometric measurements from `src/utils/measurements.py`:
 - Euclidean and model-based distance computation
 - Sub-pixel refinement support
 
+### CalibrationManager — Pixel-to-Metric Calibration
+
+Three calibration methodologies are available in `src/utils/measurements.py`, each with different requirements and accuracy trade-offs:
+
+#### Method A: Reference Object (Fiducial)
+
+The most accurate approach. Uses a **detected label** of known real-world dimensions as the calibration reference — no external markers needed.
+
+- **How it works**: The model detects labels in the image (e.g., `michanical_part`). Since you know the real-world size of that object, its contour is used to compute the Pixels Per Metric (PPM) ratio:
+
+  ```
+  PPM = object_dimension_px / object_dimension_mm
+  pixel_to_mm = 1.0 / PPM
+  ```
+
+- **Configuration** (in `src/config.py` → `MeasurementConfig`):
+  ```python
+  reference_label_name = "michanical_part"        # Label to use as reference
+  reference_known_dimension_mm = 52.0             # Its real-world size in mm
+  reference_dimension_type = "diameter"            # "diameter", "width", or "height"
+  ```
+
+- **Usage — from predictions**:
+  ```python
+  from src.utils.measurements import CalibrationManager
+  cal = CalibrationManager()
+
+  # Automatically find the reference label in model predictions and calibrate
+  cal.calibrate_from_predictions(
+      prediction=predicted_contours,   # dict: {label: [contours]} or mask array
+      reference_label="michanical_part",
+      known_dimension_mm=52.0,
+      dimension_type="diameter"
+  )
+
+  # Now convert any pixel measurement to mm
+  distance_mm = cal.convert_to_mm(distance_px)
+  ```
+
+- **Usage — from a single contour**:
+  ```python
+  cal.calibrate_from_contour(contour, known_dimension_mm=52.0, dimension_type="diameter")
+  ```
+
+- **Alternative — ArUco markers**: If an ArUco marker is placed in the scene instead:
+  ```python
+  cal.calibrate_from_aruco(image, marker_real_size_mm=50.0)
+  ```
+  Supports `DICT_4X4_50`, `DICT_5X5_50`, `DICT_6X6_50`, and more (auto-scanned).
+
+#### Method B: Geometric Camera Calibration
+
+Uses camera intrinsic parameters when no reference object is available.
+
+- **Required parameters**:
+  - `sensor_width_mm`: Physical sensor width (e.g., 6.17mm for 1/2.3" sensors)
+  - `focal_length_mm`: Lens focal length (from EXIF metadata)
+  - `object_distance_mm`: Distance from lens to target
+
+- **Formula**:
+  ```
+  pixel_size_mm = (distance × sensor_width) / (focal_length × image_width_px)
+  ```
+
+- **Usage**:
+  ```python
+  cal.calibrate_from_camera_intrinsics(
+      sensor_width_mm=6.17, focal_length_mm=4.0,
+      object_distance_mm=300.0, image=image
+  )
+  ```
+
+#### Method C: ML Depth Estimation (MiDaS)
+
+Automates distance estimation using monocular depth prediction, removing the need for manual measurement of object distance.
+
+- **How it works**: Runs a MiDaS/DPT depth model on the image, estimates the object distance from the depth map, then applies the camera intrinsics formula.
+
+- **Usage**:
+  ```python
+  cal.calibrate_from_depth_estimation(image, model_type="MiDaS_small")
+  depth_map = cal.get_last_depth_map()  # Access the depth map
+  ```
+
+- **Available models**: `MiDaS_small` (81MB, fast), `DPT_Hybrid`, `DPT_Large` (more accurate)
+
+#### Lens Undistortion
+
+Corrects barrel/pincushion lens distortion using OpenCV:
+
+```python
+from src.utils.measurements import undistort_image, calibrate_camera_from_checkerboard
+
+# Calibrate from checkerboard images
+cam_matrix, dist_coeffs, error = calibrate_camera_from_checkerboard(
+    checkerboard_images, board_size=(9, 6), square_size_mm=25.0
+)
+
+# Undistort any image
+corrected = undistort_image(image, cam_matrix, dist_coeffs)
+```
+
 ---
 
 ## Visualization & Reporting
@@ -789,6 +898,20 @@ epsilon_factor = 0.02           # Douglas-Peucker approximation
 pixel_to_mm = 1.0               # Set calibration for real-world units
 line_fitting_method = "ransac"
 ransac_threshold = 1.0
+
+# Method A: ArUco Reference Object
+aruco_marker_size_mm = 50.0     # Default marker physical size
+aruco_dictionary = "DICT_4X4_50"
+
+# Method B: Camera Intrinsics
+sensor_width_mm = 6.17          # 1/2.3" sensor
+focal_length_mm = 4.0
+object_distance_mm = 300.0
+
+# Dynamic calibration
+reference_label_name = "michanical_part"
+reference_known_dimension_mm = 52.0
+reference_dimension_type = "diameter"
 ```
 
 ---
