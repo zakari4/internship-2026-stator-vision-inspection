@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chignon Detection — Live</title>
+    <link rel="stylesheet" href="/client/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>Chignon Detection</h1>
+                <span class="badge" id="statusBadge">Disconnected</span>
+            </div>
+            <div class="header-right">
+                <div class="model-selector">
+                    <label for="modelSelect">Model</label>
+                    <select id="modelSelect" disabled>
+                        <option value="">Loading…</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="main">
+            <!-- Video feeds -->
+            <div class="video-grid">
+                <div class="video-card">
+                    <div class="video-label">Camera Feed</div>
+                    <video id="localVideo" autoplay muted playsinline></video>
+                </div>
+                <div class="video-card primary">
+                    <div class="video-label">Detection Result</div>
+                    <video id="remoteVideo" autoplay playsinline></video>
+                    <div class="video-overlay" id="videoOverlay">
+                        <span>Waiting for connection…</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button id="btnConnect" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Start Detection
+                </button>
+                <button id="btnDisconnect" class="btn btn-danger" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="6" y="4" width="4" height="16"></rect>
+                        <rect x="14" y="4" width="4" height="16"></rect>
+                    </svg>
+                    Stop
+                </button>
+                <button id="btnSnapshot" class="btn btn-secondary" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    Snapshot
+                </button>
+                <button id="btnSaveLive" class="btn btn-save" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Save
+                </button>
+            </div>
+
+            <!-- Camera Settings & Measurement Post-Processing -->
+            <div class="settings-section">
+                <div class="panel">
+                    <h3 class="settings-header" id="settingsToggle">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33
+                                     1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06
+                                     a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15 1.65 1.65 0 0 0 3.13 14H3a2 2 0 0 1 0-4h.09
+                                     A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68
+                                     1.65 1.65 0 0 0 10 3.13V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06
+                                     a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9 1.65 1.65 0 0 0 20.87 10H21a2 2 0 0 1 0 4h-.09
+                                     a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                        Camera Settings &amp; Measurements
+                        <span class="settings-chevron" id="settingsChevron">▸</span>
+                    </h3>
+                    <div class="settings-body" id="settingsBody" style="display:none;">
+                        <div class="settings-row">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="measurementEnabled">
+                                <span>Enable measurement post-processing</span>
+                            </label>
+                        </div>
+
+                        <!-- Measurement method selector -->
+                        <div class="settings-row" style="margin-top:8px;">
+                            <label for="measurementMethod" style="font-size:0.85rem;color:#bbb;">Calibration Method</label>
+                            <select id="measurementMethod" class="setting-select">
+                                <option value="camera_intrinsics">Camera Intrinsics</option>
+                                <option value="reference_label">Reference Label</option>
+                                <option value="manual">Manual (px→mm)</option>
+                            </select>
+                        </div>
+
+                        <!-- Camera-intrinsics fields -->
+                        <div class="settings-grid" id="fieldsIntrinsics">
+                            <div class="setting-field">
+                                <label for="sensorWidth">Sensor Width (mm)</label>
+                                <input type="number" id="sensorWidth" step="0.01" min="0.1" value="6.17">
+                            </div>
+                            <div class="setting-field">
+                                <label for="focalLength">Focal Length (mm)</label>
+                                <input type="number" id="focalLength" step="0.1" min="0.1" value="4.0">
+                            </div>
+                            <div class="setting-field">
+                                <label for="objectDistance">Object Distance (mm)</label>
+                                <input type="number" id="objectDistance" step="1" min="1" value="300">
+                            </div>
+                        </div>
+
+                        <!-- Reference-label fields -->
+                        <div class="settings-grid" id="fieldsReference" style="display:none;">
+                            <div class="setting-field">
+                                <label for="refLabelName">Reference Label</label>
+                                <select id="refLabelName" class="setting-select">
+                                    <option value="">-- select label --</option>
+                                </select>
+                            </div>
+                            <div class="setting-field">
+                                <label for="refKnownDim">Known Dimension (mm)</label>
+                                <input type="number" id="refKnownDim" step="0.01" min="0.01" value="10">
+                            </div>
+                            <div class="setting-field">
+                                <label for="refDimType">Dimension Type</label>
+                                <select id="refDimType" class="setting-select">
+                                    <option value="diameter">Diameter</option>
+                                    <option value="width">Width</option>
+                                    <option value="height">Height</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Manual px→mm field -->
+                        <div class="settings-grid" id="fieldsManual" style="display:none;">
+                            <div class="setting-field">
+                                <label for="manualPxToMm">mm per pixel</label>
+                                <input type="number" id="manualPxToMm" step="0.001" min="0.0001" value="0.1">
+                            </div>
+                        </div>
+
+                        <div class="settings-actions">
+                            <button id="btnSaveSettings" class="btn btn-primary btn-sm">Save Settings</button>
+                            <span id="settingsSaved" class="settings-saved" style="display:none;">✓ Saved</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MindVision Industrial Camera -->
+            <div class="mindvision-section">
+                <div class="panel">
+                    <h3>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                        MindVision Industrial Camera (USB)
+                        <span class="badge mv-badge" id="mvStatusBadge">Disconnected</span>
+                    </h3>
+                    <p class="mv-hint">Run <code>python server/mindvision_capture.py --show</code> to connect the camera</p>
+                    <div class="mv-feed-container">
+                        <div class="mv-feed" id="mvFeedWrapper" style="display:none;">
+                            <div class="video-card primary">
+                                <div class="video-label">MindVision — Live Detection</div>
+                                <img id="mvStream" alt="MindVision Stream">
+                            </div>
+                            <div class="mv-stats">
+                                <span id="mvModel">Model: —</span>
+                                <span id="mvInference">Inference: —</span>
+                                <span id="mvDetCount">Detections: 0</span>
+                            </div>
+                            <div id="mvDetections" class="detections-list"></div>
+                        </div>
+                        <div class="mv-placeholder" id="mvPlaceholder">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                <circle cx="12" cy="13" r="4"/>
+                            </svg>
+                            <p>No MindVision camera connected</p>
+                            <p class="upload-hint">Start the capture script to see live detection here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Image Upload Section -->
+            <div class="upload-section">
+                <div class="panel">
+                    <h3>Upload Image for Detection</h3>
+                    <div class="upload-area" id="uploadArea">
+                        <input type="file" id="fileInput" accept="image/*" hidden>
+                        <div class="upload-dropzone" id="dropzone">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            <p>Drag & drop an image or <span class="upload-link">browse</span></p>
+                            <p class="upload-hint">Supports JPG, PNG, BMP</p>
+                        </div>
+                        <div class="upload-preview" id="uploadPreview" style="display:none;">
+                            <div class="upload-images">
+                                <div class="upload-img-wrap">
+                                    <div class="video-label">Original</div>
+                                    <img id="uploadOriginal" alt="Original">
+                                </div>
+                                <div class="upload-img-wrap">
+                                    <div class="video-label">Detection</div>
+                                    <img id="uploadResult" alt="Detection Result">
+                                </div>
+                            </div>
+                            <div class="upload-info">
+                                <span id="uploadInference"></span>
+                                <span id="uploadModel"></span>
+                            </div>
+                            <div id="uploadDetections" class="detections-list"></div>
+                            <div class="upload-actions">
+                                <button id="btnUploadAnother" class="btn btn-secondary">Upload Another</button>
+                                <button id="btnDownloadResult" class="btn btn-primary">Download Result</button>
+                                <button id="btnSaveUpload" class="btn btn-save">Save Image + JSON</button>
+                            </div>
+                        </div>
+                        <div class="upload-loading" id="uploadLoading" style="display:none;">
+                            <div class="spinner"></div>
+                            <p>Running detection…</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats & Detections -->
+            <div class="info-grid">
+                <!-- Stats Panel -->
+                <div class="panel">
+                    <h3>Performance</h3>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="stat-value" id="statInference">—</span>
+                            <span class="stat-label">Inference (ms)</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="statFPS">—</span>
+                            <span class="stat-label">Server FPS</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="statModel">—</span>
+                            <span class="stat-label">Active Model</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="statConnection">—</span>
+                            <span class="stat-label">Connection</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detections Panel -->
+                <div class="panel">
+                    <h3>Detections</h3>
+                    <div id="detectionsList" class="detections-list">
+                        <p class="placeholder">No detections yet</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <span>Industrial Stator Chignon Detection Benchmark</span>
+        </footer>
+    </div>
+
+    <!-- Hidden canvas for snapshots -->
+    <canvas id="snapshotCanvas" style="display:none;"></canvas>
+
+    <script src="/client/app.js"></script>
+    <script src="/client/mindvision.js"></script>
+</body>
+</html>
