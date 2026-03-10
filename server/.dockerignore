@@ -1,0 +1,27 @@
+# Ignore everything not needed in the Docker build context
+__pycache__/
+*.pyc
+.git/
+.gitignore
+venv/
+*.egg-info/
+
+# Data & docs (not needed in server image)
+data/
+docs/
+scripts/
+src/
+
+# Outputs we don't need (only yolo_training weights are copied explicitly)
+outputs/results/checkpoints/
+outputs/results/logs/
+outputs/results/plots/
+outputs/results/training_logs/
+outputs/results/visualizations/
+outputs/results/*.log
+outputs/results/*.json
+outputs/results/*.md
+outputs/yolo_dataset/
+
+# Client is separate
+client/

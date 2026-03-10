@@ -1,0 +1,21 @@
+# ══════════════════════════════════════════════════════════════
+# Docker build context — include ONLY what the Dockerfile needs
+# ══════════════════════════════════════════════════════════════
+
+# -- Ignore everything by default --
+*
+
+# -- Allow only what we need --
+!server/requirements.txt
+!server/server.py
+!server/inference.py
+
+# Trained model weights (only best.pt)
+!outputs/results/yolo_training/*/weights/best.pt
+
+# Pretrained weights
+!weights/*.pt
+
+# RT-DETR root weights
+!rtdetr-l.pt
+!rtdetr-x.pt

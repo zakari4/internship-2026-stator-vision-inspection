@@ -2,11 +2,11 @@
 """
 Offline data augmentation for industrial chignon detection.
 
-Generates 70x augmented dataset from original images + LabelMe JSON annotations.
-All geometric transforms (rotation, flip) properly update annotation coordinates.
-Photometric transforms (brightness, contrast, noise, blur) are industrial-appropriate.
+Generates 10x augmented dataset from original images + LabelMe JSON annotations.
+Geometric transforms (horizontal flip only — no rotation) properly update annotation coordinates.
+Photometric transforms (brightness, contrast, blur, CLAHE) are industrial-appropriate.
 
-Strategy: 8 geometric variants × 9 photometric variants = 72 versions per image ≈ 70x
+Strategy: 2 geometric variants × 5 photometric variants = 10 versions per image
 
 Usage:
     python benchmark/augment_data.py --input data --output augmented_data
@@ -200,32 +200,24 @@ def photo_gamma_dark(img):
 # Augmentation Pipeline Definitions
 # ============================================================================
 
-# 8 geometric transforms with their coordinate and image functions
+# Geometric transforms: no rotation allowed (industrial requirement)
+# Using only flips to achieve 2x geometric multiplier
 GEOMETRIC_TRANSFORMS = [
     ("orig",       identity_image,        identity_point),
-    ("rot90",      rotate90_image,        rotate90_point),
-    ("rot180",     rotate180_image,       rotate180_point),
-    ("rot270",     rotate270_image,       rotate270_point),
     ("flipH",      flip_horizontal_image, flip_horizontal_point),
-    ("flipV",      flip_vertical_image,   flip_vertical_point),
-    ("flipH_r90",  flip_h_rotate90_image, flip_h_rotate90_point),
-    ("flipV_r90",  flip_v_rotate90_image, flip_v_rotate90_point),
 ]
 
-# 9 photometric transforms (no coordinate changes needed)
+# Photometric transforms: 5 selected for industrial robustness
+# Chosen to simulate real-world variations (lighting, blur, contrast)
 PHOTOMETRIC_TRANSFORMS = [
     ("clean",       photo_identity),
     ("bright_up",   photo_brightness_up),
-    ("bright_dn",   photo_brightness_down),
     ("contrast_up", photo_contrast_up),
-    ("gauss_noise", photo_gaussian_noise),
     ("gauss_blur",  photo_gaussian_blur),
-    ("motion_blur", photo_motion_blur),
     ("clahe",       photo_clahe),
-    ("gamma_dark",  photo_gamma_dark),
 ]
 
-# Total: 8 × 9 = 72 versions per image ≈ 70x
+# Total: 2 × 5 = 10 versions per image (10x augmentation)
 
 
 # ============================================================================
@@ -320,28 +312,116 @@ def augment_single_image(
     return count
 
 
-def run_augmentation(input_dir: str, output_dir: str, enable_copy_paste: bool = False):
+def run_augmentation(
+    input_dir: str,
+    output_dir: str,
+    enable_copy_paste: bool = False,
+    allowed_splits: List[str] | None = None,
+    sync_yolo_dataset: bool = True,
+):
     """
     Run the full augmentation pipeline on all images in input_dir.
     Saves augmented images + updated JSON annotations to output_dir.
-    
+
+    If ``input_dir`` contains split sub-directories (``train/``, ``val/``,
+    ``test/``), only the splits listed in *allowed_splits* are augmented
+    (default: ``["train", "val"]``).  A flat directory (no split folders)
+    is augmented entirely.
+
     Args:
         input_dir: Input directory with images and LabelMe JSON annotations
         output_dir: Output directory for augmented dataset
         enable_copy_paste: Whether to apply Copy-Paste augmentation after standard pipeline
+        allowed_splits: Which split folders to augment (ignored for flat dirs).
+                        Defaults to ``["train", "val"]``.
+        sync_yolo_dataset: If True, regenerate ``outputs/yolo_dataset`` from
+                           the augmented output automatically.
     """
+    if allowed_splits is None:
+        allowed_splits = ["train", "val"]
+
     input_path = Path(input_dir)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # Find all JSON annotation files
-    json_files = sorted(input_path.glob("*.json"))
+    # Detect split sub-directories
+    split_dirs = [d for d in input_path.iterdir() if d.is_dir() and d.name in ("train", "val", "test")]
 
-    if not json_files:
-        print(f"ERROR: No JSON annotation files found in {input_dir}")
+    if split_dirs:
+        # ------ YOLO / split-based layout ------
+        skipped = sorted(d.name for d in split_dirs if d.name not in allowed_splits)
+        active  = sorted(d.name for d in split_dirs if d.name in allowed_splits)
+        if skipped:
+            print(f"Skipping splits: {', '.join(skipped)}")
+        if not active:
+            print("ERROR: No allowed splits found to augment.")
+            return
+
+        for split_name in active:
+            split_path = input_path / split_name
+            # Look for images sub-folder (YOLO layout) or flat JSON files
+            images_dir = split_path / "images" if (split_path / "images").is_dir() else split_path
+            json_files = sorted(images_dir.glob("*.json"))
+            # Also try the split root for LabelMe-style flat layout
+            if not json_files:
+                json_files = sorted(split_path.glob("*.json"))
+
+            pairs = _find_pairs(json_files)
+            if not pairs:
+                print(f"[{split_name}] No image-annotation pairs found — skipping.")
+                continue
+
+            split_output = output_path / split_name
+            split_output.mkdir(parents=True, exist_ok=True)
+            print(f"\n{'='*60}")
+            print(f"Augmenting split: {split_name}  ({len(pairs)} pairs)")
+            print(f"{'='*60}")
+            _augment_pairs(pairs, str(split_output), enable_copy_paste)
+    else:
+        # ------ Flat LabelMe layout (no split folders) ------
+        json_files = sorted(input_path.glob("*.json"))
+        pairs = _find_pairs(json_files)
+        if not pairs:
+            print(f"ERROR: No image-annotation pairs found in {input_dir}")
+            return
+        _augment_pairs(pairs, str(output_path), enable_copy_paste)
+
+    if sync_yolo_dataset:
+        _sync_augmented_to_yolo_dataset(output_path)
+
+
+def _sync_augmented_to_yolo_dataset(augmented_output_path: Path) -> None:
+    """Regenerate outputs/yolo_dataset from the augmented output folder."""
+    project_root = Path(__file__).resolve().parent.parent.parent
+    yolo_output = project_root / "outputs" / "yolo_dataset"
+
+    # prepare_yolo_dataset expects a flat folder with image/json pairs at root.
+    # If not found, keep augmentation result and skip sync with a warning.
+    has_root_json = any(augmented_output_path.glob("*.json"))
+    if not has_root_json:
+        print(
+            "\n[WARN] Augmentation output has no root-level JSON files; "
+            "skipping automatic YOLO dataset sync."
+        )
         return
 
-    # Find image-annotation pairs
+    try:
+        from src.data.yolo_prep import prepare_yolo_dataset
+
+        print("\n" + "=" * 60)
+        print("Syncing augmented data to YOLO dataset")
+        print("=" * 60)
+        prepare_yolo_dataset(
+            source_dir=str(augmented_output_path),
+            output_dir=str(yolo_output),
+        )
+        print(f"YOLO dataset updated at: {yolo_output}")
+    except Exception as exc:
+        print(f"[WARN] Failed to sync YOLO dataset automatically: {exc}")
+
+
+def _find_pairs(json_files: list) -> List[Tuple[str, str]]:
+    """Return (image_path, json_path) pairs from a list of JSON files."""
     pairs = []
     for json_file in json_files:
         img_path = None
@@ -352,6 +432,17 @@ def run_augmentation(input_dir: str, output_dir: str, enable_copy_paste: bool = 
                 break
         if img_path is not None:
             pairs.append((str(img_path), str(json_file)))
+    return pairs
+
+
+def _augment_pairs(
+    pairs: List[Tuple[str, str]],
+    output_dir: str,
+    enable_copy_paste: bool = False,
+):
+    """Core loop: augment a list of image-annotation pairs into *output_dir*."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     print(f"Found {len(pairs)} image-annotation pairs")
     print(f"Augmentation: {len(GEOMETRIC_TRANSFORMS)} geometric × "
@@ -386,7 +477,7 @@ def run_augmentation(input_dir: str, output_dir: str, enable_copy_paste: bool = 
     print(f"\nAugmentation complete!")
     print(f"  Original images: {len(pairs)}")
     print(f"  Augmented images: {total_generated}")
-    print(f"  Multiplier: {total_generated / len(pairs):.0f}x")
+    print(f"  Multiplier: {total_generated / max(len(pairs), 1):.0f}x")
     print(f"  Output: {output_path}")
 
 
@@ -579,7 +670,7 @@ def run_copy_paste(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="70x industrial data augmentation with coordinate-aware transforms"
+        description="10x industrial data augmentation with coordinate-aware transforms"
     )
     parser.add_argument(
         "--input", type=str,
@@ -595,7 +686,21 @@ if __name__ == "__main__":
         "--copy-paste", action="store_true", default=False,
         help="Enable Copy-Paste augmentation (pastes objects between images)"
     )
+    parser.add_argument(
+        "--splits", nargs="+", default=["train", "val"],
+        help="Which split folders to augment when input contains train/val/test dirs (default: train val)"
+    )
+    parser.add_argument(
+        "--no-sync-yolo", action="store_true", default=False,
+        help="Disable automatic regeneration of outputs/yolo_dataset after augmentation"
+    )
 
     args = parser.parse_args()
-    run_augmentation(args.input, args.output, enable_copy_paste=args.copy_paste)
+    run_augmentation(
+        args.input,
+        args.output,
+        enable_copy_paste=args.copy_paste,
+        allowed_splits=args.splits,
+        sync_yolo_dataset=not args.no_sync_yolo,
+    )
 
