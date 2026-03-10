@@ -50,6 +50,14 @@ A comprehensive benchmarking framework for evaluating **30 segmentation and edge
   - [Deep Learning Models (23)](#deep-learning-models-23)
 - [Configuration Reference](#configuration-reference)
 - [Hardware Requirements](#hardware-requirements)
+- [Web Application (Server & Client)](#web-application-server--client)
+  - [Architecture](#architecture)
+  - [Quick Start](#quick-start-1)
+  - [Docker](#docker)
+  - [REST API](#rest-api)
+  - [Model Discovery](#model-discovery)
+  - [Measurement & Calibration Settings](#measurement--calibration-settings)
+  - [Client Features](#client-features)
 
 ---
 
@@ -99,11 +107,26 @@ chignon_detection/
 │       ├── training_logs/        #     Per-model training history (JSON)
 │       ├── plots/                #     Loss curves, IoU charts, comparisons
 │       ├── visualizations/       #     Prediction overlays, heatmaps
+│       ├── checkpoints/          #     PyTorch model checkpoints (best_model.pth)
 │       └── logs/                 #     Text logs
+│
+├── server/                       # Flask + WebRTC backend
+│   ├── server.py                 #   REST API, WebRTC signaling, MindVision endpoints
+│   ├── inference.py              #   Model discovery, loading, inference, measurements
+│   ├── mindvision_capture.py     #   MindVision SDK USB camera capture
+│   ├── Dockerfile                #   Multi-stage Docker build
+│   └── docker-compose.yml        #   Docker Compose configuration
+│
+├── client/                       # Browser-based frontend
+│   ├── index.html                #   Single-page UI
+│   ├── app.js                    #   WebRTC, model selection, settings, save
+│   ├── style.css                 #   Dark-themed responsive styles
+│   └── mindvision.js             #   MindVision MJPEG stream viewer
 │
 ├── docs/                         # Documentation
 │   └── benchmark_report.md       #   Generated benchmark report
 │
+├── run.sh                        # Quick-start script (serves on port 5001)
 ├── setup.sh                      # One-command project setup
 ├── requirements.txt              # Python dependencies
 └── .gitignore                    # Git ignore rules
@@ -950,3 +973,105 @@ reference_dimension_type = "diameter"
 ## License
 
 This project is for research and educational purposes.
+
+---
+
+## Web Application (Server & Client)
+
+A full-stack **Flask + WebRTC** application for interactive, real-time chignon detection — supporting live camera streams, image upload, and industrial MindVision USB cameras.
+
+### Architecture
+
+```
+chignon_detection/
+├── server/                       # Backend (Python / Flask)
+│   ├── server.py                 #   Flask app, REST API, WebRTC signaling (aiortc)
+│   ├── inference.py              #   Model discovery, loading, inference, measurement post-processing
+│   ├── mindvision_capture.py     #   MindVision SDK industrial USB camera capture
+│   ├── Dockerfile                #   Multi-stage Docker build (python:3.11-slim)
+│   └── docker-compose.yml        #   Docker Compose service definition
+│
+├── client/                       # Frontend (vanilla JS)
+│   ├── index.html                #   Single-page UI (video, upload, settings panels)
+│   ├── app.js                    #   WebRTC connection, model selection, settings, save
+│   ├── style.css                 #   Dark-themed responsive styles
+│   └── mindvision.js             #   MindVision camera MJPEG stream viewer
+│
+└── run.sh                        # Quick-start script (port 5001)
+```
+
+### Quick Start
+
+```bash
+# Default: starts on port 5001
+./run.sh
+
+# Custom port
+./run.sh --port 8080
+
+# With a specific model pre-loaded
+./run.sh --model yolov8n
+
+# Debug / hot-reload mode
+./run.sh --debug
+```
+
+Then open **http://localhost:5001** in a browser.
+
+### Docker
+
+```bash
+cd server
+docker compose up --build
+```
+
+### REST API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/` | Serve the client UI |
+| `GET` | `/api/models` | List all available models (trained YOLO, pretrained YOLO, PyTorch) |
+| `POST` | `/api/select-model` | Switch the active model |
+| `POST` | `/offer` | WebRTC SDP signaling |
+| `POST` | `/api/detect` | Upload an image for single-shot detection (base64 or multipart) |
+| `GET` | `/api/status` | Server health & current model info |
+| `GET` | `/api/settings` | Get measurement / calibration settings |
+| `POST` | `/api/settings` | Update measurement / calibration settings |
+| `GET` | `/api/labels` | Class labels of the active model |
+| `POST` | `/api/mindvision/frame` | Receive a frame from MindVision capture script |
+| `GET` | `/api/mindvision/stream` | MJPEG stream of annotated MindVision frames |
+| `GET` | `/api/mindvision/latest` | Latest annotated MindVision frame (JPEG) |
+| `GET` | `/api/mindvision/status` | MindVision camera status |
+
+### Model Discovery
+
+The server automatically discovers models from three sources:
+
+| Source | Path Pattern | Type |
+|--------|-------------|------|
+| Trained YOLO / RT-DETR | `outputs/results/yolo_training/*/weights/best.pt` | yolo |
+| Pretrained YOLO / RT-DETR | `weights/*.pt`, `*.pt` (project root) | yolo |
+| PyTorch checkpoints | `outputs/results/checkpoints/*/best_model.pth` | pytorch |
+
+Supported PyTorch architectures: **SegFormer B0**, **DeepLabV3 MobileNet**, **UNet Lightweight**, **UNet ResNet18**, **HED**, **RCF**, **PiDiNet**, **TEED**.
+
+### Measurement & Calibration Settings
+
+The settings panel supports three calibration methods for converting pixel measurements to real-world millimetres:
+
+| Method | Parameters | Description |
+|--------|-----------|-------------|
+| **Camera Intrinsics** | `sensor_width_mm`, `focal_length_mm`, `object_distance_mm` | Computes px→mm from the pinhole camera model |
+| **Reference Label** | `reference_label_name`, `reference_known_dimension_mm`, `reference_dimension_type` | Uses a detected label with a known real-world size (diameter / width / height) as calibration reference |
+| **Manual** | `manual_px_to_mm` | User-provided fixed mm-per-pixel factor |
+
+When measurements are enabled, the inference pipeline computes per-contour **bounding width/height**, **outer diameter**, **area**, **perimeter**, and **pairwise minimum distances** — all annotated directly on the output image.
+
+### Client Features
+
+- **WebRTC live detection** — real-time video from browser camera with overlay annotations
+- **Image upload** — drag-and-drop or file picker, returns annotated image + detection JSON
+- **Model selector** — grouped dropdown (Trained YOLO · Pretrained YOLO · PyTorch)
+- **Measurement settings** — collapsible panel with method selection and conditional parameter fields
+- **Save** — download annotated image + JSON (coordinates, measurements) for both live and upload flows
+- **MindVision camera viewer** — MJPEG stream for industrial USB cameras
