@@ -58,7 +58,7 @@ pip install timm --quiet                      # needed for MiDaS depth estimatio
 echo "      All dependencies installed."
 
 # ------------------------------------------------------------------
-# 4. Augment data (72x)
+# 4. Augment data (10x, no rotation)
 # ------------------------------------------------------------------
 echo ""
 AUG_DIR="$PROJECT_DIR/outputs/augmented_data"
@@ -66,8 +66,8 @@ if [ -d "$AUG_DIR" ] && [ "$(ls -A $AUG_DIR/*.png 2>/dev/null | head -1)" ]; the
     AUG_COUNT=$(ls -1 "$AUG_DIR"/*.png 2>/dev/null | wc -l)
     echo "[4/8] Augmented data already exists ($AUG_COUNT images in $AUG_DIR)"
 else
-    echo "[4/8] Augmenting data (72x)..."
-    python "$PROJECT_DIR/src/data/augmentation.py" \
+    echo "[4/8] Augmenting data (10x, no rotation)..."
+    python -m src.data.augmentation \
         --input "$PROJECT_DIR/data" \
         --output "$AUG_DIR"
     echo "      Augmentation complete."
@@ -222,6 +222,9 @@ echo "    python scripts/train.py --mode train --optimizer adamw --early-stoppin
 echo ""
 echo "  To run benchmark:"
 echo "    python scripts/train.py --mode benchmark"
+echo ""
+echo "  To run augmentation manually:"
+echo "    python -m src.data.augmentation --input data --output outputs/augmented_data"
 echo ""
 echo "  To run full pipeline:"
 echo "    python scripts/train.py --mode full"
