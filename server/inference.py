@@ -253,6 +253,75 @@ def compute_contour_measurements(
     return measurements
 
 
+def compute_single_contour_measurements(
+    contour: np.ndarray,
+    px_to_mm: float,
+    class_name: str = "",
+) -> List[dict]:
+    """
+    Compute geometric measurements for a single detection contour.
+
+    Returns a list of measurement dicts each with:
+      type, label, value_px, value_mm, and optional drawing points.
+    """
+    measurements = []
+    if contour is None or len(contour) < 5:
+        return measurements
+
+    prefix = f"{class_name} " if class_name else ""
+
+    # Bounding rect: width & height
+    x, y, w, h = cv2.boundingRect(contour)
+    measurements.append({
+        "type": "width",
+        "label": f"{prefix}Width",
+        "value_px": round(float(w), 1),
+        "value_mm": round(float(w) * px_to_mm, 2),
+        "pt1": [int(x), int(y + h // 2)],
+        "pt2": [int(x + w), int(y + h // 2)],
+    })
+    measurements.append({
+        "type": "height",
+        "label": f"{prefix}Height",
+        "value_px": round(float(h), 1),
+        "value_mm": round(float(h) * px_to_mm, 2),
+        "pt1": [int(x + w // 2), int(y)],
+        "pt2": [int(x + w // 2), int(y + h)],
+    })
+
+    # Min enclosing circle → diameter
+    (cx, cy), radius = cv2.minEnclosingCircle(contour)
+    diameter_px = 2 * radius
+    measurements.append({
+        "type": "diameter",
+        "label": f"{prefix}Diameter",
+        "value_px": round(float(diameter_px), 1),
+        "value_mm": round(float(diameter_px) * px_to_mm, 2),
+        "center": [int(cx), int(cy)],
+        "radius": int(radius),
+    })
+
+    # Area
+    area_px = cv2.contourArea(contour)
+    measurements.append({
+        "type": "area",
+        "label": f"{prefix}Area",
+        "value_px": round(float(area_px), 1),
+        "value_mm": round(float(area_px) * (px_to_mm ** 2), 2),
+    })
+
+    # Perimeter
+    perimeter_px = cv2.arcLength(contour, True)
+    measurements.append({
+        "type": "perimeter",
+        "label": f"{prefix}Perimeter",
+        "value_px": round(float(perimeter_px), 1),
+        "value_mm": round(float(perimeter_px) * px_to_mm, 2),
+    })
+
+    return measurements
+
+
 def draw_measurements_on_image(
     image: np.ndarray,
     measurements: List[dict],
@@ -272,7 +341,7 @@ def draw_measurements_on_image(
         if m["type"] in ("area", "perimeter"):
             continue
 
-        if m["type"] == "outer_diameter" and "center" in m:
+        if m["type"] in ("outer_diameter", "diameter") and "center" in m:
             cx, cy = m["center"]
             r = m["radius"]
             cv2.circle(overlay, (cx, cy), r, color_circle, 1, cv2.LINE_AA)
@@ -375,32 +444,7 @@ class ModelManager:
                         "display_name": display,
                     }
 
-        # 2. Pretrained YOLO weights in weights/ directory
-        weights_dir = MODEL_BASE_DIR / "weights"
-        if weights_dir.exists():
-            for pt_file in sorted(weights_dir.glob("*.pt")):
-                name = pt_file.stem          # e.g. "yolov8n-seg"
-                display = self._YOLO_DISPLAY_NAMES.get(name, name)
-                self.available_models[name] = {
-                    "path": str(pt_file),
-                    "type": "yolo",
-                    "source": "pretrained",
-                    "display_name": display,
-                }
-
-        # 3. Root-level .pt files (rtdetr-l.pt, rtdetr-x.pt)
-        for pt_file in sorted(MODEL_BASE_DIR.glob("*.pt")):
-            name = pt_file.stem
-            if name not in self.available_models:
-                display = self._YOLO_DISPLAY_NAMES.get(name, name)
-                self.available_models[name] = {
-                    "path": str(pt_file),
-                    "type": "yolo",
-                    "source": "pretrained",
-                    "display_name": display,
-                }
-
-        # 4. Trained PyTorch checkpoints (outputs/results/checkpoints/*/best_model.pth)
+        # 2. Trained PyTorch checkpoints (outputs/results/checkpoints/*/best_model.pth)
         ckpt_dir = MODEL_BASE_DIR / "outputs" / "results" / "checkpoints"
         if ckpt_dir.exists():
             for model_dir in sorted(ckpt_dir.iterdir()):
@@ -658,7 +702,7 @@ class ModelManager:
         return annotated, measurements
 
     def _predict_yolo(self, frame: np.ndarray) -> Tuple[np.ndarray, List[Dict]]:
-        """YOLO-based inference with segmentation mask overlay + contour borders."""
+        """YOLO-based inference with per-detection measurements."""
         results = self.current_model.predict(
             frame, imgsz=512, conf=0.25, verbose=False
         )
@@ -667,7 +711,6 @@ class ModelManager:
         h, w = frame.shape[:2]
 
         detections = []
-        all_measurements = []
 
         if result.boxes is not None:
             for i, box in enumerate(result.boxes):
@@ -679,44 +722,105 @@ class ModelManager:
                     "has_mask": (
                         result.masks is not None and i < len(result.masks)
                     ),
+                    "measurements": [],
                 }
                 detections.append(det)
 
-        # Draw contour borders on each mask + measure
+        # Per-detection mask processing
         if result.masks is not None:
-            combined_mask = np.zeros((h, w), dtype=np.uint8)
-
-            # Build per-detection (class_name, mask) pairs for reference calibration
+            # 1. Extract per-detection binary masks and largest contour
             detection_masks: List[Tuple[str, np.ndarray]] = []
+            det_contours: List[Tuple[np.ndarray, str, int]] = []
+
             for i, mask_data in enumerate(result.masks.data):
                 m = mask_data.cpu().numpy()
                 m_resized = cv2.resize(m, (w, h))
                 m_bin = (m_resized > 0.5).astype(np.uint8) * 255
-                combined_mask[m_bin > 0] = 255
-                # Map mask to its class name via matching box index
+
                 cls_name = "unknown"
                 if result.boxes is not None and i < len(result.boxes):
                     cls_id = int(result.boxes[i].cls.item())
                     cls_name = result.names.get(cls_id, "unknown")
                 detection_masks.append((cls_name, m_bin))
 
-            annotated, all_measurements = self._postprocess_measurements(
-                annotated, combined_mask, detection_masks
-            )
+                # Largest contour for this detection
+                cnts, _ = cv2.findContours(
+                    m_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                )
+                if cnts:
+                    largest = max(cnts, key=cv2.contourArea)
+                    if cv2.contourArea(largest) > 50:
+                        det_contours.append((largest, cls_name, i))
 
-        # Attach measurements to response
-        if all_measurements:
-            for det in detections:
-                det["measurements"] = all_measurements
+            # 2. Resolve px→mm (reference label inspects detected masks)
+            px_to_mm = self._get_px_to_mm(w, detection_masks)
+
+            # 3. Per-detection measurements (only when enabled)
+            if self.camera_settings.enabled:
+                for contour, cls_name, det_idx in det_contours:
+                    measurements = compute_single_contour_measurements(
+                        contour, px_to_mm, cls_name
+                    )
+                    if det_idx < len(detections):
+                        detections[det_idx]["measurements"] = measurements
+
+                # 4. Inter-detection min distances
+                for i in range(len(det_contours)):
+                    for j in range(i + 1, len(det_contours)):
+                        cnt_a, name_a, idx_a = det_contours[i]
+                        cnt_b, name_b, idx_b = det_contours[j]
+                        if len(cnt_a) < 2 or len(cnt_b) < 2:
+                            continue
+                        pts_a = cnt_a.reshape(-1, 2).astype(np.float64)
+                        pts_b = cnt_b.reshape(-1, 2).astype(np.float64)
+                        from scipy.spatial.distance import cdist
+                        dists = cdist(pts_a, pts_b)
+                        min_dist = float(np.min(dists))
+                        idx = np.unravel_index(np.argmin(dists), dists.shape)
+                        pt_a = pts_a[idx[0]].astype(int).tolist()
+                        pt_b = pts_b[idx[1]].astype(int).tolist()
+                        dist_m = {
+                            "type": "distance",
+                            "label": f"{name_a} \u2194 {name_b}",
+                            "value_px": round(min_dist, 1),
+                            "value_mm": round(min_dist * px_to_mm, 2),
+                            "pt1": pt_a,
+                            "pt2": pt_b,
+                        }
+                        if idx_a < len(detections):
+                            detections[idx_a]["measurements"].append(dist_m)
+                        if idx_b < len(detections):
+                            detections[idx_b]["measurements"].append(dist_m)
+
+                # 5. Draw measurement annotations
+                for det in detections:
+                    annotated = draw_measurements_on_image(
+                        annotated, det.get("measurements", []), px_to_mm
+                    )
+
+            # Always draw contour borders
+            for contour, _, _ in det_contours:
+                cv2.drawContours(
+                    annotated, [contour], -1, (0, 255, 255), 2, cv2.LINE_AA
+                )
 
         return annotated, detections
 
     def _predict_pytorch(self, frame: np.ndarray) -> Tuple[np.ndarray, List[Dict]]:
         """
-        PyTorch model inference (UNet, DeepLab, etc.).
-        Produces a binary segmentation mask overlay.
+        PyTorch model inference (UNet, DeepLab, SegFormer, etc.).
+        Supports both binary (1-channel) and multi-class (C-channel) output.
         """
         import torch
+
+        # Multi-class label names (indices 1,2,3 correspond to foreground classes)
+        CLASS_NAMES = ["background", "michanical_part", "magnet", "circle"]
+        # Distinct colours for each foreground class (BGR)
+        CLASS_COLORS = {
+            1: (0, 255, 0),    # michanical_part → green
+            2: (255, 0, 255),  # magnet → magenta
+            3: (255, 255, 0),  # circle → cyan
+        }
 
         model = self.current_model
         if not hasattr(model, "forward"):
@@ -726,16 +830,13 @@ class ModelManager:
             (p.device for p in model.parameters()), torch.device("cpu")
         )
 
-        # Preprocess: resize, normalize, to tensor
+        # Preprocess: resize, BGR→RGB, normalize to [0,1] (matches training)
         h, w = frame.shape[:2]
         img = cv2.resize(frame, (512, 512))
-        img_float = img.astype(np.float32) / 255.0
-        # ImageNet normalization
-        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-        std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-        img_norm = (img_float - mean) / std
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_float = img_rgb.astype(np.float32) / 255.0
         tensor = (
-            torch.from_numpy(img_norm)
+            torch.from_numpy(img_float)
             .permute(2, 0, 1)
             .unsqueeze(0)
             .float()
@@ -749,6 +850,100 @@ class ModelManager:
         if isinstance(output, dict):
             output = output.get("out", list(output.values())[0])
 
+        num_channels = output.shape[1]
+
+        # ----------------------------------------------------------
+        # Multi-class path (≥2 output channels)
+        # ----------------------------------------------------------
+        if num_channels > 1:
+            probs = torch.softmax(output, dim=1).squeeze(0).cpu().numpy()  # (C, H, W)
+            pred_classes = probs.argmax(axis=0)  # (H, W) values 0..C-1
+
+            # Resize predicted class map to original frame size
+            pred_resized = cv2.resize(
+                pred_classes.astype(np.uint8), (w, h),
+                interpolation=cv2.INTER_NEAREST
+            )
+
+            overlay = frame.copy()
+            detections = []
+
+            for cls_id in range(1, num_channels):  # skip background (0)
+                cls_mask = (pred_resized == cls_id).astype(np.uint8) * 255
+                if cls_mask.sum() == 0:
+                    continue
+
+                # Colour overlay for this class
+                colour_layer = np.zeros_like(frame)
+                colour_layer[cls_mask > 127] = CLASS_COLORS.get(
+                    cls_id, (0, 255, 0)
+                )
+                overlay = cv2.addWeighted(overlay, 1.0, colour_layer, 0.35, 0)
+
+                # Find contours for this class
+                contours, _ = cv2.findContours(
+                    cls_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                )
+                contours = [c for c in contours if cv2.contourArea(c) > 50]
+
+                # Draw contour borders
+                cv2.drawContours(
+                    overlay, contours, -1,
+                    CLASS_COLORS.get(cls_id, (0, 255, 0)), 2, cv2.LINE_AA
+                )
+
+                # Per-contour detections
+                # Get per-class probability map resized to original frame
+                cls_prob = cv2.resize(probs[cls_id], (w, h))
+
+                for cnt in contours:
+                    x, y, cw, ch = cv2.boundingRect(cnt)
+                    cnt_mask_small = np.zeros((h, w), dtype=np.uint8)
+                    cv2.drawContours(cnt_mask_small, [cnt], -1, 1, -1)
+                    region_probs = cls_prob[cnt_mask_small > 0]
+                    conf = float(region_probs.mean()) if len(region_probs) > 0 else 0.5
+
+                    cls_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
+                    detections.append({
+                        "class_id": cls_id,
+                        "class_name": cls_name,
+                        "confidence": round(conf, 4),
+                        "bbox": [float(x), float(y), float(x + cw), float(y + ch)],
+                        "has_mask": True,
+                        "measurements": [],
+                    })
+
+            # Optional measurements
+            detection_masks = []
+            for cls_id in range(1, num_channels):
+                cls_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
+                cls_mask = (pred_resized == cls_id).astype(np.uint8) * 255
+                if cls_mask.sum() > 0:
+                    detection_masks.append((cls_name, cls_mask))
+
+            px_to_mm = self._get_px_to_mm(w, detection_masks)
+            if self.camera_settings.enabled:
+                det_idx = 0
+                for cls_id in range(1, num_channels):
+                    cls_mask = (pred_resized == cls_id).astype(np.uint8) * 255
+                    contours_cls, _ = cv2.findContours(
+                        cls_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                    )
+                    contours_cls = [c for c in contours_cls if cv2.contourArea(c) > 50]
+                    cls_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
+                    for cnt in contours_cls:
+                        measurements = compute_single_contour_measurements(
+                            cnt, px_to_mm, cls_name
+                        )
+                        if det_idx < len(detections):
+                            detections[det_idx]["measurements"] = measurements
+                        det_idx += 1
+
+            return overlay, detections
+
+        # ----------------------------------------------------------
+        # Binary path (1 output channel — legacy / edge detectors)
+        # ----------------------------------------------------------
         mask = torch.sigmoid(output).squeeze().cpu().numpy()
         if mask.ndim == 3:
             mask = mask[0]
@@ -756,35 +951,91 @@ class ModelManager:
         mask_binary = (mask > 0.5).astype(np.uint8) * 255
         mask_resized = cv2.resize(mask_binary, (w, h))
 
-        # Find contours for overlay
         contours, _ = cv2.findContours(
             mask_resized, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
+        contours = [c for c in contours if cv2.contourArea(c) > 50]
 
-        # Create overlay
         overlay = frame.copy()
         green_mask = np.zeros_like(frame)
         green_mask[mask_resized > 127] = [0, 255, 0]
         overlay = cv2.addWeighted(overlay, 0.6, green_mask, 0.4, 0)
-
-        # Draw contour borders (always)
         cv2.drawContours(overlay, contours, -1, (0, 0, 255), 2, cv2.LINE_AA)
 
-        # Optional measurements via post-processing
-        overlay, measurements = self._postprocess_measurements(overlay, mask_resized)
+        detections = []
+        for i, cnt in enumerate(contours):
+            x, y, cw, ch = cv2.boundingRect(cnt)
+            cnt_mask = np.zeros(mask.shape, dtype=np.uint8)
+            cnt_scaled = cnt.copy()
+            cnt_scaled[:, :, 0] = (cnt[:, :, 0] * mask.shape[1] / w).astype(int)
+            cnt_scaled[:, :, 1] = (cnt[:, :, 1] * mask.shape[0] / h).astype(int)
+            cv2.drawContours(cnt_mask, [cnt_scaled], -1, 1, -1)
+            region_probs = mask[cnt_mask > 0]
+            conf = float(region_probs.mean()) if len(region_probs) > 0 else 0.5
 
+            detections.append({
+                "class_id": i,
+                "class_name": f"region_{i+1}",
+                "confidence": round(conf, 4),
+                "bbox": [float(x), float(y), float(x + cw), float(y + ch)],
+                "has_mask": True,
+                "measurements": [],
+            })
+
+        detection_masks = [("foreground", mask_resized)]
+        px_to_mm = self._get_px_to_mm(w, detection_masks)
+
+        if self.camera_settings.enabled and contours:
+            for i, cnt in enumerate(contours):
+                measurements = compute_single_contour_measurements(
+                    cnt, px_to_mm, f"region_{i+1}"
+                )
+                if i < len(detections):
+                    detections[i]["measurements"] = measurements
+
+            # Inter-contour distances
+            for i in range(len(contours)):
+                for j in range(i + 1, len(contours)):
+                    if len(contours[i]) < 2 or len(contours[j]) < 2:
+                        continue
+                    pts_a = contours[i].reshape(-1, 2).astype(np.float64)
+                    pts_b = contours[j].reshape(-1, 2).astype(np.float64)
+                    from scipy.spatial.distance import cdist
+                    dists = cdist(pts_a, pts_b)
+                    min_dist = float(np.min(dists))
+                    idx = np.unravel_index(np.argmin(dists), dists.shape)
+                    pt_a = pts_a[idx[0]].astype(int).tolist()
+                    pt_b = pts_b[idx[1]].astype(int).tolist()
+                    dist_m = {
+                        "type": "distance",
+                        "label": f"region_{i+1} \u2194 region_{j+1}",
+                        "value_px": round(min_dist, 1),
+                        "value_mm": round(min_dist * px_to_mm, 2),
+                        "pt1": pt_a,
+                        "pt2": pt_b,
+                    }
+                    if i < len(detections):
+                        detections[i]["measurements"].append(dist_m)
+                    if j < len(detections):
+                        detections[j]["measurements"].append(dist_m)
+
+            # Draw measurement annotations
+            for det in detections:
+                overlay = draw_measurements_on_image(
+                    overlay, det.get("measurements", []), px_to_mm
+                )
+
+        # Add summary detection with overall coverage
         coverage = float(np.count_nonzero(mask_resized) / mask_resized.size)
-        detections = [
-            {
-                "class_id": 1,
+        if not detections:
+            detections = [{
+                "class_id": 0,
                 "class_name": "foreground",
                 "confidence": round(float(mask[mask > 0.5].mean()) if np.any(mask > 0.5) else 0, 4),
                 "has_mask": True,
                 "mask_coverage": round(coverage, 4),
-            }
-        ]
-        if measurements:
-            detections[0]["measurements"] = measurements
+                "measurements": [],
+            }]
 
         return overlay, detections
 
@@ -821,9 +1072,9 @@ class ModelManager:
             return None
 
         builders = {
-            "segformer_b0":       lambda: SegFormerB0Simple(n_classes=1),
-            "unet_lightweight":   lambda: UNetLightweight(n_channels=3, n_classes=1, base_filters=32),
-            "unet_resnet18":      lambda: UNetResNet18(n_classes=1, pretrained=False),
+            "segformer_b0":       lambda: SegFormerB0Simple(n_classes=4),
+            "unet_lightweight":   lambda: UNetLightweight(n_channels=3, n_classes=4, base_filters=32),
+            "unet_resnet18":      lambda: UNetResNet18(n_classes=4, pretrained=False),
             "hed":                lambda: HEDNet(),
             "rcf":                lambda: RCFNet(),
             "pidinet":            lambda: PiDiNet(),
@@ -883,5 +1134,24 @@ class ModelManager:
                 return list(names)
             return []
 
-        # PyTorch single-class segmentation
-        return ["foreground"]
+        # PyTorch segmentation — check if model is multi-class
+        import torch
+        if hasattr(self.current_model, "forward"):
+            try:
+                # Quick forward pass with dummy input to check output channels
+                device = next(
+                    (p.device for p in self.current_model.parameters()),
+                    torch.device("cpu"),
+                )
+                dummy = torch.zeros(1, 3, 64, 64, device=device)
+                with torch.no_grad():
+                    out = self.current_model(dummy)
+                if isinstance(out, dict):
+                    out = out.get("out", list(out.values())[0])
+                n_ch = out.shape[1]
+                if n_ch >= 4:
+                    return ["michanical_part", "magnet", "circle"]
+            except Exception:
+                pass
+
+        return ["foreground (all classes)"]
