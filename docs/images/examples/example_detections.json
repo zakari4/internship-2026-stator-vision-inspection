@@ -1,0 +1,399 @@
+{
+  "yolov8m_seg": {
+    "num_detections": 7,
+    "detections": [
+      {
+        "class_id": 2,
+        "class_name": "circle",
+        "confidence": 0.9685,
+        "bbox": [
+          203.3,
+          110.6,
+          461.9,
+          370.4
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 1,
+        "class_name": "magnet",
+        "confidence": 0.9305,
+        "bbox": [
+          394.6,
+          85.5,
+          500.5,
+          192.2
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 1,
+        "class_name": "magnet",
+        "confidence": 0.9254,
+        "bbox": [
+          179.9,
+          300.9,
+          276.5,
+          413.8
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 0,
+        "class_name": "michanical_part",
+        "confidence": 0.8902,
+        "bbox": [
+          320.6,
+          77.8,
+          408.5,
+          121.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 0,
+        "class_name": "michanical_part",
+        "confidence": 0.8819,
+        "bbox": [
+          456.8,
+          188.5,
+          518.9,
+          255.2
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 0,
+        "class_name": "michanical_part",
+        "confidence": 0.8767,
+        "bbox": [
+          284.3,
+          375.8,
+          373.4,
+          409.3
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 0,
+        "class_name": "michanical_part",
+        "confidence": 0.8563,
+        "bbox": [
+          180.6,
+          222.6,
+          207.5,
+          302.9
+        ],
+        "has_mask": true,
+        "measurements": []
+      }
+    ]
+  },
+  "yolov11m_seg": {
+    "num_detections": 7,
+    "detections": [
+      {
+        "class_id": 2,
+        "class_name": "circle",
+        "confidence": 0.9587,
+        "bbox": [
+          204.5,
+          111.8,
+          460.8,
+          371.6
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 1,
+        "class_name": "magnet",
+        "confidence": 0.9137,
+        "bbox": [
+          182.3,
+          301.2,
+          278.1,
+          410.8
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 1,
+        "class_name": "magnet",
+        "confidence": 0.9039,
+        "bbox": [
+          394.3,
+          86.4,
+          500.7,
+          190.3
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 0,
+        "class_name": "michanical_part",
+        "confidence": 0.8702,
+        "bbox": [
+          285.2,
+          376.3,
+          373.7,
+          409.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 0,
+        "class_name": "michanical_part",
+        "confidence": 0.853,
+        "bbox": [
+          320.6,
+          79.3,
+          407.4,
+          120.6
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 0,
+        "class_name": "michanical_part",
+        "confidence": 0.8233,
+        "bbox": [
+          180.2,
+          221.7,
+          207.9,
+          303.3
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 0,
+        "class_name": "michanical_part",
+        "confidence": 0.8205,
+        "bbox": [
+          457.3,
+          189.1,
+          517.8,
+          255.9
+        ],
+        "has_mask": true,
+        "measurements": []
+      }
+    ]
+  },
+  "unet_resnet18": {
+    "num_detections": 7,
+    "detections": [
+      {
+        "class_id": 1,
+        "class_name": "michanical_part",
+        "confidence": 0.9339,
+        "bbox": [
+          287.0,
+          372.0,
+          375.0,
+          412.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 1,
+        "class_name": "michanical_part",
+        "confidence": 0.8988,
+        "bbox": [
+          178.0,
+          223.0,
+          209.0,
+          308.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 1,
+        "class_name": "michanical_part",
+        "confidence": 0.9333,
+        "bbox": [
+          457.0,
+          188.0,
+          519.0,
+          257.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 1,
+        "class_name": "michanical_part",
+        "confidence": 0.9141,
+        "bbox": [
+          319.0,
+          81.0,
+          408.0,
+          120.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 2,
+        "class_name": "magnet",
+        "confidence": 0.9229,
+        "bbox": [
+          184.0,
+          302.0,
+          282.0,
+          407.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 2,
+        "class_name": "magnet",
+        "confidence": 0.9333,
+        "bbox": [
+          397.0,
+          90.0,
+          503.0,
+          190.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 3,
+        "class_name": "circle",
+        "confidence": 0.8602,
+        "bbox": [
+          202.0,
+          111.0,
+          463.0,
+          373.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      }
+    ]
+  },
+  "segformer_b0": {
+    "num_detections": 8,
+    "detections": [
+      {
+        "class_id": 1,
+        "class_name": "michanical_part",
+        "confidence": 0.7944,
+        "bbox": [
+          295.0,
+          368.0,
+          380.0,
+          412.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 1,
+        "class_name": "michanical_part",
+        "confidence": 0.7715,
+        "bbox": [
+          180.0,
+          226.0,
+          218.0,
+          305.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 1,
+        "class_name": "michanical_part",
+        "confidence": 0.8751,
+        "bbox": [
+          448.0,
+          190.0,
+          514.0,
+          264.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 1,
+        "class_name": "michanical_part",
+        "confidence": 0.7817,
+        "bbox": [
+          310.0,
+          87.0,
+          400.0,
+          126.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 2,
+        "class_name": "magnet",
+        "confidence": 0.4455,
+        "bbox": [
+          364.0,
+          378.0,
+          374.0,
+          393.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 2,
+        "class_name": "magnet",
+        "confidence": 0.7633,
+        "bbox": [
+          183.0,
+          300.0,
+          285.0,
+          414.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 2,
+        "class_name": "magnet",
+        "confidence": 0.8496,
+        "bbox": [
+          393.0,
+          89.0,
+          504.0,
+          191.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      },
+      {
+        "class_id": 3,
+        "class_name": "circle",
+        "confidence": 0.9361,
+        "bbox": [
+          200.0,
+          115.0,
+          463.0,
+          378.0
+        ],
+        "has_mask": true,
+        "measurements": []
+      }
+    ]
+  }
+}
