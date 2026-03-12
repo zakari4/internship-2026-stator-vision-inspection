@@ -54,7 +54,7 @@ class DatasetConfig:
     classes: List[str] = field(default_factory=lambda: [
         "background", "michanical_part", "magnet", "circle"
     ])
-    num_classes: int = 2  # Binary: background vs all foreground labels
+    num_classes: int = 4  # Multi-class: background(0) + michanical_part(1) + magnet(2) + circle(3)
     
     # Label filter (select specific labels for training/benchmark)
     # If None, all labels in self.classes are used.
