@@ -85,12 +85,9 @@ def create_mask_from_shapes(
     :return: A tuple of (binary mask array, list of contour arrays).
     """
     if class_mapping is None:
-        # Use Global LABELS registry for standard mapping
-        class_mapping = {label: (1 if i > 0 else 0) for i, label in enumerate(LABELS)}
-        
-        # Override special cases if necessary (e.g. multi-class detection)
-        # For now, we maintain the legacy behavior where most things are class 1
-        # unless explicitly requested otherwise via a custom mapping.
+        # Multi-class mapping: each label gets its own index
+        # background=0, michanical_part=1, magnet=2, circle=3
+        class_mapping = {label: i for i, label in enumerate(LABELS)}
     
     mask = np.zeros((image_height, image_width), dtype=np.uint8)
     contours = []
