@@ -1,0 +1,19 @@
+{
+  "model_name": "yolov8m_seg",
+  "model_variant": "yolov8m-seg",
+  "started_at": "2026-03-11T19:38:04.495888",
+  "ended_at": "2026-03-11T21:30:30.780410",
+  "total_epochs": 20,
+  "best_epoch": 20,
+  "best_val_iou": 0.85685,
+  "total_train_time_sec": 6746.014906167984,
+  "peak_gpu_memory_mb": 4086.375,
+  "peak_cpu_percent": 100.0,
+  "avg_gpu_utilization": 83.1701291833497,
+  "config": {
+    "epochs": 20,
+    "imgsz": 512,
+    "batch": 8,
+    "data_yaml": "/home/youssef/Desktop/learning/chignon_detection/outputs/yolo_dataset/data.yaml"
+  }
+}
