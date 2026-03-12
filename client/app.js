@@ -317,9 +317,13 @@ function renderMeasurementHtml(measurements) {
     return `
         <div class="measurements">
             ${measurements.map(m => {
-                const unit = m.unit === "mm" ? "mm" : "px";
-                const val = typeof m.value === "number" ? m.value.toFixed(2) : m.value;
-                return `<span class="measurement-tag">${m.type}: ${val} ${unit}</span>`;
+                const useMm = m.value_mm != null && m.value_px != null
+                              && Math.abs(m.value_mm - m.value_px) > 0.01;
+                const val = useMm ? m.value_mm : (m.value_px != null ? m.value_px : 0);
+                const isArea = m.type === "area";
+                const unit = useMm ? (isArea ? "mm\u00B2" : "mm") : (isArea ? "px\u00B2" : "px");
+                const label = m.label || m.type;
+                return `<span class="measurement-tag">${label}: ${typeof val === "number" ? val.toFixed(2) : val} ${unit}</span>`;
             }).join("")}
         </div>`;
 }
@@ -614,6 +618,8 @@ function saveLiveDetection() {
     };
     downloadJSON(jsonData, `${baseName}.json`);
 }
+
+const API_BASE = "";
 
 // ═══════════════════════════════════════════════════════════════
 // Camera Settings & Measurement Post-Processing
