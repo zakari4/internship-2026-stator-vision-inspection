@@ -1017,6 +1017,14 @@ def parse_args():
              'Generates augmented data from data/ into outputs/augmented_data/.'
     )
     
+    parser.add_argument(
+        '--data-dir',
+        type=str,
+        default=None,
+        help='Override data directory. If not set and outputs/augmented_data/ '
+             'exists it will be used automatically.'
+    )
+    
     return parser.parse_args()
 
 
@@ -1072,10 +1080,22 @@ def run_training(
         print(f"{'#'*60}")
         
         try:
-            # Instantiate model
+            # Instantiate model — pass n_classes for multi-class segmentation
             model_class = DEEP_LEARNING_MODELS[model_name]
+            n_cls = config.dataset.num_classes  # 4: bg + 3 foreground
+
+            # Models that accept n_classes as a constructor argument
+            MULTICLASS_MODELS = {'unet_lightweight', 'unet_resnet18', 'segformer_b0'}
+
             if model_name == 'mask_rcnn':
                 model = model_class(pretrained=True)
+            elif model_name in MULTICLASS_MODELS:
+                if model_name == 'unet_lightweight':
+                    model = model_class(n_channels=3, n_classes=n_cls)
+                elif model_name == 'unet_resnet18':
+                    model = model_class(n_classes=n_cls, pretrained=True)
+                else:
+                    model = model_class(n_classes=n_cls)
             else:
                 model = model_class()
             
@@ -1096,7 +1116,8 @@ def run_training(
                 save_every_epoch=True,
                 hardware_sample_interval=0.1,
                 use_amp=args.amp and not args.no_amp,
-                loss_mode=args.loss
+                loss_mode=args.loss,
+                num_classes=n_cls if model_name in MULTICLASS_MODELS else 1
             )
             
             # Run training
@@ -1269,8 +1290,11 @@ def main():
     
     label_filter = getattr(args, 'labels', None)
     
-    # Run augmentation if requested
-    if args.augment:
+    # Determine data directory
+    if args.data_dir:
+        config.dataset.root_path = args.data_dir
+        print(f"\nData root overridden to: {args.data_dir}")
+    elif args.augment:
         from src.data.augmentation import run_augmentation
         augment_input = str(config.dataset.root_path)
         augment_output = os.path.join(_PROJECT_ROOT, "outputs", "augmented_data")
@@ -1278,9 +1302,14 @@ def main():
         print(f"  Input:  {augment_input}")
         print(f"  Output: {augment_output}")
         run_augmentation(augment_input, augment_output)
-        # Override data root to use augmented data
         config.dataset.root_path = augment_output
         print(f"  Data root overridden to: {augment_output}")
+    else:
+        # Auto-detect: prefer augmented data if it exists
+        augment_dir = os.path.join(_PROJECT_ROOT, "outputs", "augmented_data")
+        if os.path.isdir(augment_dir) and len(os.listdir(augment_dir)) > 0:
+            config.dataset.root_path = augment_dir
+            print(f"\nAuto-detected augmented data: {augment_dir}")
     
     train_loader, val_loader, test_loader = create_dataloaders(
         root_path=str(config.dataset.root_path),
