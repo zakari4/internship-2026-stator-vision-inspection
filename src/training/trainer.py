@@ -502,6 +502,42 @@ class CombinedLoss(nn.Module):
         return loss
 
 
+class MultiClassCombinedLoss(nn.Module):
+    """
+    Combined loss for multi-class semantic segmentation.
+    Uses CrossEntropyLoss + per-class Dice loss.
+    
+    Expects:
+        pred: (B, C, H, W) raw logits
+        target: (B, H, W) long tensor with class indices 0..C-1
+    """
+    
+    def __init__(self, num_classes: int = 4, ce_weight: float = 0.5, dice_weight: float = 0.5):
+        super().__init__()
+        self.num_classes = num_classes
+        self.ce = nn.CrossEntropyLoss()
+        self.ce_weight = ce_weight
+        self.dice_weight = dice_weight
+    
+    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        # CrossEntropy loss
+        ce_loss = self.ce(pred, target)
+        
+        # Multi-class Dice loss (averaged over all classes)
+        pred_softmax = torch.softmax(pred.float(), dim=1)
+        dice_loss = torch.tensor(0.0, device=pred.device)
+        for c in range(self.num_classes):
+            pred_c = pred_softmax[:, c]
+            target_c = (target == c).float()
+            intersection = (pred_c * target_c).sum()
+            union = pred_c.sum() + target_c.sum()
+            dice_loss += 1.0 - (2.0 * intersection + 1e-7) / (union + 1e-7)
+        dice_loss = dice_loss / self.num_classes
+        
+        loss = self.ce_weight * ce_loss + self.dice_weight * dice_loss
+        return torch.clamp(loss, min=0.0, max=100.0)
+
+
 # =============================================================================
 # Trainer with Comprehensive Data Collection
 # =============================================================================
@@ -532,7 +568,8 @@ class ComprehensiveTrainer:
         save_every_epoch: bool = True,
         hardware_sample_interval: float = 0.1,
         use_amp: bool = True,
-        loss_mode: str = 'bce_dice'
+        loss_mode: str = 'bce_dice',
+        num_classes: int = 1
     ):
         """
         Initialize trainer.
@@ -588,7 +625,11 @@ class ComprehensiveTrainer:
         
         # Loss function
         self.loss_mode = loss_mode
-        self.criterion = CombinedLoss(mode=loss_mode)
+        self.num_classes = num_classes
+        if num_classes > 1:
+            self.criterion = MultiClassCombinedLoss(num_classes=num_classes)
+        else:
+            self.criterion = CombinedLoss(mode=loss_mode)
         
         # Mixed precision (AMP)
         self.use_amp = use_amp and (self.device == 'cuda')
@@ -703,7 +744,52 @@ class ComprehensiveTrainer:
     ) -> Dict[str, float]:
         """Compute accuracy metrics for a batch."""
         with torch.no_grad():
-            # Sigmoid + threshold
+            eps = 1e-7
+            
+            if self.num_classes > 1:
+                # Multi-class: argmax over channels
+                pred_classes = pred.argmax(dim=1)  # (B, H, W)
+                target_classes = target if target.dim() == 3 else target.squeeze(1)
+                
+                # Overall pixel accuracy
+                accuracy = (pred_classes == target_classes).float().mean()
+                
+                # Mean IoU and Dice over foreground classes (skip background=0)
+                ious = []
+                dices = []
+                tps = torch.tensor(0.0, device=pred.device)
+                fps = torch.tensor(0.0, device=pred.device)
+                fns = torch.tensor(0.0, device=pred.device)
+                for c in range(1, self.num_classes):
+                    pred_c = (pred_classes == c)
+                    target_c = (target_classes == c)
+                    tp = (pred_c & target_c).sum().float()
+                    fp = (pred_c & ~target_c).sum().float()
+                    fn = (~pred_c & target_c).sum().float()
+                    tps += tp
+                    fps += fp
+                    fns += fn
+                    iou = tp / (tp + fp + fn + eps)
+                    dice = 2 * tp / (2 * tp + fp + fn + eps)
+                    ious.append(iou)
+                    dices.append(dice)
+                
+                mean_iou = torch.stack(ious).mean() if ious else torch.tensor(0.0)
+                mean_dice = torch.stack(dices).mean() if dices else torch.tensor(0.0)
+                precision = tps / (tps + fps + eps)
+                recall = tps / (tps + fns + eps)
+                f1 = 2 * precision * recall / (precision + recall + eps)
+                
+                return {
+                    'accuracy': float(accuracy.cpu()),
+                    'iou': float(mean_iou.cpu()),
+                    'dice': float(mean_dice.cpu()),
+                    'precision': float(precision.cpu()),
+                    'recall': float(recall.cpu()),
+                    'f1': float(f1.cpu())
+                }
+            
+            # Binary: Sigmoid + threshold
             pred_binary = (torch.sigmoid(pred) > 0.5).float()
             target_binary = target.float()
             
@@ -712,7 +798,6 @@ class ComprehensiveTrainer:
             target_flat = target_binary.view(-1)
             
             # Compute metrics
-            eps = 1e-7
             tp = (pred_flat * target_flat).sum()
             fp = (pred_flat * (1 - target_flat)).sum()
             fn = ((1 - pred_flat) * target_flat).sum()
@@ -785,17 +870,27 @@ class ComprehensiveTrainer:
             if isinstance(images, np.ndarray):
                 images = torch.from_numpy(images).float().permute(0, 3, 1, 2) / 255.0
             if isinstance(masks, np.ndarray):
-                masks = torch.from_numpy(masks).float()
+                if self.num_classes > 1:
+                    masks = torch.from_numpy(masks).long()
+                else:
+                    masks = torch.from_numpy(masks).float()
             
             # Move to device
             images = images.to(self.device, non_blocking=True)
             masks = masks.to(self.device, non_blocking=True)
             
-            # Ensure masks have correct shape
-            if masks.dim() == 3:
-                masks = masks.unsqueeze(1).float()
+            # Ensure masks have correct shape for loss function
+            if self.num_classes > 1:
+                # Multi-class: masks should be (B, H, W) long
+                if masks.dim() == 4:
+                    masks = masks.squeeze(1)
+                masks = masks.long()
             else:
-                masks = masks.float()
+                # Binary: masks should be (B, 1, H, W) float
+                if masks.dim() == 3:
+                    masks = masks.unsqueeze(1).float()
+                else:
+                    masks = masks.float()
             
             # Forward pass timing
             if self.device == 'cuda':
@@ -811,15 +906,26 @@ class ComprehensiveTrainer:
                     outputs = outputs['out'] if 'out' in outputs else list(outputs.values())[0]
                 
                 # Handle different output shapes
-                if outputs.shape != masks.shape:
-                    outputs = nn.functional.interpolate(
-                        outputs, size=masks.shape[2:], mode='bilinear', align_corners=False
-                    )
+                if self.num_classes > 1:
+                    # Multi-class: output (B,C,H,W), mask (B,H,W) — match spatial dims
+                    if outputs.shape[2:] != masks.shape[1:]:
+                        outputs = nn.functional.interpolate(
+                            outputs, size=masks.shape[1:], mode='bilinear', align_corners=False
+                        )
+                else:
+                    # Binary: output (B,1,H,W), mask (B,1,H,W)
+                    if outputs.shape != masks.shape:
+                        outputs = nn.functional.interpolate(
+                            outputs, size=masks.shape[2:], mode='bilinear', align_corners=False
+                        )
             
             # Compute loss in FP32 to prevent NaN from FP16 overflow
             outputs_f32 = outputs.float()
-            masks_f32 = masks.float()
-            loss = self.criterion(outputs_f32, masks_f32)
+            if self.num_classes > 1:
+                loss = self.criterion(outputs_f32, masks)  # masks stays long
+            else:
+                masks_f32 = masks.float()
+                loss = self.criterion(outputs_f32, masks_f32)
             
             if self.device == 'cuda':
                 torch.cuda.synchronize()
@@ -991,16 +1097,25 @@ class ComprehensiveTrainer:
                 if isinstance(images, np.ndarray):
                     images = torch.from_numpy(images).float().permute(0, 3, 1, 2) / 255.0
                 if isinstance(masks, np.ndarray):
-                    masks = torch.from_numpy(masks).float()
+                    if self.num_classes > 1:
+                        masks = torch.from_numpy(masks).long()
+                    else:
+                        masks = torch.from_numpy(masks).float()
                 
                 # Move to device
                 images = images.to(self.device, non_blocking=True)
                 masks = masks.to(self.device, non_blocking=True)
                 
-                if masks.dim() == 3:
-                    masks = masks.unsqueeze(1).float()
+                # Ensure masks have correct shape for loss function
+                if self.num_classes > 1:
+                    if masks.dim() == 4:
+                        masks = masks.squeeze(1)
+                    masks = masks.long()
                 else:
-                    masks = masks.float()
+                    if masks.dim() == 3:
+                        masks = masks.unsqueeze(1).float()
+                    else:
+                        masks = masks.float()
                 
                 # Forward pass timing
                 if self.device == 'cuda':
@@ -1013,12 +1128,22 @@ class ComprehensiveTrainer:
                 if isinstance(outputs, dict):
                     outputs = outputs['out'] if 'out' in outputs else list(outputs.values())[0]
                 
-                if outputs.shape != masks.shape:
-                    outputs = nn.functional.interpolate(
-                        outputs, size=masks.shape[2:], mode='bilinear', align_corners=False
-                    )
+                # Handle different output shapes
+                if self.num_classes > 1:
+                    if outputs.shape[2:] != masks.shape[1:]:
+                        outputs = nn.functional.interpolate(
+                            outputs, size=masks.shape[1:], mode='bilinear', align_corners=False
+                        )
+                else:
+                    if outputs.shape != masks.shape:
+                        outputs = nn.functional.interpolate(
+                            outputs, size=masks.shape[2:], mode='bilinear', align_corners=False
+                        )
                 
-                loss = self.criterion(outputs.float(), masks.float())
+                if self.num_classes > 1:
+                    loss = self.criterion(outputs.float(), masks)
+                else:
+                    loss = self.criterion(outputs.float(), masks.float())
                 
                 if self.device == 'cuda':
                     torch.cuda.synchronize()
