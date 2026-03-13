@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chignon Detection — Live</title>
+    <title>Stator Motor Segmentation - Dashboard</title>
     <link rel="stylesheet" href="/client/style.css">
 </head>
+
 <body>
     <div class="app">
         <!-- Header -->
         <header class="header">
             <div class="header-left">
-                <h1>Chignon Detection</h1>
+                <h1>Stator Motor Segmentation</h1>
                 <span class="badge" id="statusBadge">Disconnected</span>
             </div>
             <div class="header-right">
@@ -65,9 +67,9 @@
                 </button>
                 <button id="btnSaveLive" class="btn btn-save" disabled>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                        <polyline points="17 21 17 13 7 13 7 21"/>
-                        <polyline points="7 3 7 8 15 8"/>
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                        <polyline points="17 21 17 13 7 13 7 21" />
+                        <polyline points="7 3 7 8 15 8" />
                     </svg>
                     Save
                 </button>
@@ -77,15 +79,16 @@
             <div class="settings-section">
                 <div class="panel">
                     <h3 class="settings-header" id="settingsToggle">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px">
-                            <circle cx="12" cy="12" r="3"/>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="vertical-align:middle;margin-right:6px">
+                            <circle cx="12" cy="12" r="3" />
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33
                                      1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06
                                      a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15 1.65 1.65 0 0 0 3.13 14H3a2 2 0 0 1 0-4h.09
                                      A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68
                                      1.65 1.65 0 0 0 10 3.13V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06
                                      a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9 1.65 1.65 0 0 0 20.87 10H21a2 2 0 0 1 0 4h-.09
-                                     a1.65 1.65 0 0 0-1.51 1z"/>
+                                     a1.65 1.65 0 0 0-1.51 1z" />
                         </svg>
                         Camera Settings &amp; Measurements
                         <span class="settings-chevron" id="settingsChevron">▸</span>
@@ -100,7 +103,8 @@
 
                         <!-- Measurement method selector -->
                         <div class="settings-row" style="margin-top:8px;">
-                            <label for="measurementMethod" style="font-size:0.85rem;color:#bbb;">Calibration Method</label>
+                            <label for="measurementMethod" style="font-size:0.85rem;color:#bbb;">Calibration
+                                Method</label>
                             <select id="measurementMethod" class="setting-select">
                                 <option value="camera_intrinsics">Camera Intrinsics</option>
                                 <option value="reference_label">Reference Label</option>
@@ -166,14 +170,17 @@
             <div class="mindvision-section">
                 <div class="panel">
                     <h3>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px">
-                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                            <circle cx="12" cy="13" r="4"/>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="vertical-align:middle;margin-right:6px">
+                            <path
+                                d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <circle cx="12" cy="13" r="4" />
                         </svg>
                         MindVision Industrial Camera (USB)
                         <span class="badge mv-badge" id="mvStatusBadge">Disconnected</span>
                     </h3>
-                    <p class="mv-hint">Run <code>python server/mindvision_capture.py --show</code> to connect the camera</p>
+                    <p class="mv-hint">Run <code>python server/mindvision_capture.py --show</code> to connect the camera
+                    </p>
                     <div class="mv-feed-container">
                         <div class="mv-feed" id="mvFeedWrapper" style="display:none;">
                             <div class="video-card primary">
@@ -188,9 +195,11 @@
                             <div id="mvDetections" class="detections-list"></div>
                         </div>
                         <div class="mv-placeholder" id="mvPlaceholder">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3">
-                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                                <circle cx="12" cy="13" r="4"/>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5" opacity="0.3">
+                                <path
+                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                <circle cx="12" cy="13" r="4" />
                             </svg>
                             <p>No MindVision camera connected</p>
                             <p class="upload-hint">Start the capture script to see live detection here</p>
@@ -206,10 +215,11 @@
                     <div class="upload-area" id="uploadArea">
                         <input type="file" id="fileInput" accept="image/*" hidden>
                         <div class="upload-dropzone" id="dropzone">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
                             </svg>
                             <p>Drag & drop an image or <span class="upload-link">browse</span></p>
                             <p class="upload-hint">Supports JPG, PNG, BMP</p>
@@ -291,4 +301,5 @@
     <script src="/client/app.js"></script>
     <script src="/client/mindvision.js"></script>
 </body>
+
 </html>
