@@ -2,35 +2,48 @@
    Chignon Detection — Client Styles
    ═══════════════════════════════════════════════════════════════ */
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
-    --bg-primary: #0f1117;
-    --bg-secondary: #1a1d27;
-    --bg-card: #22252f;
-    --bg-hover: #2a2d3a;
-    --border: #2e3140;
-    --text-primary: #e4e6eb;
-    --text-secondary: #8b8fa3;
-    --accent: #4f7df9;
-    --accent-hover: #3d6ae0;
-    --danger: #e5484d;
-    --danger-hover: #d33;
-    --success: #30a46c;
-    --warning: #f5a623;
-    --radius: 10px;
-    --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    /* ClickUp Light Theme Palette */
+    --bg-primary: #FAFBFC;
+    --bg-secondary: #F3F5F7;
+    --bg-card: #FFFFFF;
+    --bg-hover: #F0F2F5;
+    --border: #E9EBF0;
+    
+    --text-primary: #292D34;
+    --text-secondary: #7C828D;
+    
+    --accent: #7B68EE;       /* ClickUp Purple */
+    --accent-hover: #6A5AE0;
+    --primary: #00B2FF;      /* ClickUp Blue */
+    --primary-hover: #009FE5;
+    
+    --danger: #E5484D;
+    --danger-hover: #D33;
+    --success: #05C168;      /* ClickUp Green */
+    --success-bg: rgba(5, 193, 104, 0.1);
+    --warning: #FFB020;
+    --warning-bg: rgba(255, 176, 32, 0.1);
+    
+    --radius: 12px;
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    --shadow-hover: 0 6px 24px rgba(0, 0, 0, 0.08);
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg-primary);
     color: var(--text-primary);
     min-height: 100vh;
+    line-height: 1.5;
 }
 
 /* ---- Layout ---- */
@@ -67,26 +80,26 @@ body {
 }
 
 .badge {
-    padding: 3px 10px;
+    padding: 4px 12px;
     border-radius: 20px;
     font-size: 0.72rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    background: var(--bg-card);
+    letter-spacing: 0.06em;
+    background: var(--bg-secondary);
     color: var(--text-secondary);
     border: 1px solid var(--border);
     transition: all 0.3s ease;
 }
 
 .badge.connected {
-    background: rgba(48, 164, 108, 0.15);
+    background: var(--success-bg);
     color: var(--success);
     border-color: var(--success);
 }
 
 .badge.connecting {
-    background: rgba(245, 166, 35, 0.15);
+    background: var(--warning-bg);
     color: var(--warning);
     border-color: var(--warning);
 }
@@ -156,6 +169,12 @@ body {
     overflow: hidden;
     position: relative;
     box-shadow: var(--shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.video-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
 }
 
 .video-card.primary {
@@ -165,18 +184,19 @@ body {
 
 .video-label {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: 12px;
+    left: 12px;
     z-index: 10;
-    background: rgba(15, 17, 23, 0.75);
+    background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(8px);
-    padding: 4px 10px;
+    padding: 6px 12px;
     border-radius: 6px;
     font-size: 0.72rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--text-secondary);
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .video-card video {
@@ -215,20 +235,33 @@ body {
 .btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 10px 20px;
+    gap: 8px;
+    padding: 10px 22px;
     border: none;
     border-radius: 8px;
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
     letter-spacing: 0.01em;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(0);
 }
 
 .btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+    background: var(--border) !important;
+    color: var(--text-secondary) !important;
+    box-shadow: none !important;
 }
 
 .btn-primary {
@@ -257,15 +290,16 @@ body {
 
 .btn-secondary:hover:not(:disabled) {
     background: var(--bg-hover);
+    border-color: #DDE1E8;
 }
 
 .btn-save {
-    background: #059669;
+    background: var(--success);
     color: #fff;
 }
 
 .btn-save:hover:not(:disabled) {
-    background: #047857;
+    background: #04b05e;
 }
 
 /* ---- Info Grid ---- */
@@ -280,8 +314,14 @@ body {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 16px;
+    padding: 20px;
     box-shadow: var(--shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
 }
 
 .panel h3 {
@@ -375,7 +415,8 @@ body {
 }
 
 .upload-dropzone {
-    border: 2px dashed var(--border);
+    border: 2px dashed #C3C8D4;
+    background: var(--bg-primary);
     border-radius: var(--radius);
     padding: 40px 20px;
     text-align: center;
@@ -391,7 +432,7 @@ body {
 .upload-dropzone:hover,
 .upload-dropzone.dragover {
     border-color: var(--accent);
-    background: rgba(79, 125, 249, 0.05);
+    background: rgba(123, 104, 238, 0.05);
 }
 
 .upload-dropzone svg {
@@ -674,35 +715,39 @@ body {
 
 .setting-field input {
     width: 100%;
-    padding: 8px 10px;
+    padding: 10px 12px;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--bg);
+    border-radius: 8px;
+    background: var(--bg-card);
     color: var(--text-primary);
     font-size: 0.9rem;
-    transition: border-color 0.2s;
+    transition: all 0.2s;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
 }
 
 .setting-field input:focus {
     outline: none;
-    border-color: var(--primary);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(123, 104, 238, 0.15);
 }
 
 .setting-select {
     width: 100%;
-    padding: 8px 10px;
+    padding: 10px 12px;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--bg);
+    border-radius: 8px;
+    background: var(--bg-card);
     color: var(--text-primary);
     font-size: 0.9rem;
-    transition: border-color 0.2s;
+    transition: all 0.2s;
     cursor: pointer;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
 }
 
 .setting-select:focus {
     outline: none;
-    border-color: var(--primary);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(123, 104, 238, 0.15);
 }
 
 .settings-actions {

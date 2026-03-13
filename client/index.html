@@ -256,25 +256,73 @@
 
             <!-- Stats & Detections -->
             <div class="info-grid">
-                <!-- Stats Panel -->
-                <div class="panel">
-                    <h3>Performance</h3>
-                    <div class="stats-grid">
-                        <div class="stat">
-                            <span class="stat-value" id="statInference">—</span>
-                            <span class="stat-label">Inference (ms)</span>
+                <div class="info-col">
+                    <!-- Stats Panel -->
+                    <div class="panel">
+                        <h3>Live Performance</h3>
+                        <div class="stats-grid">
+                            <div class="stat">
+                                <span class="stat-value" id="statInference">—</span>
+                                <span class="stat-label">Inference (ms)</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="statFPS">—</span>
+                                <span class="stat-label">Server FPS</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="statModel">—</span>
+                                <span class="stat-label">Active Model</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="statConnection">—</span>
+                                <span class="stat-label">Connection</span>
+                            </div>
                         </div>
-                        <div class="stat">
-                            <span class="stat-value" id="statFPS">—</span>
-                            <span class="stat-label">Server FPS</span>
+                    </div>
+
+                    <!-- Live Monitoring Panel -->
+                    <div class="panel" id="liveMonitoringPanel" style="margin-top: 20px;">
+                        <h3>Live Monitoring Aggregates</h3>
+                        <div class="stats-grid">
+                            <div class="stat">
+                                <span class="stat-value" id="statAvgLatency">—</span>
+                                <span class="stat-label">Avg Latency (ms)</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="statAvgThroughput">—</span>
+                                <span class="stat-label">Avg Throughput (fps)</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="statErrorRate">—</span>
+                                <span class="stat-label">Error Rate (%)</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="statTotalRequests">—</span>
+                                <span class="stat-label">Total Requests</span>
+                            </div>
                         </div>
-                        <div class="stat">
-                            <span class="stat-value" id="statModel">—</span>
-                            <span class="stat-label">Active Model</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value" id="statConnection">—</span>
-                            <span class="stat-label">Connection</span>
+                    </div>
+
+                    <!-- Benchmark Performance Panel -->
+                    <div class="panel" id="benchmarkPanel" style="margin-top: 20px;">
+                        <h3>Benchmark Performance</h3>
+                        <div class="stats-grid">
+                            <div class="stat">
+                                <span class="stat-value" id="benchIoU">—</span>
+                                <span class="stat-label">Best val IoU</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="benchDice">—</span>
+                                <span class="stat-label">Best val Dice</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="benchTime">—</span>
+                                <span class="stat-label">Train Time</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="benchGPU">—</span>
+                                <span class="stat-label">Peak GPU Mem</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -291,7 +339,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <span>Industrial Stator Chignon Detection Benchmark</span>
+            <span>Industrial Stator Detection Benchmark</span>
         </footer>
     </div>
 

@@ -24,6 +24,18 @@ const statFPS = document.getElementById("statFPS");
 const statModel = document.getElementById("statModel");
 const statConnection = document.getElementById("statConnection");
 
+// Live Monitoring Stats
+const statAvgLatency = document.getElementById("statAvgLatency");
+const statAvgThroughput = document.getElementById("statAvgThroughput");
+const statErrorRate = document.getElementById("statErrorRate");
+const statTotalRequests = document.getElementById("statTotalRequests");
+
+// Benchmark Stats
+const benchIoU = document.getElementById("benchIoU");
+const benchDice = document.getElementById("benchDice");
+const benchTime = document.getElementById("benchTime");
+const benchGPU = document.getElementById("benchGPU");
+
 // Detections
 const detectionsList = document.getElementById("detectionsList");
 
@@ -106,11 +118,57 @@ async function loadModels() {
 
         modelSelect.disabled = false;
         statModel.textContent = data.current || "none";
+        if (data.current) loadModelPerformance(data.current);
     } catch (err) {
         console.error("Failed to load models:", err);
         modelSelect.innerHTML = '<option value="">Error loading models</option>';
     }
 }
+
+async function loadModelPerformance(modelName) {
+    benchIoU.textContent = "—";
+    benchDice.textContent = "—";
+    benchTime.textContent = "—";
+    benchGPU.textContent = "—";
+    try {
+        const res = await fetch(`/api/performance/${modelName}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.best_val_iou !== null && data.best_val_iou !== undefined) {
+            benchIoU.textContent = data.best_val_iou.toFixed(4);
+        }
+        if (data.best_val_dice !== null && data.best_val_dice !== undefined) {
+            benchDice.textContent = data.best_val_dice.toFixed(4);
+        }
+        if (data.total_train_time_sec !== null && data.total_train_time_sec !== undefined) {
+            const mins = data.total_train_time_sec / 60;
+            benchTime.textContent = mins >= 60 ? (mins/60).toFixed(1) + ' h' : mins.toFixed(1) + ' m';
+        }
+        if (data.peak_gpu_memory_mb !== null && data.peak_gpu_memory_mb !== undefined) {
+            benchGPU.textContent = Math.round(data.peak_gpu_memory_mb) + ' MB';
+        }
+    } catch (e) {
+        console.warn("Could not load model performance:", e);
+    }
+}
+
+async function pollLiveMetrics() {
+    try {
+        const res = await fetch('/api/live-metrics');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (statAvgLatency) statAvgLatency.textContent = data.avg_latency_ms.toFixed(1);
+        if (statAvgThroughput) statAvgThroughput.textContent = data.throughput_fps.toFixed(1);
+        if (statErrorRate) statErrorRate.textContent = data.error_rate_percent.toFixed(1);
+        if (statTotalRequests) statTotalRequests.textContent = data.total_requests;
+    } catch (err) {
+        // silently ignore polling errors to avoid console spam
+    }
+}
+// Poll live metrics every 2 seconds
+setInterval(pollLiveMetrics, 2000);
 
 async function onModelChange() {
     const model = modelSelect.value;
@@ -130,6 +188,7 @@ async function onModelChange() {
             statModel.textContent = data.model;
             // Refresh the label list for the reference-label measurement method
             if (typeof loadLabels === "function") loadLabels();
+            loadModelPerformance(data.model);
         }
     } catch (err) {
         console.error("Model switch failed:", err);

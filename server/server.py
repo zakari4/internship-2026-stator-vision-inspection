@@ -65,6 +65,86 @@ model_manager = ModelManager()
 peer_connections: dict[str, RTCPeerConnection] = {}
 relay = MediaRelay()
 
+class LiveMetricsTracker:
+    def __init__(self, filepath: Path):
+        self.filepath = filepath
+        self.lock = threading.Lock()
+        self.data = []
+        self.total_requests = 0
+        self.total_errors = 0
+        
+        if self.filepath.exists():
+            try:
+                with open(self.filepath, "r") as f:
+                    content = f.read()
+                    if content.strip():
+                        self.data = json.loads(content)
+                        self.total_requests = len(self.data)
+                        self.total_errors = sum(1 for d in self.data if d.get("is_error"))
+            except Exception as e:
+                logger.error(f"Failed to load metrics: {e}")
+
+        self.dirty = False
+        self._flush_thread = threading.Thread(target=self._flush_loop, daemon=True)
+        self._flush_thread.start()
+
+    def _flush_loop(self):
+        while True:
+            time.sleep(2.0)
+            if self.dirty:
+                with self.lock:
+                    data_to_write = list(self.data)
+                    self.dirty = False
+                try:
+                    with open(self.filepath, "w") as f:
+                        json.dump(data_to_write, f)
+                except Exception:
+                    pass
+
+    def add_metric(self, latency_ms, is_error=False, model_name=None):
+        with self.lock:
+            self.total_requests += 1
+            if is_error:
+                self.total_errors += 1
+                
+            entry = {
+                "timestamp": time.time(),
+                "latency_ms": latency_ms,
+                "is_error": is_error,
+                "model": model_name
+            }
+            self.data.append(entry)
+            
+            if len(self.data) > 5000:
+                self.data = self.data[-5000:]
+                
+            self.dirty = True
+
+    def get_stats(self):
+        with self.lock:
+            recent_latencies = [d["latency_ms"] for d in self.data[-100:] if d["latency_ms"] is not None and not d["is_error"]]
+            avg_lat = sum(recent_latencies) / len(recent_latencies) if recent_latencies else 0
+            
+            if len(self.data) >= 2:
+                recent = self.data[-100:]
+                dt = recent[-1]["timestamp"] - recent[0]["timestamp"]
+                throughput = (len(recent) - 1) / dt if dt > 0 else 0
+            else:
+                throughput = 0
+                
+            err_rate = (self.total_errors / self.total_requests) * 100 if self.total_requests > 0 else 0
+            
+            return {
+                "avg_latency_ms": round(avg_lat, 2),
+                "throughput_fps": round(throughput, 2),
+                "error_rate_percent": round(err_rate, 2),
+                "total_requests": self.total_requests,
+                "total_errors": self.total_errors
+            }
+
+os.makedirs(PROJECT_ROOT / "server" / "public", exist_ok=True)
+metrics_tracker = LiveMetricsTracker(PROJECT_ROOT / "server" / "public" / "detections.json")
+
 # ---------------------------------------------------------------------------
 # Async event loop running in a daemon thread
 # ---------------------------------------------------------------------------
@@ -129,8 +209,13 @@ class VideoTransformTrack(MediaStreamTrack):
 
         # Run inference
         t0 = time.monotonic()
-        annotated, detections = model_manager.predict(img)
-        inference_ms = (time.monotonic() - t0) * 1000
+        try:
+            annotated, detections = model_manager.predict(img)
+            inference_ms = (time.monotonic() - t0) * 1000
+            metrics_tracker.add_metric(inference_ms, is_error=False, model_name=model_manager.current_model_name)
+        except Exception as e:
+            metrics_tracker.add_metric(None, is_error=True, model_name=model_manager.current_model_name)
+            raise e
 
         # Push results over DataChannel
         dc = getattr(self.pc, "_results_channel", None)
@@ -235,6 +320,37 @@ def api_list_models():
     )
 
 
+@app.route("/api/performance/<model_name>", methods=["GET"])
+def api_model_performance(model_name):
+    """Return benchmark/training performance metrics for a specific model."""
+    history_path = PROJECT_ROOT / "outputs" / "results" / "training_logs" / model_name / "training_history.json"
+    if not history_path.exists():
+        return jsonify({"error": "No performance data found"}), 404
+        
+    try:
+        with open(history_path, "r") as f:
+            data = json.load(f)
+            
+        best_dice = None
+        if "epochs" in data:
+            best_ep = data.get("best_epoch", 1)
+            for ep in data["epochs"]:
+                if ep.get("epoch") == best_ep:
+                    best_dice = ep.get("val", {}).get("dice")
+                    break
+                    
+        return jsonify({
+            "model_name": model_name,
+            "best_val_iou": data.get("best_val_iou"),
+            "best_val_dice": best_dice,
+            "total_train_time_sec": data.get("total_train_time_sec"),
+            "peak_gpu_memory_mb": data.get("peak_gpu_memory_mb")
+        })
+    except Exception as e:
+        logger.error(f"Failed to read performance data: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/select-model", methods=["POST"])
 def api_select_model():
     """Switch the active model."""
@@ -294,12 +410,18 @@ def api_detect_image():
     img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
     if img is None:
+        metrics_tracker.add_metric(None, is_error=True, model_name=model_manager.current_model_name)
         return jsonify({"error": "Could not decode image"}), 400
 
     # Run inference
     t0 = time.time()
-    annotated, detections = model_manager.predict(img)
-    inference_ms = (time.time() - t0) * 1000
+    try:
+        annotated, detections = model_manager.predict(img)
+        inference_ms = (time.time() - t0) * 1000
+        metrics_tracker.add_metric(inference_ms, is_error=False, model_name=model_manager.current_model_name)
+    except Exception as e:
+        metrics_tracker.add_metric(None, is_error=True, model_name=model_manager.current_model_name)
+        return jsonify({"error": str(e)}), 500
 
     # Encode annotated image as JPEG → base64
     _, buf = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 90])
@@ -325,6 +447,11 @@ def api_status():
             "mindvision_connected": _mv_latest_frame is not None,
         }
     )
+
+@app.route("/api/live-metrics", methods=["GET"])
+def api_live_metrics():
+    """Return live aggregated metrics from detections.json."""
+    return jsonify(metrics_tracker.get_stats())
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -397,11 +524,17 @@ def mv_receive_frame():
     np_arr = np.frombuffer(file_bytes, np.uint8)
     img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     if img is None:
+        metrics_tracker.add_metric(None, is_error=True, model_name=model_manager.current_model_name)
         return jsonify({"error": "Could not decode frame"}), 400
 
     t0 = time.time()
-    annotated, detections = model_manager.predict(img)
-    inference_ms = (time.time() - t0) * 1000
+    try:
+        annotated, detections = model_manager.predict(img)
+        inference_ms = (time.time() - t0) * 1000
+        metrics_tracker.add_metric(inference_ms, is_error=False, model_name=model_manager.current_model_name)
+    except Exception as e:
+        metrics_tracker.add_metric(None, is_error=True, model_name=model_manager.current_model_name)
+        return jsonify({"error": str(e)}), 500
 
     # Encode annotated frame
     _, buf = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
