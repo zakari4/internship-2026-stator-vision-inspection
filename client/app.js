@@ -63,6 +63,15 @@ const btnDownloadResult = document.getElementById("btnDownloadResult");
 const btnSaveUpload = document.getElementById("btnSaveUpload");
 const btnSaveLive = document.getElementById("btnSaveLive");
 
+// SOTA Enhancements
+const enhancementsToggle = document.getElementById("enhancementsToggle");
+const enhancementsBody = document.getElementById("enhancementsBody");
+const enhancementsChevron = document.getElementById("enhancementsChevron");
+const enableTracking = document.getElementById("enableTracking");
+const enableEdgeRefinement = document.getElementById("enableEdgeRefinement");
+const btnSaveEnhancements = document.getElementById("btnSaveEnhancements");
+const enhancementsSaved = document.getElementById("enhancementsSaved");
+
 // ═══════════════════════════════════════════════════════════════
 // Initialization
 // ═══════════════════════════════════════════════════════════════
@@ -811,3 +820,47 @@ btnSaveSettings.addEventListener("click", async () => {
 
 // Load settings on page load
 loadSettings();
+
+// ═══════════════════════════════════════════════════════════════
+// SOTA Pipeline Enhancements
+// ═══════════════════════════════════════════════════════════════
+
+enhancementsToggle.addEventListener("click", () => {
+    const open = enhancementsBody.style.display !== "none";
+    enhancementsBody.style.display = open ? "none" : "block";
+    enhancementsChevron.textContent = open ? "▸" : "▾";
+});
+
+async function loadEnhancements() {
+    try {
+        const resp = await fetch(`${API_BASE}/api/inference-settings`);
+        if (!resp.ok) return;
+        const s = await resp.json();
+        enableTracking.checked = s.enable_tracking ?? false;
+        enableEdgeRefinement.checked = s.enable_edge_refinement ?? false;
+    } catch (e) {
+        console.warn("Could not load enhancements settings:", e);
+    }
+}
+
+btnSaveEnhancements.addEventListener("click", async () => {
+    const payload = {
+        enable_tracking: enableTracking.checked,
+        enable_edge_refinement: enableEdgeRefinement.checked
+    };
+    try {
+        const resp = await fetch(`${API_BASE}/api/inference-settings`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        if (resp.ok) {
+            enhancementsSaved.style.display = "inline";
+            setTimeout(() => (enhancementsSaved.style.display = "none"), 2000);
+        }
+    } catch (e) {
+        console.error("Failed to apply enhancements:", e);
+    }
+});
+
+loadEnhancements();

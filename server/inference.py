@@ -378,6 +378,11 @@ class ModelManager:
         self.current_model_name: Optional[str] = None
         self.available_models: Dict[str, dict] = {}
         self.camera_settings = CameraSettings()
+        
+        # SOTA pipeline enhancements
+        self.enable_tracking = False
+        self.enable_edge_refinement = False
+        
         self._discover_models()
 
         # Auto-load the best model if available
@@ -702,10 +707,17 @@ class ModelManager:
         return annotated, measurements
 
     def _predict_yolo(self, frame: np.ndarray) -> Tuple[np.ndarray, List[Dict]]:
-        """YOLO-based inference with per-detection measurements."""
-        results = self.current_model.predict(
-            frame, imgsz=512, conf=0.25, verbose=False
-        )
+        """YOLO-based inference with per-detection measurements and optional SOTA Tracking."""
+        # 1. ByteTrack Object Tracking
+        if getattr(self, "enable_tracking", False) and hasattr(self.current_model, "track"):
+            results = self.current_model.track(
+                frame, imgsz=512, conf=0.25, verbose=False, persist=True, tracker="bytetrack.yaml"
+            )
+        else:
+            results = self.current_model.predict(
+                frame, imgsz=512, conf=0.25, verbose=False
+            )
+            
         result = results[0]
         annotated = result.plot()
         h, w = frame.shape[:2]
@@ -724,6 +736,8 @@ class ModelManager:
                     ),
                     "measurements": [],
                 }
+                if box.is_track and getattr(self, "enable_tracking", False):
+                    det["track_id"] = int(box.id.item()) if box.id is not None else -1
                 detections.append(det)
 
         # Per-detection mask processing
@@ -731,11 +745,31 @@ class ModelManager:
             # 1. Extract per-detection binary masks and largest contour
             detection_masks: List[Tuple[str, np.ndarray]] = []
             det_contours: List[Tuple[np.ndarray, str, int]] = []
+            
+            # Prepare guide image for Edge Refinement if enabled
+            do_edge_refine = getattr(self, "enable_edge_refinement", False)
+            guide_img = None
+            if do_edge_refine:
+                try:
+                    # Creating a guided filter requires cv2.ximgproc
+                    guide_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    guide_filter = cv2.ximgproc.createGuidedFilter(guide_img, radius=8, eps=50)
+                except AttributeError:
+                    logger.warning("cv2.ximgproc not found; edge refinement requires opencv-contrib-python. Skipping refinement.")
+                    do_edge_refine = False
 
             for i, mask_data in enumerate(result.masks.data):
                 m = mask_data.cpu().numpy()
                 m_resized = cv2.resize(m, (w, h))
-                m_bin = (m_resized > 0.5).astype(np.uint8) * 255
+                
+                # 2. EDGE REFINEMENT (PointRend Simulator)
+                if do_edge_refine and guide_filter is not None:
+                    # Apply guided filter: guide is the high-res original gray frame, 
+                    # target is the blocky resized float mask.
+                    m_refined = guide_filter.filter((m_resized * 255.0).astype(np.uint8))
+                    m_bin = (m_refined > 127).astype(np.uint8) * 255
+                else:
+                    m_bin = (m_resized > 0.5).astype(np.uint8) * 255
 
                 cls_name = "unknown"
                 if result.boxes is not None and i < len(result.boxes):
@@ -865,11 +899,28 @@ class ModelManager:
                 interpolation=cv2.INTER_NEAREST
             )
 
+            # Prepare guide image for Edge Refinement if enabled
+            do_edge_refine = getattr(self, "enable_edge_refinement", False)
+            guide_filter = None
+            if do_edge_refine:
+                try:
+                    guide_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    guide_filter = cv2.ximgproc.createGuidedFilter(guide_img, radius=8, eps=50)
+                except AttributeError:
+                    logger.warning("cv2.ximgproc not found. Skipping refinement.")
+                    do_edge_refine = False
+
             overlay = frame.copy()
             detections = []
 
             for cls_id in range(1, num_channels):  # skip background (0)
                 cls_mask = (pred_resized == cls_id).astype(np.uint8) * 255
+                
+                # EDGE REFINEMENT
+                if do_edge_refine and guide_filter is not None:
+                    cls_mask = guide_filter.filter(cls_mask)
+                    cls_mask = (cls_mask > 127).astype(np.uint8) * 255
+                    
                 if cls_mask.sum() == 0:
                     continue
 
@@ -950,6 +1001,17 @@ class ModelManager:
 
         mask_binary = (mask > 0.5).astype(np.uint8) * 255
         mask_resized = cv2.resize(mask_binary, (w, h))
+        
+        # Prepare guide image for Edge Refinement if enabled
+        do_edge_refine = getattr(self, "enable_edge_refinement", False)
+        if do_edge_refine:
+            try:
+                guide_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                guide_filter = cv2.ximgproc.createGuidedFilter(guide_img, radius=8, eps=50)
+                mask_resized = guide_filter.filter(mask_resized)
+                mask_resized = (mask_resized > 127).astype(np.uint8) * 255
+            except AttributeError:
+                pass
 
         contours, _ = cv2.findContours(
             mask_resized, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE

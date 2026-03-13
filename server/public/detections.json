@@ -1,1 +1,1 @@
-[{"timestamp": 1773395009.863792, "latency_ms": 1707.1049213409424, "is_error": false, "model": "yolov11m_seg"}]
+[{"timestamp": 1773395009.863792, "latency_ms": 1707.1049213409424, "is_error": false, "model": "yolov11m_seg"}, {"timestamp": 1773396141.4981856, "latency_ms": 1259.8772048950195, "is_error": false, "model": "yolov11m_seg"}, {"timestamp": 1773396322.0324676, "latency_ms": 60.828208923339844, "is_error": false, "model": "unet_resnet18"}]

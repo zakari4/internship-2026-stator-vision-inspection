@@ -166,6 +166,40 @@
                 </div>
             </div>
 
+            <!-- Pipeline Enhancements Section -->
+            <div class="enhancements-section" style="margin-bottom: 20px;">
+                <div class="panel">
+                    <h3 class="settings-header" id="enhancementsToggle">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            style="vertical-align:middle;margin-right:6px">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        SOTA Pipeline Enhancements
+                        <span class="settings-chevron" id="enhancementsChevron">▾</span>
+                    </h3>
+                    
+                    <div class="settings-body" id="enhancementsBody">
+                        <div class="settings-row">
+                            <label class="toggle-label" title="Uses ByteTrack/DeepSORT to persist object IDs across frames. Highly recommended for counting moving stator motors.">
+                                <input type="checkbox" id="enableTracking">
+                                <span>Enable ByteTrack (Object Tracking)</span>
+                            </label>
+                        </div>
+                        <div class="settings-row" style="margin-top: 12px;">
+                            <label class="toggle-label" title="Uses high-frequency guided filtering to snap segmentation masks tightly to physical metal edges like PointRend.">
+                                <input type="checkbox" id="enableEdgeRefinement">
+                                <span>Enable Edge Refinement (Crisp Masks)</span>
+                            </label>
+                        </div>
+                        <div class="settings-actions" style="margin-top: 16px;">
+                            <button id="btnSaveEnhancements" class="btn btn-primary btn-sm">Apply Enhancements</button>
+                            <span id="enhancementsSaved" class="settings-saved" style="display:none;">✓ Applied</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- MindVision Industrial Camera -->
             <div class="mindvision-section">
                 <div class="panel">

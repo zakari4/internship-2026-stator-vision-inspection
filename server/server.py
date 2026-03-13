@@ -370,6 +370,26 @@ def api_select_model():
         return jsonify({"error": f"Failed to load model: {model_name}"}), 500
 
 
+# ---------- Pipeline Enhancements ---------- #
+
+@app.route("/api/inference-settings", methods=["GET", "POST"])
+def api_inference_settings():
+    """Get or update state-of-the-art inference enhancements."""
+    if request.method == "GET":
+        return jsonify({
+            "enable_tracking": getattr(model_manager, "enable_tracking", False),
+            "enable_edge_refinement": getattr(model_manager, "enable_edge_refinement", False)
+        })
+
+    data = request.get_json(force=True)
+    if "enable_tracking" in data:
+        model_manager.enable_tracking = bool(data["enable_tracking"])
+    if "enable_edge_refinement" in data:
+        model_manager.enable_edge_refinement = bool(data["enable_edge_refinement"])
+
+    return jsonify({"status": "ok"})
+
+
 # ---------- WebRTC Signaling ---------- #
 
 @app.route("/offer", methods=["POST"])
