@@ -2,24 +2,15 @@
   "models": [
     {
       "name": "unet_resnet18",
-      "best_val_iou": 0.8763468173833994,
-      "best_val_loss": 0.3165855086766757,
+      "best_val_iou": 0.9460729626508859,
+      "best_val_loss": 0.023532318151914155,
       "best_epoch": 19,
-      "total_train_time_sec": 746.195524930954,
-      "peak_gpu_memory_mb": 3584.6875,
-      "avg_gpu_utilization": 96.1269861446549
-    },
-    {
-      "name": "segformer_b0",
-      "best_val_iou": 0.5953875000660236,
-      "best_val_loss": 0.26740383872619045,
-      "best_epoch": 20,
-      "total_train_time_sec": 177.7852156162262,
-      "peak_gpu_memory_mb": 1962.3125,
-      "avg_gpu_utilization": 86.40705634544497
+      "total_train_time_sec": 7267.48419713974,
+      "peak_gpu_memory_mb": 3551.5625,
+      "avg_gpu_utilization": 93.92642607379572
     }
   ],
   "best_model_by_iou": "unet_resnet18",
-  "fastest_model": "segformer_b0",
-  "most_efficient_model": "segformer_b0"
+  "fastest_model": "unet_resnet18",
+  "most_efficient_model": "unet_resnet18"
 }

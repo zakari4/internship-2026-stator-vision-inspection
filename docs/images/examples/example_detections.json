@@ -197,12 +197,12 @@
       {
         "class_id": 1,
         "class_name": "michanical_part",
-        "confidence": 0.9339,
+        "confidence": 0.9785,
         "bbox": [
-          287.0,
-          372.0,
+          285.0,
           375.0,
-          412.0
+          377.0,
+          411.0
         ],
         "has_mask": true,
         "measurements": []
@@ -210,12 +210,12 @@
       {
         "class_id": 1,
         "class_name": "michanical_part",
-        "confidence": 0.8988,
+        "confidence": 0.9614,
         "bbox": [
-          178.0,
+          180.0,
           223.0,
           209.0,
-          308.0
+          304.0
         ],
         "has_mask": true,
         "measurements": []
@@ -223,12 +223,12 @@
       {
         "class_id": 1,
         "class_name": "michanical_part",
-        "confidence": 0.9333,
+        "confidence": 0.9851,
         "bbox": [
-          457.0,
+          458.0,
           188.0,
           519.0,
-          257.0
+          258.0
         ],
         "has_mask": true,
         "measurements": []
@@ -236,10 +236,10 @@
       {
         "class_id": 1,
         "class_name": "michanical_part",
-        "confidence": 0.9141,
+        "confidence": 0.9688,
         "bbox": [
-          319.0,
-          81.0,
+          320.0,
+          80.0,
           408.0,
           120.0
         ],
@@ -249,12 +249,12 @@
       {
         "class_id": 2,
         "class_name": "magnet",
-        "confidence": 0.9229,
+        "confidence": 0.9768,
         "bbox": [
-          184.0,
+          183.0,
           302.0,
-          282.0,
-          407.0
+          278.0,
+          411.0
         ],
         "has_mask": true,
         "measurements": []
@@ -262,12 +262,12 @@
       {
         "class_id": 2,
         "class_name": "magnet",
-        "confidence": 0.9333,
+        "confidence": 0.9803,
         "bbox": [
-          397.0,
-          90.0,
-          503.0,
-          190.0
+          395.0,
+          89.0,
+          502.0,
+          192.0
         ],
         "has_mask": true,
         "measurements": []
@@ -275,9 +275,9 @@
       {
         "class_id": 3,
         "class_name": "circle",
-        "confidence": 0.8602,
+        "confidence": 0.992,
         "bbox": [
-          202.0,
+          203.0,
           111.0,
           463.0,
           373.0
