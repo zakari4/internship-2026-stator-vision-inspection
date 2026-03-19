@@ -1,5 +1,5 @@
 # ==============================================================================
-# Stator Case - Chignon Detection Benchmark
+# Stator Case - Detection Benchmark
 # ==============================================================================
 
 # ---- Python ----
@@ -53,3 +53,6 @@ Thumbs.db
 *.log
 
 sdkmindvision/
+
+Camera/
+rtdetr-x/

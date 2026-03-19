@@ -28,6 +28,7 @@ Usage:
 
 import argparse
 import base64
+import ctypes
 import json
 import os
 import platform
@@ -44,11 +45,44 @@ SDK_DIR = Path(__file__).resolve().parent.parent / "sdkmindvision" / "demo" / "p
 if str(SDK_DIR) not in sys.path:
     sys.path.insert(0, str(SDK_DIR))
 
+
+def _preload_mvsdk_shared_lib() -> bool:
+    """Try to preload libMVSDK.so from common project SDK locations."""
+    project_root = Path(__file__).resolve().parent.parent
+    candidates = [
+        project_root / "sdkmindvision" / "lib" / "x64" / "libMVSDK.so",
+        project_root / "sdkmindvision" / "lib" / "arm64" / "libMVSDK.so",
+        project_root / "sdkmindvision" / "lib" / "x86" / "libMVSDK.so",
+        project_root / "sdkmindvision" / "lib" / "arm" / "libMVSDK.so",
+        project_root / "sdkmindvision" / "lib" / "arm_softfp" / "libMVSDK.so",
+    ]
+
+    for lib_path in candidates:
+        if not lib_path.exists():
+            continue
+        try:
+            ctypes.CDLL(str(lib_path), mode=ctypes.RTLD_GLOBAL)
+            lib_dir = str(lib_path.parent)
+            current_ld = os.environ.get("LD_LIBRARY_PATH", "")
+            if lib_dir not in current_ld.split(":"):
+                os.environ["LD_LIBRARY_PATH"] = f"{lib_dir}:{current_ld}" if current_ld else lib_dir
+            print(f"[INFO] Loaded MindVision SDK library: {lib_path}")
+            return True
+        except OSError:
+            continue
+
+    return False
+
+
+_preload_mvsdk_shared_lib()
+
 try:
     import mvsdk
-except ImportError as e:
+except (ImportError, OSError) as e:
     print(f"[ERROR] Cannot import mvsdk: {e}")
-    print("Make sure libMVSDK.so is installed (check /usr/lib/libMVSDK.so)")
+    print("Could not load libMVSDK.so. Try one of:")
+    print("  1) export LD_LIBRARY_PATH=$PWD/sdkmindvision/lib/x64:$LD_LIBRARY_PATH")
+    print("  2) sudo ln -s $PWD/sdkmindvision/lib/x64/libMVSDK.so /usr/lib/libMVSDK.so")
     print(f"And mvsdk.py is at: {SDK_DIR / 'mvsdk.py'}")
     sys.exit(1)
 
@@ -346,6 +380,10 @@ def run_capture_loop(args):
             if frame is None:
                 continue
 
+            # Keep frontend MindVision stream alive
+            # (/api/mindvision/frame sets server-side connected=true)
+            client.push_frame(frame)
+
             frame_count += 1
             fps_frames += 1
 
@@ -383,7 +421,7 @@ def run_capture_loop(args):
 
                 if detections:
                     det_summary = ", ".join(
-                        f"{d.get('class', '?')}:{d.get('confidence', 0):.2f}"
+                        f"{d.get('class_name', '?')}:{d.get('confidence', 0):.2f}"
                         for d in detections[:5]
                     )
                     print(f"\n[DET] Frame {frame_count} | {model_name} | "

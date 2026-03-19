@@ -2,11 +2,12 @@
 """
 Offline data augmentation for industrial chignon detection.
 
-Generates 10x augmented dataset from original images + LabelMe JSON annotations.
-Geometric transforms (horizontal flip only — no rotation) properly update annotation coordinates.
-Photometric transforms (brightness, contrast, blur, CLAHE) are industrial-appropriate.
+Generates 35x augmented dataset from original images + LabelMe JSON annotations.
+Geometric transforms (flips + 90°/180°/270° rotations) properly update annotation
+coordinates.  Photometric transforms (brightness, luminosity, contrast, blur,
+CLAHE, gamma) are industrial-appropriate.
 
-Strategy: 2 geometric variants × 5 photometric variants = 10 versions per image
+Strategy: 5 geometric variants × 9 photometric variants = 45 versions per image
 
 Usage:
     python benchmark/augment_data.py --input data --output augmented_data
@@ -196,28 +197,51 @@ def photo_gamma_dark(img):
     return cv2.LUT(img, table)
 
 
+def photo_gamma_bright(img):
+    """Gamma correction (brighten) - simulates overexposure / strong backlight."""
+    gamma = 1.8
+    table = np.array([((i / 255.0) ** (1.0 / gamma)) * 255
+                      for i in range(256)]).astype(np.uint8)
+    return cv2.LUT(img, table)
+
+
+def photo_luminosity_shift(img):
+    """HSV value-channel shift — uniform luminosity boost without hue change."""
+    if len(img.shape) == 2:
+        return cv2.convertScaleAbs(img, alpha=1.0, beta=20)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(np.int32)
+    hsv[:, :, 2] = np.clip(hsv[:, :, 2] + 20, 0, 255)
+    return cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+
 # ============================================================================
 # Augmentation Pipeline Definitions
 # ============================================================================
 
-# Geometric transforms: no rotation allowed (industrial requirement)
-# Using only flips to achieve 2x geometric multiplier
+# Geometric transforms: flips + 90 / 180 / 270° rotations → 5x geometric multiplier
 GEOMETRIC_TRANSFORMS = [
-    ("orig",       identity_image,        identity_point),
-    ("flipH",      flip_horizontal_image, flip_horizontal_point),
+    ("orig",    identity_image,        identity_point),
+    ("flipH",   flip_horizontal_image, flip_horizontal_point),
+    ("rot90",   rotate90_image,        rotate90_point),
+    ("rot180",  rotate180_image,       rotate180_point),
+    ("rot270",  rotate270_image,       rotate270_point),
 ]
 
-# Photometric transforms: 5 selected for industrial robustness
-# Chosen to simulate real-world variations (lighting, blur, contrast)
+# Photometric transforms: 7 variants covering luminosity, contrast, blur, gamma
+# Chosen to simulate real-world industrial lighting conditions
 PHOTOMETRIC_TRANSFORMS = [
     ("clean",       photo_identity),
     ("bright_up",   photo_brightness_up),
+    ("bright_down", photo_brightness_down),
     ("contrast_up", photo_contrast_up),
     ("gauss_blur",  photo_gaussian_blur),
     ("clahe",       photo_clahe),
+    ("gamma_dark",  photo_gamma_dark),
+    ("gamma_bright",photo_gamma_bright),
+    ("lum_shift",   photo_luminosity_shift),
 ]
 
-# Total: 2 × 5 = 10 versions per image (10x augmentation)
+# Total: 5 × 9 = 45 versions per image (45x augmentation)
 
 
 # ============================================================================
