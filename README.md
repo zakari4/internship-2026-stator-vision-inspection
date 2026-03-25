@@ -561,6 +561,25 @@ Output:
   --output DIR                     Custom output directory
 ```
 
+### Training Results
+
+The following results were obtained by training on **Kaggle** using **2× NVIDIA Tesla T4 GPUs (16 GB VRAM each)** with `nn.DataParallel` (PyTorch) and multi-GPU support (Ultralytics) for parallel training across both GPUs.
+
+**Training configuration:** 30 epochs, AdamW optimizer, cosine annealing scheduler, early stopping (patience=20), batch size=16 (8 per GPU), image size=512×512, 4 classes.
+
+| Model | Best Val IoU | Best Val Loss | Best Epoch | Training Time | Peak GPU (MB) |
+|-------|-------------|---------------|------------|---------------|---------------|
+| **UNet-ResNet18** | **0.9646** | 0.0155 | 30 | 115 min | 473 |
+| **YOLOv8m-seg** | 0.8719 | 0.7211 | 30 | 110 min | 4296 |
+| **YOLOv11m-seg** | 0.8725 | 0.7196 | 30 | 118 min | 4902 |
+
+**Key observations:**
+
+- **UNet-ResNet18** achieves the highest segmentation quality (IoU=0.9646) with minimal GPU memory (473 MB), benefiting from the pretrained ResNet18 encoder and the Dice+BCE combined loss
+- **YOLOv8m-seg** and **YOLOv11m-seg** achieve comparable mask mAP50-95 (~0.87), with YOLOv11m slightly ahead. Both require significantly more VRAM due to their detection+segmentation dual-head architecture
+- All models converged within 30 epochs with no early stopping triggered
+- Training was done using `nn.DataParallel` for UNet-ResNet18 and `device=[0,1]` for YOLO models to leverage both T4 GPUs
+
 ---
 
 ## Benchmarking
@@ -765,15 +784,13 @@ Generated automatically after training completes:
 
 | Plot | Description |
 |------|-------------|
-| `loss_curves.png` | Training & validation loss per epoch for all models |
-| `iou_curves.png` | IoU progression over epochs |
-| `dice_curves.png` | Dice score progression |
-| `gpu_usage.png` | GPU memory usage over epochs |
-| `cpu_usage.png` | CPU utilization over epochs |
-| `latency_breakdown.png` | Forward/backward pass latency breakdown |
-| `throughput.png` | Training throughput (samples/s) |
-| `comprehensive_comparison.png` | Multi-metric comparison across all models |
-| `final_comparison_table.png` | Summary table with best metrics |
+| `loss_curves.png` | Training & validation loss per epoch for all 3 models |
+| `iou_curves.png` | Validation IoU / mAP50-95 progression over epochs |
+| `gpu_usage.png` | Peak GPU memory comparison (bar chart) |
+| `training_time.png` | Total training time comparison (bar chart) |
+| `comparison_table.png` | Summary table with best metrics per model |
+| `comprehensive_comparison.png` | 6-panel dashboard: loss, IoU, GPU memory, training time |
+| `precision_recall.png` | YOLO precision/recall + ResNet18 IoU/Dice/Accuracy |
 
 ### Benchmark Visualizations (`src/evaluation/visualization.py`)
 
@@ -961,11 +978,26 @@ reference_dimension_type = "diameter"
 | Storage | 20 GB free (augmented data + weights + outputs) |
 | CUDA | >= 11.7 |
 
+### Kaggle Training Setup
+
+The official training results were obtained on **Kaggle** with the following configuration:
+
+| Component | Specification |
+|-----------|---------------|
+| GPU | 2× NVIDIA Tesla T4 (16 GB VRAM each, 32 GB total) |
+| Parallelism | `nn.DataParallel` (PyTorch) / `device=[0,1]` (Ultralytics) |
+| Batch Size | 16 (8 per GPU) |
+| Image Size | 512×512 |
+| Container | Kaggle Latest Container Image |
+| PyTorch | Default pre-installed version (CUDA 11.x compatible with T4) |
+
+A self-contained Kaggle notebook is available at `notebooks/kaggle_training.ipynb` for reproducing the training pipeline.
+
 ### Notes
 
-- **AMP (FP16)** is disabled by default. Custom models (UNet/edge detectors) can produce NaN under FP16 due to skip connection overflow. Enable with `--amp` only for pretrained models.
-- **Batch size** is limited by GPU VRAM. The default `batch_size=4` works on 4 GB GPUs. Increase for larger GPUs.
-- Training all 23 deep learning models with 50 epochs takes approximately **2–4 hours** on a modern GPU.
+- **AMP (FP16)** is disabled by default. Custom models (UNet/edge detectors) can produce NaN under FP16 due to skip connection overflow. The T4 GPU has Tensor Cores for efficient FP16 — enable with `--amp` for pretrained models.
+- **Batch size** is limited by GPU VRAM. The default `batch_size=4` works on 4 GB GPUs. With T4×2 (32 GB total), batch_size=16 is used.
+- Training 3 models (UNet-ResNet18, YOLOv8m-seg, YOLOv11m-seg) for 30 epochs takes approximately **5.7 hours** total on Kaggle T4×2.
 - Classical models run on CPU and require no GPU.
 
 ---

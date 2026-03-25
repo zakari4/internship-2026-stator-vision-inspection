@@ -55,12 +55,9 @@ Thumbs.db
 sdkmindvision/
 
 Camera/
-rtdetr-x/data.zip
+rtdetr-x/
 data.zip
 outputs/
-data.zip
-outputs/
-data.zip
-outputs/
-data.zip
-outputs/
+!outputs/results/
+outputs/results/*
+!outputs/results/plots/
