@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
+from scipy.spatial.distance import cdist
 
 # Resolve project root — can be overridden via environment variable
 PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", Path(__file__).resolve().parent.parent))
@@ -234,7 +235,6 @@ def compute_contour_measurements(
             pts_a = contours[i].reshape(-1, 2).astype(np.float64)
             pts_b = contours[j].reshape(-1, 2).astype(np.float64)
             # Brute-force min distance (fast enough for < ~5k points)
-            from scipy.spatial.distance import cdist
             dists = cdist(pts_a, pts_b)
             min_dist = float(np.min(dists))
             idx = np.unravel_index(np.argmin(dists), dists.shape)
@@ -559,6 +559,14 @@ class ModelManager:
                 model.eval()
                 if torch.cuda.is_available():
                     model.to("cuda")
+                    # FP16 optimization
+                    model.half()
+                    # torch.compile optimization for PyTorch 2.x
+                    try:
+                        model = torch.compile(model, mode="reduce-overhead")
+                        logger.info("Applied torch.compile() for faster inference")
+                    except Exception as e:
+                        logger.warning("torch.compile() failed or not available: %s", e)
 
                 self.current_model = model
                 logger.info(
@@ -714,8 +722,9 @@ class ModelManager:
                 frame, imgsz=512, conf=0.25, verbose=False, persist=True, tracker="bytetrack.yaml"
             )
         else:
+            # Added half=True for FP16 inference
             results = self.current_model.predict(
-                frame, imgsz=512, conf=0.25, verbose=False
+                frame, imgsz=512, conf=0.25, verbose=False, half=True
             )
             
         result = results[0]
@@ -807,7 +816,6 @@ class ModelManager:
                             continue
                         pts_a = cnt_a.reshape(-1, 2).astype(np.float64)
                         pts_b = cnt_b.reshape(-1, 2).astype(np.float64)
-                        from scipy.spatial.distance import cdist
                         dists = cdist(pts_a, pts_b)
                         min_dist = float(np.min(dists))
                         idx = np.unravel_index(np.argmin(dists), dists.shape)
@@ -876,6 +884,10 @@ class ModelManager:
             .float()
             .to(device)
         )
+        
+        # Cast to FP16 if model is FP16
+        if next(model.parameters()).dtype == torch.float16:
+            tensor = tensor.half()
 
         with torch.no_grad():
             output = model(tensor)
@@ -1062,7 +1074,6 @@ class ModelManager:
                         continue
                     pts_a = contours[i].reshape(-1, 2).astype(np.float64)
                     pts_b = contours[j].reshape(-1, 2).astype(np.float64)
-                    from scipy.spatial.distance import cdist
                     dists = cdist(pts_a, pts_b)
                     min_dist = float(np.min(dists))
                     idx = np.unravel_index(np.argmin(dists), dists.shape)
