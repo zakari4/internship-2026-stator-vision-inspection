@@ -432,33 +432,53 @@ class ModelManager:
     def _discover_models(self):
         """Auto-discover trained model weights from the outputs folder only."""
 
-        # 1. Trained YOLO weights  (outputs/results/yolo_training/*/weights/best.pt)
+        # 1. Trained YOLO weights  (outputs/results/yolo_training/*/weights/best.onnx or .pt)
         yolo_dir = MODEL_BASE_DIR / "outputs" / "results" / "yolo_training"
         if yolo_dir.exists():
             for model_dir in sorted(yolo_dir.iterdir()):
                 if not model_dir.is_dir():
                     continue
+                best_engine = model_dir / "weights" / "best.engine"
                 best_pt = model_dir / "weights" / "best.pt"
-                if best_pt.exists():
+                
+                weight_file = best_engine if best_engine.exists() else (
+                    best_pt if best_pt.exists() else None
+                )
+
+                if weight_file is not None:
                     folder = model_dir.name
                     display = self._YOLO_DISPLAY_NAMES.get(folder, folder)
+                    
+                    if weight_file.suffix == ".engine":
+                        display += " (TensorRT)"
+
                     self.available_models[folder] = {
-                        "path": str(best_pt),
+                        "path": str(weight_file),
                         "type": "yolo",
                         "source": "trained",
                         "display_name": display,
                     }
 
-        # 2. Trained PyTorch checkpoints (outputs/results/checkpoints/*/best_model.pth)
+        # 2. Trained PyTorch checkpoints (outputs/results/checkpoints/*/best_model.onnx or .pth)
         ckpt_dir = MODEL_BASE_DIR / "outputs" / "results" / "checkpoints"
         if ckpt_dir.exists():
             for model_dir in sorted(ckpt_dir.iterdir()):
                 if not model_dir.is_dir():
                     continue
-                # Support both .pth and .pt extensions
+                # Support .engine, .onnx, .pth and .pt extensions
+                best_engine = model_dir / "best_model.engine"
+                best_onnx = model_dir / "best_model.onnx"
                 best_pth = model_dir / "best_model.pth"
                 best_pt = model_dir / "best_model.pt"
-                weight_file = best_pth if best_pth.exists() else (best_pt if best_pt.exists() else None)
+                
+                weight_file = best_engine if best_engine.exists() else (
+                    best_onnx if best_onnx.exists() else (
+                        best_pth if best_pth.exists() else (
+                            best_pt if best_pt.exists() else None
+                        )
+                    )
+                )
+
                 if weight_file is None:
                     continue
 
@@ -466,6 +486,11 @@ class ModelManager:
                 meta = self._PYTORCH_MODEL_MAP.get(folder, {})
                 display = meta.get("display", folder)
                 arch = meta.get("arch", folder)
+                
+                if weight_file.suffix == ".engine":
+                    display += " (TensorRT)"
+                elif weight_file.suffix == ".onnx":
+                    display += " (ONNX)"
 
                 self.available_models[folder] = {
                     "path": str(weight_file),
@@ -528,50 +553,56 @@ class ModelManager:
             if info["type"] == "yolo":
                 from ultralytics import YOLO
 
-                self.current_model = YOLO(model_path)
+                self.current_model = YOLO(model_path, task="segment")
                 logger.info("Loaded YOLO model: %s from %s", model_name, model_path)
 
             elif info["type"] == "pytorch":
-                import torch
-
-                arch = info.get("arch", model_name)
-                model = self._build_pytorch_model(arch)
-
-                if model is None:
-                    logger.error(
-                        "No architecture builder for '%s'. Cannot load checkpoint.", arch
-                    )
-                    return False
-
-                checkpoint = torch.load(model_path, map_location="cpu")
-                if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
-                    model.load_state_dict(checkpoint["model_state_dict"])
-                    logger.info(
-                        "Loaded state_dict (epoch %s, loss %.4f) for %s",
-                        checkpoint.get("epoch", "?"),
-                        checkpoint.get("best_val_loss", float("nan")),
-                        model_name,
-                    )
+                if model_path.endswith(".onnx"):
+                    import onnxruntime as ort
+                    providers = ["CUDAExecutionProvider"] if "CUDAExecutionProvider" in ort.get_available_providers() else ["CPUExecutionProvider"]
+                    self.current_model = ort.InferenceSession(model_path, providers=providers)
+                    logger.info("Loaded PyTorch ONNX model: %s from %s using %s", model_name, model_path, providers[0])
                 else:
-                    # Full model object
-                    model = checkpoint
+                    import torch
 
-                model.eval()
-                if torch.cuda.is_available():
-                    model.to("cuda")
-                    # FP16 optimization
-                    model.half()
-                    # torch.compile optimization for PyTorch 2.x
-                    try:
-                        model = torch.compile(model, mode="reduce-overhead")
-                        logger.info("Applied torch.compile() for faster inference")
-                    except Exception as e:
-                        logger.warning("torch.compile() failed or not available: %s", e)
+                    arch = info.get("arch", model_name)
+                    model = self._build_pytorch_model(arch)
 
-                self.current_model = model
-                logger.info(
-                    "Loaded PyTorch model: %s from %s", model_name, model_path
-                )
+                    if model is None:
+                        logger.error(
+                            "No architecture builder for '%s'. Cannot load checkpoint.", arch
+                        )
+                        return False
+
+                    checkpoint = torch.load(model_path, map_location="cpu")
+                    if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+                        model.load_state_dict(checkpoint["model_state_dict"])
+                        logger.info(
+                            "Loaded state_dict (epoch %s, loss %.4f) for %s",
+                            checkpoint.get("epoch", "?"),
+                            checkpoint.get("best_val_loss", float("nan")),
+                            model_name,
+                        )
+                    else:
+                        # Full model object
+                        model = checkpoint
+
+                    model.eval()
+                    if torch.cuda.is_available():
+                        model.to("cuda")
+                        # FP16 optimization
+                        model.half()
+                        # torch.compile optimization for PyTorch 2.x
+                        try:
+                            model = torch.compile(model, mode="reduce-overhead")
+                            logger.info("Applied torch.compile() for faster inference")
+                        except Exception as e:
+                            logger.warning("torch.compile() failed or not available: %s", e)
+
+                    self.current_model = model
+                    logger.info(
+                        "Loaded PyTorch model: %s from %s", model_name, model_path
+                    )
             else:
                 logger.error("Unknown model type: %s", info["type"])
                 return False
@@ -865,32 +896,36 @@ class ModelManager:
         }
 
         model = self.current_model
-        if not hasattr(model, "forward"):
+        if not hasattr(model, "forward") and not hasattr(model, "run"):
             return frame, []
-
-        device = next(
-            (p.device for p in model.parameters()), torch.device("cpu")
-        )
 
         # Preprocess: resize, BGR→RGB, normalize to [0,1] (matches training)
         h, w = frame.shape[:2]
         img = cv2.resize(frame, (512, 512))
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img_float = img_rgb.astype(np.float32) / 255.0
-        tensor = (
-            torch.from_numpy(img_float)
-            .permute(2, 0, 1)
-            .unsqueeze(0)
-            .float()
-            .to(device)
-        )
-        
-        # Cast to FP16 if model is FP16
-        if next(model.parameters()).dtype == torch.float16:
-            tensor = tensor.half()
 
-        with torch.no_grad():
-            output = model(tensor)
+        if hasattr(model, "run"):  # ONNX Runtime InferenceSession
+            input_name = model.get_inputs()[0].name
+            tensor_np = np.expand_dims(np.transpose(img_float, (2, 0, 1)), axis=0).astype(np.float32)
+            output_np = model.run(None, {input_name: tensor_np})[0]
+            output = torch.from_numpy(output_np)
+        else:  # Standard torch.nn.Module
+            device = next((p.device for p in model.parameters()), torch.device("cpu"))
+            tensor = (
+                torch.from_numpy(img_float)
+                .permute(2, 0, 1)
+                .unsqueeze(0)
+                .float()
+                .to(device)
+            )
+            
+            # Cast to FP16 if model is FP16
+            if next(model.parameters()).dtype == torch.float16:
+                tensor = tensor.half()
+
+            with torch.no_grad():
+                output = model(tensor)
 
         # Handle OrderedDict output (e.g. DeepLabV3)
         if isinstance(output, dict):
