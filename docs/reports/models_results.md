@@ -1,14 +1,14 @@
 # Models Training Results & Benchmark
 
-**Date**: 2026-03-12  
-**Hardware**: NVIDIA GTX 1650 (4 GB VRAM), Linux  
-**Training**: 20 epochs, AdamW with Cosine Annealing LR, 512×512  
+**Date**: 2026-03-21  
+**Hardware**: 2× NVIDIA Tesla T4 (16 GB VRAM each, 32 GB total) — Kaggle  
+**Parallelism**: `nn.DataParallel` (PyTorch) / `device=[0,1]` (Ultralytics)  
+**Training**: 30 epochs, AdamW with Cosine Annealing LR, batch size 16 (8 per GPU), 512×512  
 **Labels**: `michanical_part`, `magnet`, `circle` (multi-class segmentation, 4 classes incl. background)
 
 > **Dataset Note**:  
-> - **YOLO models** (YOLOv8m-seg, YOLOv11m-seg) were trained on **augmented data** (3,460 images — 10× augmentation: 2 geometric × 5 photometric, no rotation).  
-> - **PyTorch models** (UNet ResNet18, SegFormer B0) were trained on the **original dataset** (346 images, split 242 train / 51 val / 53 test) due to **hardware constraints** — training on the augmented set is prohibitively slow on a GTX 1650 with 4 GB VRAM.  
-> This means YOLO models benefited from ~10× more training samples, which should be taken into account when comparing accuracy metrics.
+> - **All models** were trained on **augmented data** (3,460 images — 10× augmentation: 2 geometric × 5 photometric, no rotation).  
+> - Both T4 GPUs were used in parallel via `nn.DataParallel` (UNet ResNet18) and `device=[0,1]` (YOLO models).
 
 ---
 
@@ -16,135 +16,111 @@
 
 | Model | Architecture | Type | Framework | Training Data |
 |-------|-------------|------|-----------|---------------|
-| UNet ResNet18 | Encoder–Decoder with ResNet18 backbone | Multi-class segmentation | PyTorch | Original (346 images) |
-| SegFormer B0 | Transformer-based (Mix-FFN, hierarchical) | Multi-class segmentation | PyTorch | Original (346 images) |
-| YOLOv8m-seg | CSPDarknet + C2f, Medium | Instance segmentation | Ultralytics | Augmented (3,460 images) |
-| YOLOv11m-seg | Improved CSP + C3k2, Medium | Instance segmentation | Ultralytics | Augmented (3,460 images) |
+| UNet ResNet18 | Encoder–Decoder with ResNet18 backbone | Multi-class segmentation | PyTorch (DataParallel) | Augmented (3,460 images) |
+| YOLOv8m-seg | CSPDarknet + C2f, Medium | Instance segmentation | Ultralytics (multi-GPU) | Augmented (3,460 images) |
+| YOLOv11m-seg | Improved CSP + C3k2, Medium | Instance segmentation | Ultralytics (multi-GPU) | Augmented (3,460 images) |
 
 ---
 
 ## 2. Best Validation Results
 
-| Model | Best IoU | Best Val Loss | Best Epoch | Accuracy | Dice | Precision | Recall | Dataset |
-|-------|----------|--------------|------------|----------|------|-----------|--------|---------|
-| **UNet ResNet18** | **0.8763** | 0.3166 | 19 | 98.64% | 0.9324 | 0.9545 | 0.9835 | Original |
-| YOLOv8m-seg | 0.8569 | — | 20 | — | — | 0.9922 (M) | 0.9956 (M) | Augmented |
-| YOLOv11m-seg | 0.8476 | — | 20 | — | — | 0.9902 (M) | 0.9970 (M) | Augmented |
-| SegFormer B0 | 0.5954 | 0.2674 | 20 | 95.57% | 0.7169 | 0.8562 | 0.9051 | Original |
+| Model | Best IoU | Best Val Loss | Best Epoch | Accuracy | Dice |
+|-------|----------|--------------|------------|----------|------|
+| **UNet ResNet18** | **0.9646** | **0.0155** | 30 | 99.56% | 0.9819 |
+| YOLOv8m-seg | 0.8719 | 0.7211 | 30 | — | — |
+| YOLOv11m-seg | 0.8725 | 0.7196 | 30 | — | — |
 
-> **Winner by IoU**: UNet ResNet18 (0.8763) — achieves the highest IoU even on the smaller original dataset (346 images), surpassing YOLO models trained on 10× more data.
+> **Winner by IoU**: UNet ResNet18 (0.9646) — achieves the highest segmentation quality with the lowest GPU memory usage.
 
-### YOLO-Specific Metrics (Epoch 20)
+### YOLO-Specific Metrics (Epoch 30)
 
-| Model | mAP50 (Box) | mAP50-95 (Box) | mAP50 (Mask) | mAP50-95 (Mask) |
-|-------|-------------|----------------|--------------|-----------------|
-| YOLOv8m-seg | 0.9916 | 0.8968 | 0.9916 | 0.8569 |
-| YOLOv11m-seg | 0.9932 | 0.8881 | 0.9932 | 0.8476 |
+| Model | mAP50 (Box) | mAP50-95 (Box) | mAP50 (Mask) | mAP50-95 (Mask) | Precision (M) | Recall (M) |
+|-------|-------------|----------------|--------------|-----------------|---------------|------------|
+| YOLOv8m-seg | 0.9916 | 0.9114 | 0.9916 | 0.8719 | 0.9927 | 0.9981 |
+| YOLOv11m-seg | 0.9929 | 0.9111 | 0.9929 | 0.8725 | 0.9926 | 0.9982 |
 
 ---
 
 ## 3. Training Efficiency
 
-| Model | Dataset | Total Train Time | Time / Epoch | Peak GPU (MB) | Avg GPU Util. |
-|-------|---------|-----------------|--------------|---------------|---------------|
-| **SegFormer B0** | Original | **3.0 min** | ~9 s | 1,962 | 86.0% |
-| UNet ResNet18 | Original | 12.4 min | ~40 s | 3,585 | 96.1% |
-| YOLOv8m-seg | Augmented | 1 h 52 min | ~337 s | 4,086 | 83.2% |
-| YOLOv11m-seg | Augmented | 2 h 32 min | ~455 s | 3,975 | 81.1% |
+| Model | Total Train Time | Time / Epoch | Peak GPU (MB) | Avg GPU Util. |
+|-------|-----------------|--------------|---------------|---------------|
+| **UNet ResNet18** | **115 min** | ~230 s | **473** | 54.8% |
+| YOLOv8m-seg | 110 min | ~217 s | 4,296 | — |
+| YOLOv11m-seg | 118 min | ~233 s | 4,902 | — |
 
-> **Fastest model**: SegFormer B0 — 4× faster than UNet, ~37× faster than YOLOv8m.  
-> **Most memory-efficient**: SegFormer B0 — uses about half the GPU memory of the others.  
-> **Note**: YOLO training times are higher partly because they process 10× more data per epoch (augmented dataset).
+> **Fastest model**: YOLOv8m-seg (110 min for 30 epochs).  
+> **Most memory-efficient**: UNet ResNet18 — uses only 473 MB VRAM, ~9× less than YOLO models.  
+> **Total training time**: ~5.7 hours for all 3 models on Kaggle T4×2.
 
 ---
 
 ## 4. Convergence Analysis
 
-### UNet ResNet18 (Original Data — 346 images)
-- Steady convergence: IoU climbs from 0.5556 (epoch 1) to 0.8763 (epoch 19).
-- Highest val Dice (0.9324) and precision (0.9545) among all models.
-- Training saturates around epoch 17–19 with diminishing returns.
-
-### SegFormer B0 (Original Data — 346 images)
-- Gradual improvement: IoU goes from 0.3647 (epoch 1) to 0.5954 (epoch 20) — still improving at training end.
-- Lowest training time (3 min) and GPU memory (1,962 MB).
-- May benefit from more epochs or data augmentation to close the gap.
+### UNet ResNet18 (Augmented Data — 3,460 images)
+- Excellent convergence: IoU climbs from 0.8455 (epoch 1) to **0.9646** (epoch 30).
+- Best validation Dice (0.9819) and accuracy (99.56%) among all models.
+- Very low validation loss (0.0155) — strong generalization with minimal overfitting.
+- Peak GPU usage only 473 MB thanks to the lightweight encoder.
 
 ### YOLOv8m-seg (Augmented Data — 3,460 images)
-- mAP50 (Mask) reached 0.9544 in epoch 1, plateauing near 0.9916 by epoch 20.
-- Very high precision/recall on detection (>0.99), but mask IoU (mAP50-95) at 0.8569.
-- Benefits from the large augmented dataset.
+- mAP50 (Mask) reached 0.9557 in epoch 1, plateauing near 0.9916 by epoch 30.
+- mAP50-95 (Mask) improved steadily to 0.8719.
+- Very high precision/recall on detection (>0.99).
+- Peak GPU memory: 4,296 MB.
 
 ### YOLOv11m-seg (Augmented Data — 3,460 images)
-- Similar trajectory to YOLOv8m but 35% slower training time.
-- Slightly lower mAP50-95 (Mask) than YOLOv8m (0.8476 vs 0.8569).
-- Highest recall among all models (0.9970).
+- Similar trajectory to YOLOv8m with slightly better final mask mAP (0.8725 vs 0.8719).
+- Slightly slower training time (118 min vs 110 min).
+- Highest peak GPU usage at 4,902 MB.
 
 ---
 
 ## 5. Comparison Plots
 
-All plots include all 4 models (UNet ResNet18, SegFormer B0, YOLOv8m-seg, YOLOv11m-seg) and are stored in `outputs/results/plots/`.
+All plots include all 3 models and are stored in `outputs/results/plots/`.
 
 ### 5.1 Comprehensive Comparison
 
 ![Comprehensive Comparison](../../outputs/results/plots/comprehensive_comparison.png)
 
-*9-panel dashboard comparing all models across key metrics. YOLO models (marked with *) were trained on augmented data.*
+*6-panel dashboard comparing all models: validation loss, IoU, training loss, best IoU, GPU memory, and training time.*
 
-### 5.2 Best IoU Comparison
-
-![Best IoU](../../outputs/results/plots/best_iou_comparison.png)
-
-*Bar chart of best validation IoU for each model. UNet leads despite training on 10× less data than YOLO.*
-
-### 5.3 IoU Curves
+### 5.2 IoU Curves
 
 ![IoU Curves](../../outputs/results/plots/iou_curves.png)
 
-*Validation IoU progression over 20 epochs. UNet converges to 0.87+; YOLO models plateau near 0.85.*
+*Validation IoU / mAP50-95 progression over 30 epochs. UNet converges to 0.96+; YOLO models plateau near 0.87.*
 
-### 5.4 Loss Curves
+### 5.3 Loss Curves
 
 ![Loss Curves](../../outputs/results/plots/loss_curves.png)
 
-*Validation loss over epochs. Note: YOLO loss (seg+box) is not directly comparable to PyTorch CE+Dice loss.*
+*Training and validation loss over 30 epochs. Note: YOLO loss (seg+box) is not directly comparable to PyTorch BCE+Dice loss.*
 
-### 5.5 Dice / mAP50 Curves
-
-![Dice Curves](../../outputs/results/plots/dice_curves.png)
-
-*Validation Dice (PyTorch) and mAP50-Mask (YOLO) progression.*
-
-### 5.6 Training Time
-
-![Training Time](../../outputs/results/plots/training_time.png)
-
-*Total training time per model. YOLO models take significantly longer partly due to 10× more data.*
-
-### 5.7 Accuracy vs Speed
-
-![Accuracy vs Speed](../../outputs/results/plots/accuracy_vs_speed.png)
-
-*Bubble chart: IoU vs training time (bubble size = GPU memory). UNet offers the best accuracy/time tradeoff.*
-
-### 5.8 Throughput
-
-![Throughput](../../outputs/results/plots/throughput.png)
-
-*Average training throughput (images/sec). SegFormer is the fastest at ~27 img/s.*
-
-### 5.9 GPU Usage
+### 5.4 GPU Usage
 
 ![GPU Usage](../../outputs/results/plots/gpu_usage.png)
 
-*GPU memory and utilization over training epochs.*
+*Peak GPU memory comparison. UNet ResNet18 uses 10× less VRAM than YOLO models.*
 
-### 5.10 Final Comparison Table
+### 5.5 Training Time
 
-![Final Comparison Table](../../outputs/results/plots/final_comparison_table.png)
+![Training Time](../../outputs/results/plots/training_time.png)
 
-*Summary table visualization comparing all models side by side, including dataset information.*
+*Total training time per model (30 epochs). All models completed in under 2 hours on Kaggle T4×2.*
+
+### 5.6 Comparison Table
+
+![Comparison Table](../../outputs/results/plots/comparison_table.png)
+
+*Summary table comparing best metrics, training time, and GPU usage for all models.*
+
+### 5.7 Precision & Recall
+
+![Precision Recall](../../outputs/results/plots/precision_recall.png)
+
+*YOLO precision/recall curves and UNet ResNet18 IoU/Dice/Accuracy validation metrics.*
 
 ---
 
@@ -199,7 +175,7 @@ All examples use test image `run_001_00003` (640×480) containing **7 objects**:
 | ![YOLOv8m seg](../images/examples/example_yolov8m_seg_segmentation.png) | ![YOLOv8m meas](../images/examples/example_yolov8m_seg_measurements.png) |
 
 | # | Class | Confidence |
-|---|-------|-----------|
+|---|-------|-----------| 
 | 1 | circle | 96.85% |
 | 2 | magnet | 93.05% |
 | 3 | magnet | 92.54% |
@@ -215,7 +191,7 @@ All examples use test image `run_001_00003` (640×480) containing **7 objects**:
 | ![YOLOv11m seg](../images/examples/example_yolov11m_seg_segmentation.png) | ![YOLOv11m meas](../images/examples/example_yolov11m_seg_measurements.png) |
 
 | # | Class | Confidence |
-|---|-------|-----------|
+|---|-------|-----------| 
 | 1 | circle | 95.87% |
 | 2 | magnet | 91.37% |
 | 3 | magnet | 90.39% |
@@ -231,7 +207,7 @@ All examples use test image `run_001_00003` (640×480) containing **7 objects**:
 | ![UNet seg](../images/examples/example_unet_resnet18_segmentation.png) | ![UNet meas](../images/examples/example_unet_resnet18_measurements.png) |
 
 | # | Class | Confidence |
-|---|-------|-----------|
+|---|-------|-----------| 
 | 1 | michanical_part | 93.39% |
 | 2 | michanical_part | 89.88% |
 | 3 | michanical_part | 93.33% |
@@ -240,50 +216,34 @@ All examples use test image `run_001_00003` (640×480) containing **7 objects**:
 | 6 | magnet | 93.33% |
 | 7 | circle | 86.02% |
 
-#### SegFormer B0 (8 detections)
-
-| Segmentation | With Measurements |
-|---|---|
-| ![SegFormer seg](../images/examples/example_segformer_b0_segmentation.png) | ![SegFormer meas](../images/examples/example_segformer_b0_measurements.png) |
-
-| # | Class | Confidence |
-|---|-------|-----------|
-| 1 | michanical_part | 79.44% |
-| 2 | michanical_part | 77.15% |
-| 3 | michanical_part | 87.51% |
-| 4 | michanical_part | 78.17% |
-| 5 | magnet | 44.55% |
-| 6 | magnet | 76.33% |
-| 7 | magnet | 84.96% |
-| 8 | circle | 93.61% |
-
-> SegFormer detects 8 objects (1 extra spurious magnet region) with generally lower confidence, consistent with its lower IoU.
-
 > **Note**: Measurements use a dummy 1 px = 1 mm calibration for demonstration. In production, use **Camera Intrinsics**, **Reference Label**, or a real-world calibration factor.
 
 ---
 
 ## 8. Key Takeaways
 
-| Criterion | Best Model | Value | Dataset |
-|-----------|-----------|-------|---------|
-| Highest IoU | UNet ResNet18 | 0.8763 | Original (346) |
-| Lowest Val Loss | SegFormer B0 | 0.2674 | Original (346) |
-| Fastest Training | SegFormer B0 | 3.0 min | Original (346) |
-| Lowest GPU Memory | SegFormer B0 | 1,962 MB | Original (346) |
-| Best Precision (instance) | YOLOv8m-seg | 0.9922 | Augmented (3,460) |
-| Best Recall (instance) | YOLOv11m-seg | 0.9970 | Augmented (3,460) |
-| Best mAP50 | YOLOv11m-seg | 0.9932 | Augmented (3,460) |
+| Criterion | Best Model | Value |
+|-----------|-----------|-------|
+| Highest IoU | UNet ResNet18 | **0.9646** |
+| Lowest Val Loss | UNet ResNet18 | **0.0155** |
+| Highest Accuracy | UNet ResNet18 | **99.56%** |
+| Highest Dice | UNet ResNet18 | **0.9819** |
+| Fastest Training | YOLOv8m-seg | 110 min |
+| Lowest GPU Memory | UNet ResNet18 | 473 MB |
+| Best mAP50-95 (Mask) | YOLOv11m-seg | 0.8725 |
+| Best Precision (instance) | YOLOv8m-seg | 0.9927 |
+| Best Recall (instance) | YOLOv11m-seg | 0.9982 |
 
-### Why Different Datasets?
+### Hardware Setup
 
-YOLO models (YOLOv8m-seg, YOLOv11m-seg) were trained on the **augmented dataset** (3,460 images) because they were trained first during initial experiments. When re-training the PyTorch models (UNet ResNet18, SegFormer B0) as multi-class, we used the **original dataset** (346 images) because **hardware constraints** (GTX 1650, 4 GB VRAM) made training on the full augmented set prohibitively slow — each epoch takes significantly longer with 10× the data, and the limited VRAM further restricts batch size and throughput.
-
-Despite this data disadvantage, **UNet ResNet18 still achieves the highest IoU (0.8763)**, outperforming both YOLO models that had 10× more training data.
+All models were trained on **Kaggle** with **2× NVIDIA Tesla T4** GPUs:
+- **UNet ResNet18**: Wrapped with `nn.DataParallel` for parallel forward passes across both GPUs
+- **YOLO models**: Used Ultralytics native multi-GPU with `device=[0,1]`
+- **Batch size**: 16 (effectively 8 per GPU)
+- **Image size**: 512×512
 
 ### Recommendations
 
-- **Best overall accuracy**: Use **UNet ResNet18** — highest IoU (0.8763) and Dice (0.9324) even on the smaller dataset.
-- **Resource-constrained / fast iteration**: Use **SegFormer B0** — trains in 3 min with half the GPU memory, though IoU is lower.
-- **Multi-class instance detection**: Use **YOLOv8m-seg** — best mAP50-95 mask score with per-class bounding boxes.
+- **Best overall accuracy**: Use **UNet ResNet18** — highest IoU (0.9646), Dice (0.9819), and lowest memory footprint (473 MB).
+- **Multi-class instance detection**: Use **YOLOv8m-seg** or **YOLOv11m-seg** — best mAP50-95 mask scores with per-class bounding boxes and tracking support.
 - **All models** are deployable via the web application — select from the model dropdown at runtime.

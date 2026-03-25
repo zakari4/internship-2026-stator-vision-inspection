@@ -1,6 +1,6 @@
 # Project State Report — Stator Vision Inspection
 
-**Date**: 2026-03-12  
+**Date**: 2026-03-21  
 **Branch**: `dev`  
 **Repository**: `github.com:zakari4/internship-2026-stator-vision-inspection.git`
 
@@ -10,15 +10,14 @@
 
 This project is an **industrial stator case vision inspection system** that uses segmentation and object detection models to identify and measure components on stator assemblies. It combines:
 
-- **Multi-class segmentation** (PyTorch: UNet ResNet18, SegFormer B0) — 4 classes: `background`, `michanical_part`, `magnet`, `circle`
+- **Multi-class segmentation** (PyTorch: UNet ResNet18) — `background`, `michanical_part`, `magnet`, `circle`
 - **Instance segmentation** (Ultralytics YOLO: YOLOv8m-seg, YOLOv11m-seg) — 3 object classes + bounding boxes
 - **Measurement pipeline** — Converts pixel-based detections to real-world mm measurements via camera calibration
 - **Web application** — Flask + WebRTC server with real-time detection, model switching, and measurement overlay
 
-### Hardware
-
-- NVIDIA GTX 1650 (4 GB VRAM)
-- Linux (Python 3.12.9)
+### Hardware Setup
+- **Training**: Kaggle 2× NVIDIA Tesla T4 GPUs (32 GB total VRAM) — parallel training
+- **OS**: Linux
 
 ---
 
@@ -33,7 +32,7 @@ chignon_detection/
 │   │   ├── augmentation.py       # 10× data augmentation pipeline
 │   │   └── yolo_prep.py          # LabelMe → YOLO format conversion
 │   ├── models/
-│   │   └── deep_learning.py      # UNet, SegFormer, DeepLab, edge detectors (23 models)
+│   │   └── deep_learning.py      # UNet, DeepLab, edge detectors (23 models)
 │   ├── training/
 │   │   ├── trainer.py            # ComprehensiveTrainer (multi-class CE+Dice loss)
 │   │   └── training_viz.py       # Training comparison plots
@@ -52,7 +51,9 @@ chignon_detection/
 │   ├── regenerate_plots.py       # Cross-model comparison plot generator
 │   └── generate_examples.py      # Detection example image generator
 │
-├── data/                         # 346 original LabelMe JSON annotations
+├── notebooks/
+│   └── kaggle_training.ipynb     # Self-contained T4x2 parallel training notebook
+│
 ├── outputs/
 │   ├── augmented_data/           # 3,460 augmented images (10× pipeline)
 │   ├── yolo_dataset/             # YOLO-format dataset (images + labels)
@@ -84,59 +85,43 @@ chignon_detection/
 
 ## 4. Trained Models — Summary
 
-All models are trained for **20 epochs** on **512×512** images.
+All models were trained for **30 epochs** on **512×512** images using the augmented dataset (3,460 images). Training utilized **2× Kaggle T4 GPUs** in parallel.
 
-| Model | Framework | Type | Dataset | Best Val IoU | Train Time | Peak GPU | Checkpoint |
-|-------|-----------|------|---------|-------------|------------|----------|------------|
-| **UNet ResNet18** | PyTorch | Multi-class seg. | Original (346) | **0.8763** | 12.4 min | 3,585 MB | `outputs/results/checkpoints/unet_resnet18/best_model.pth` |
-| **YOLOv8m-seg** | Ultralytics | Instance seg. | Augmented (3,460) | 0.8569 | 1h 52min | 4,086 MB | `outputs/results/yolo_training/yolov8m_seg/weights/best.pt` |
-| **YOLOv11m-seg** | Ultralytics | Instance seg. | Augmented (3,460) | 0.8476 | 2h 32min | 3,975 MB | `outputs/results/yolo_training/yolov11m_seg/weights/best.pt` |
-| **SegFormer B0** | PyTorch | Multi-class seg. | Original (346) | 0.5954 | 3.0 min | 1,962 MB | `outputs/results/checkpoints/segformer_b0/best_model.pth` |
+| Model | Framework | Type | Best Val IoU | Train Time | Peak GPU |
+|-------|-----------|------|-------------|------------|----------|
+| **UNet ResNet18** | PyTorch | Multi-class seg. | **0.9646** | 115 min | 473 MB |
+| **YOLOv8m-seg** | Ultralytics | Instance seg. | 0.8719 | 110 min | 4,296 MB |
+| **YOLOv11m-seg** | Ultralytics | Instance seg. | 0.8725 | 118 min | 4,902 MB |
 
-> **Note**: YOLO models were trained on the augmented dataset (3,460 images) while PyTorch models used the original dataset (346 images). This is due to **hardware constraints** — the GTX 1650 (4 GB VRAM) makes training PyTorch models on the full augmented set prohibitively slow, with each epoch taking significantly longer and limited batch sizes.
-
-### 4.1 UNet ResNet18 — Best Overall (IoU: 0.8763)
+### 4.1 UNet ResNet18 — Best Overall (IoU: 0.9646)
 
 | Metric | Value |
 |--------|-------|
-| Best Val IoU | 0.8763 (epoch 19) |
-| Val Dice | 0.9324 |
-| Val Precision | 0.9545 |
-| Val Recall | 0.9835 |
-| Val Accuracy | 98.64% |
-| Batch Size | 4 |
+| Best Val IoU | 0.9646 (epoch 30) |
+| Val Dice | 0.9819 |
+| Val Accuracy | 99.56% |
+| Batch Size | 16 (8 per GPU) |
 | Optimizer | AdamW + Cosine LR |
-| Loss | Multi-class (CrossEntropy + per-class Dice) |
+| GPU Setup | `nn.DataParallel` (T4×2) |
 
-### 4.2 SegFormer B0 — Fastest Training (3 min)
-
-| Metric | Value |
-|--------|-------|
-| Best Val IoU | 0.5954 (epoch 20, still improving) |
-| Val Dice | 0.7169 |
-| Val Precision | 0.8562 |
-| Val Recall | 0.9051 |
-| Val Accuracy | 95.57% |
-| Throughput | ~27 samples/sec (4× faster than UNet) |
-
-### 4.3 YOLOv8m-seg — Best Instance Detection
+### 4.2 YOLOv8m-seg — Best Instance Detection (mAP: 0.8719)
 
 | Metric | Value |
 |--------|-------|
-| mAP50-95 (Mask) | 0.8569 |
+| mAP50-95 (Mask) | 0.8719 |
 | mAP50 (Mask) | 0.9916 |
-| Precision (Mask) | 0.9922 |
-| Recall (Mask) | 0.9956 |
-| Batch Size | 8 |
+| Precision (Mask) | 0.9927 |
+| Recall (Mask) | 0.9981 |
+| GPU Setup | `device=[0,1]` (T4×2) |
 
-### 4.4 YOLOv11m-seg — Highest Recall
+### 4.3 YOLOv11m-seg — Highest Recall
 
 | Metric | Value |
 |--------|-------|
-| mAP50-95 (Mask) | 0.8476 |
-| mAP50 (Mask) | 0.9932 |
-| Precision (Mask) | 0.9902 |
-| Recall (Mask) | 0.9970 |
+| mAP50-95 (Mask) | 0.8725 |
+| mAP50 (Mask) | 0.9929 |
+| Precision (Mask) | 0.9926 |
+| Recall (Mask) | 0.9982 |
 
 ---
 
@@ -148,84 +133,13 @@ All examples use test image `run_001_00003` (640×480) containing **7 objects**:
 
 ![All Models Comparison](../images/examples/example_all_models_comparison.png)
 
-*Side-by-side comparison of all 4 models. YOLOv8m and YOLOv11m produce instance masks with bounding boxes; UNet ResNet18 produces pixel-level multi-class masks; SegFormer B0 produces multi-class masks with lower resolution.*
+*Side-by-side comparison. YOLO models produce instance masks with bounding boxes; UNet ResNet18 produces pixel-level multi-class masks.*
 
 ### 5.2 All Models — With Measurements (1 px = 1 mm)
 
 ![All Models Measurements](../images/examples/example_all_models_measurements.png)
 
 *Same detections with measurement overlay enabled (manual calibration: 1 px = 1 mm). Width, height, diameter, area, and perimeter are computed for each detected object.*
-
----
-
-### 5.3 Per-Model Detections
-
-#### YOLOv8m-seg (7 detections)
-
-| # | Class | Confidence |
-|---|-------|-----------|
-| 1 | circle | 96.85% |
-| 2 | magnet | 93.05% |
-| 3 | magnet | 92.54% |
-| 4 | michanical_part | 89.02% |
-| 5 | michanical_part | 88.19% |
-| 6 | michanical_part | 87.67% |
-| 7 | michanical_part | 85.63% |
-
-| Segmentation | With Measurements |
-|---|---|
-| ![YOLOv8m seg](../images/examples/example_yolov8m_seg_segmentation.png) | ![YOLOv8m meas](../images/examples/example_yolov8m_seg_measurements.png) |
-
-#### YOLOv11m-seg (7 detections)
-
-| # | Class | Confidence |
-|---|-------|-----------|
-| 1 | circle | 95.87% |
-| 2 | magnet | 91.37% |
-| 3 | magnet | 90.39% |
-| 4 | michanical_part | 87.02% |
-| 5 | michanical_part | 85.30% |
-| 6 | michanical_part | 82.33% |
-| 7 | michanical_part | 82.05% |
-
-| Segmentation | With Measurements |
-|---|---|
-| ![YOLOv11m seg](../images/examples/example_yolov11m_seg_segmentation.png) | ![YOLOv11m meas](../images/examples/example_yolov11m_seg_measurements.png) |
-
-#### UNet ResNet18 (7 detections)
-
-| # | Class | Confidence |
-|---|-------|-----------|
-| 1 | michanical_part | 93.39% |
-| 2 | michanical_part | 89.88% |
-| 3 | michanical_part | 93.33% |
-| 4 | michanical_part | 91.41% |
-| 5 | magnet | 92.29% |
-| 6 | magnet | 93.33% |
-| 7 | circle | 86.02% |
-
-| Segmentation | With Measurements |
-|---|---|
-| ![UNet seg](../images/examples/example_unet_resnet18_segmentation.png) | ![UNet meas](../images/examples/example_unet_resnet18_measurements.png) |
-
-#### SegFormer B0 (8 detections)
-
-| # | Class | Confidence |
-|---|-------|-----------|
-| 1 | michanical_part | 79.44% |
-| 2 | michanical_part | 77.15% |
-| 3 | michanical_part | 87.51% |
-| 4 | michanical_part | 78.17% |
-| 5 | magnet | 44.55% |
-| 6 | magnet | 76.33% |
-| 7 | magnet | 84.96% |
-| 8 | circle | 93.61% |
-
-| Segmentation | With Measurements |
-|---|---|
-| ![SegFormer seg](../images/examples/example_segformer_b0_segmentation.png) | ![SegFormer meas](../images/examples/example_segformer_b0_measurements.png) |
-
-> SegFormer detects 8 objects (1 extra spurious magnet region), with generally lower confidence, consistent with its lower IoU.
 
 ---
 
@@ -252,35 +166,27 @@ For the examples above, **manual calibration** is used with **1 px = 1 mm**.
 
 ## 7. Training & Comparison Plots
 
-All plots integrate all 4 models and are stored in `outputs/results/plots/`.
+All plots integrate all 3 models and are stored in `outputs/results/plots/`.
 
-### 7.1 Best Validation IoU
-
-![Best IoU](../../outputs/results/plots/best_iou_comparison.png)
-
-### 7.2 IoU Curves (20 epochs)
-
-![IoU Curves](../../outputs/results/plots/iou_curves.png)
-
-### 7.3 Loss Curves
-
-![Loss Curves](../../outputs/results/plots/loss_curves.png)
-
-### 7.4 Training Time
-
-![Training Time](../../outputs/results/plots/training_time.png)
-
-### 7.5 Accuracy vs Speed
-
-![Accuracy vs Speed](../../outputs/results/plots/accuracy_vs_speed.png)
-
-### 7.6 Comprehensive Dashboard
+### 7.1 Comprehensive Dashboard
 
 ![Comprehensive](../../outputs/results/plots/comprehensive_comparison.png)
 
-### 7.7 Final Comparison Table
+### 7.2 Comparison Table
 
-![Final Table](../../outputs/results/plots/final_comparison_table.png)
+![Comparison Table](../../outputs/results/plots/comparison_table.png)
+
+### 7.3 IoU Curves (30 epochs)
+
+![IoU Curves](../../outputs/results/plots/iou_curves.png)
+
+### 7.4 Loss Curves
+
+![Loss Curves](../../outputs/results/plots/loss_curves.png)
+
+### 7.5 Precision / Recall
+
+![Precision Recall](../../outputs/results/plots/precision_recall.png)
 
 ---
 
@@ -296,49 +202,24 @@ The project includes a full-stack web application for real-time inspection:
 
 **Features**:
 - Real-time WebRTC video processing (camera or file upload)
-- Model switching at runtime (all 4 trained models + pretrained weights)
+- Custom ClickUp-style dashboard UI interface
+- Live measurement updates, real-time FPS monitoring and streaming metrics
 - 3 calibration methods for measurement overlay
-- Per-detection measurement data (JSON over DataChannel)
-- Detection results panel with class, confidence, and measurements
-
-**Endpoints**:
-- `GET /api/models` — List available models
-- `POST /api/select-model` — Switch active model
-- `POST /offer` — WebRTC SDP signaling
-- `POST /api/camera-settings` — Configure measurement calibration
 
 ---
 
-## 9. Key Technical Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| **Multi-class segmentation** (4 classes) | Enables per-class detection labels (vs old binary foreground/background) |
-| **CrossEntropy + Dice loss** | CE handles class imbalance; Dice optimises IoU directly |
-| **No ImageNet normalisation** | Training data differs significantly from ImageNet distribution |
-| **BGR→RGB conversion** | Matches training preprocessing; corrects colour channel mismatch |
-| **Original data for PyTorch** | Hardware constraint: GTX 1650 cannot train augmented (3,460) efficiently |
-| **Augmented data for YOLO** | YOLO's efficient pipeline handles 10× data within 2h |
-| **1 px = 1 mm demo calibration** | Demonstrates measurement pipeline; real deployments use camera intrinsics |
-
----
-
-## 10. Current State & Next Steps
+## 9. Current State & Next Steps
 
 ### Completed
 - [x] Multi-class segmentation pipeline (4 classes)
 - [x] Data augmentation (10× pipeline: 346 → 3,460 images)
-- [x] 4 models trained: UNet ResNet18, SegFormer B0, YOLOv8m-seg, YOLOv11m-seg
 - [x] Measurement pipeline (3 calibration methods)
-- [x] Web application (Flask + WebRTC + client UI)
-- [x] Docker deployment configuration
-- [x] Benchmark reports and comparison plots
-- [x] Detection example images for all models
+- [x] Web application (Flask + WebRTC + ClickUp UI)
+- [x] Parallel multi-GPU training setup (Kaggle T4×2)
+- [x] Model convergence on augmented datasets
 
 ### Potential Improvements
-- [ ] Train PyTorch models on augmented data (needs better GPU or cloud compute)
-- [ ] Add more training epochs for SegFormer B0 (still improving at epoch 20)
-- [ ] Experiment with larger SegFormer variants (B2, B4)
-- [ ] Add confidence thresholding controls in the web UI
-- [ ] Implement ArUco marker-based automatic calibration
-- [ ] Add production logging and model performance monitoring
+- [ ] Implement ByteTrack filtering optimizations
+- [ ] Try ONNX/TensorRT export for inference speedup
+- [ ] Add further post-processing (Edge Refinement, morphological filtering)
+- [ ] Add precision tolerance checks for factory QA validation

@@ -11,7 +11,7 @@
 
 ## Abstract
 
-This report presents the design, implementation, and evaluation of an automated visual inspection system for industrial stator assemblies. The system employs multi-class semantic segmentation and instance segmentation models to detect and classify stator components — mechanical parts, magnets, and circles — and applies geometric measurement pipelines to convert pixel-level detections into real-world dimensions. Four deep learning architectures were trained and benchmarked: UNet with ResNet18 encoder, SegFormer B0, YOLOv8m-seg, and YOLOv11m-seg. The best-performing model, UNet ResNet18, achieves a mean Intersection-over-Union (mIoU) of **0.8763** and Dice coefficient of **0.9324** on 346 original images. The complete system is deployed as a Flask + WebRTC web application enabling real-time inference, model switching, and calibrated measurement overlay.
+This report presents the design, implementation, and evaluation of an automated visual inspection system for industrial stator assemblies. The system employs multi-class semantic segmentation and instance segmentation models to detect and classify stator components — mechanical parts, magnets, and circles — and applies geometric measurement pipelines to convert pixel-level detections into real-world dimensions. Four deep learning architectures were trained and benchmarked: UNet with ResNet18 encoder, SegFormer B0, YOLOv8m-seg, and YOLOv11m-seg. The best-performing model, UNet ResNet18, achieves a mean Intersection-over-Union (mIoU) of **0.9646** and Dice coefficient of **0.9819** on the augmented dataset. The complete system is deployed as a Flask + WebRTC web application enabling real-time inference, model switching, and calibrated measurement overlay.
 
 **Keywords**: semantic segmentation, instance segmentation, visual inspection, stator assembly, UNet, SegFormer, YOLO, dimensional measurement, industrial quality control
 
@@ -45,7 +45,7 @@ This work addresses the problem of **automated multi-class segmentation and dime
 3. **Compute inter-component distances** to verify assembly tolerances.
 4. **Deploy** the system as a real-time web application for production-line use.
 
-The system was developed and evaluated on an NVIDIA GTX 1650 (4 GB VRAM) to reflect realistic hardware constraints encountered in industrial edge deployments.
+The system was developed and evaluated using **Kaggle** with **2× NVIDIA Tesla T4 GPUs (32 GB VRAM total)** to handle the high computational demands of training multiple deep learning models concurrently on an augmented industrial dataset.
 
 ---
 
