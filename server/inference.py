@@ -51,6 +51,10 @@ class CameraSettings:
         self.enabled: bool = False
         self.method: str = "camera_intrinsics"
 
+        # Measurement overlays
+        self.show_edge_distances: bool = True
+        self.show_center_distances: bool = True
+
         # Camera-intrinsics parameters
         self.sensor_width_mm: float = 6.17
         self.focal_length_mm: float = 4.0
@@ -113,6 +117,8 @@ class CameraSettings:
         return {
             "enabled": self.enabled,
             "method": self.method,
+            "show_edge_distances": self.show_edge_distances,
+            "show_center_distances": self.show_center_distances,
             # camera intrinsics
             "sensor_width_mm": self.sensor_width_mm,
             "focal_length_mm": self.focal_length_mm,
@@ -130,6 +136,10 @@ class CameraSettings:
             self.enabled = bool(data["enabled"])
         if "method" in data and data["method"] in self.VALID_METHODS:
             self.method = data["method"]
+        if "show_edge_distances" in data:
+            self.show_edge_distances = bool(data["show_edge_distances"])
+        if "show_center_distances" in data:
+            self.show_center_distances = bool(data["show_center_distances"])
         # camera intrinsics
         if "sensor_width_mm" in data:
             self.sensor_width_mm = float(data["sensor_width_mm"])
@@ -322,6 +332,94 @@ def compute_single_contour_measurements(
     return measurements
 
 
+def compute_edge_center_points(contour: np.ndarray) -> Dict[str, List[int]]:
+    """Return edge midpoint points (left/right/top/bottom) and center point."""
+    x, y, w, h = cv2.boundingRect(contour)
+    center_x = int(x + w / 2)
+    center_y = int(y + h / 2)
+
+    # Use contour moments if available for a more stable center
+    m = cv2.moments(contour)
+    if abs(m.get("m00", 0.0)) > 1e-6:
+        center_x = int(m["m10"] / m["m00"])
+        center_y = int(m["m01"] / m["m00"])
+
+    return {
+        "left": [int(x), int(y + h / 2)],
+        "right": [int(x + w), int(y + h / 2)],
+        "top": [int(x + w / 2), int(y)],
+        "bottom": [int(x + w / 2), int(y + h)],
+        "center": [center_x, center_y],
+    }
+
+
+def compute_edge_center_distances(
+    entries: List[Dict[str, object]],
+    px_to_mm: float,
+    show_edges: bool = True,
+    show_centers: bool = True,
+) -> List[dict]:
+    """Compute edge-edge and center-center distances between entries.
+
+    Each entry must provide:
+        - name: str
+        - points: Dict[str, List[int]] with left/right/top/bottom/center
+        - det_idx: int
+    """
+    measurements = []
+    edge_keys = ("left", "right", "top", "bottom")
+
+    for i in range(len(entries)):
+        for j in range(i + 1, len(entries)):
+            a = entries[i]
+            b = entries[j]
+            name_a = str(a.get("name", ""))
+            name_b = str(b.get("name", ""))
+            pts_a = a.get("points", {})
+            pts_b = b.get("points", {})
+
+            # Center-to-center distance
+            if show_centers:
+                pt_a = pts_a.get("center")
+                pt_b = pts_b.get("center")
+                if pt_a and pt_b:
+                    dx = pt_a[0] - pt_b[0]
+                    dy = pt_a[1] - pt_b[1]
+                    dist_px = math.hypot(dx, dy)
+                    measurements.append({
+                        "type": "center_distance",
+                        "label": f"Center {name_a} ↔ {name_b}",
+                        "value_px": round(dist_px, 1),
+                        "value_mm": round(dist_px * px_to_mm, 2),
+                        "pt1": pt_a,
+                        "pt2": pt_b,
+                        "det_indices": [a.get("det_idx"), b.get("det_idx")],
+                    })
+
+            # Edge-to-edge distances (all combinations)
+            if show_edges:
+                for ka in edge_keys:
+                    for kb in edge_keys:
+                        p1 = pts_a.get(ka)
+                        p2 = pts_b.get(kb)
+                        if not p1 or not p2:
+                            continue
+                        dx = p1[0] - p2[0]
+                        dy = p1[1] - p2[1]
+                        dist_px = math.hypot(dx, dy)
+                        measurements.append({
+                            "type": "edge_distance",
+                            "label": f"Edge {name_a}:{ka} ↔ {name_b}:{kb}",
+                            "value_px": round(dist_px, 1),
+                            "value_mm": round(dist_px * px_to_mm, 2),
+                            "pt1": p1,
+                            "pt2": p2,
+                            "det_indices": [a.get("det_idx"), b.get("det_idx")],
+                        })
+
+    return measurements
+
+
 def draw_measurements_on_image(
     image: np.ndarray,
     measurements: List[dict],
@@ -450,7 +548,9 @@ class ModelManager:
                     display = self._YOLO_DISPLAY_NAMES.get(folder, folder)
                     
                     if weight_file.suffix == ".engine":
-                        display += " (TensorRT)"
+                        display += " (TensorRT FP16)"
+                    else:
+                        display += " (FP16)"
 
                     self.available_models[folder] = {
                         "path": str(weight_file),
@@ -488,9 +588,11 @@ class ModelManager:
                 arch = meta.get("arch", folder)
                 
                 if weight_file.suffix == ".engine":
-                    display += " (TensorRT)"
+                    display += " (TensorRT FP16)"
                 elif weight_file.suffix == ".onnx":
-                    display += " (ONNX)"
+                    display += " (ONNX FP16)"
+                else:
+                    display += " (PyTorch FP16+Compile)"
 
                 self.available_models[folder] = {
                     "path": str(weight_file),
@@ -747,15 +849,34 @@ class ModelManager:
 
     def _predict_yolo(self, frame: np.ndarray) -> Tuple[np.ndarray, List[Dict]]:
         """YOLO-based inference with per-detection measurements and optional SOTA Tracking."""
+        # Enable FP16 only when CUDA is available
+        try:
+            import torch
+            use_half = torch.cuda.is_available()
+        except Exception:
+            use_half = False
+
+        yolo_imgsz = 640
+        yolo_conf = 0.1
+
         # 1. ByteTrack Object Tracking
         if getattr(self, "enable_tracking", False) and hasattr(self.current_model, "track"):
             results = self.current_model.track(
-                frame, imgsz=512, conf=0.25, verbose=False, persist=True, tracker="bytetrack.yaml"
+                frame,
+                imgsz=yolo_imgsz,
+                conf=yolo_conf,
+                verbose=False,
+                persist=True,
+                tracker="bytetrack.yaml",
             )
         else:
-            # Added half=True for FP16 inference
+            # Use FP16 only on GPU
             results = self.current_model.predict(
-                frame, imgsz=512, conf=0.25, verbose=False, half=True
+                frame,
+                imgsz=yolo_imgsz,
+                conf=yolo_conf,
+                verbose=False,
+                half=use_half,
             )
             
         result = results[0]
@@ -831,12 +952,24 @@ class ModelManager:
 
             # 3. Per-detection measurements (only when enabled)
             if self.camera_settings.enabled:
+                all_measurements = []
+                edge_center_entries = []
+                target_names = {"mechanical_part", "michanical_part", "magnet"}
+
                 for contour, cls_name, det_idx in det_contours:
                     measurements = compute_single_contour_measurements(
                         contour, px_to_mm, cls_name
                     )
                     if det_idx < len(detections):
                         detections[det_idx]["measurements"] = measurements
+                    all_measurements.extend(measurements)
+
+                    if cls_name.lower() in target_names:
+                        edge_center_entries.append({
+                            "name": cls_name,
+                            "points": compute_edge_center_points(contour),
+                            "det_idx": det_idx,
+                        })
 
                 # 4. Inter-detection min distances
                 for i in range(len(det_contours)):
@@ -864,11 +997,22 @@ class ModelManager:
                             detections[idx_a]["measurements"].append(dist_m)
                         if idx_b < len(detections):
                             detections[idx_b]["measurements"].append(dist_m)
+                        all_measurements.append(dist_m)
 
-                # 5. Draw measurement annotations
-                for det in detections:
+                # 5. Edge/center distances for mechanical parts and magnets
+                if edge_center_entries:
+                    extra_measurements = compute_edge_center_distances(
+                        edge_center_entries,
+                        px_to_mm,
+                        show_edges=self.camera_settings.show_edge_distances,
+                        show_centers=self.camera_settings.show_center_distances,
+                    )
+                    all_measurements.extend(extra_measurements)
+
+                # 6. Draw measurement annotations once
+                if all_measurements:
                     annotated = draw_measurements_on_image(
-                        annotated, det.get("measurements", []), px_to_mm
+                        annotated, all_measurements, px_to_mm
                     )
 
             # Always draw contour borders
@@ -1021,6 +1165,9 @@ class ModelManager:
 
             px_to_mm = self._get_px_to_mm(w, detection_masks)
             if self.camera_settings.enabled:
+                all_measurements = []
+                edge_center_entries = []
+                target_names = {"mechanical_part", "michanical_part", "magnet"}
                 det_idx = 0
                 for cls_id in range(1, num_channels):
                     cls_mask = (pred_resized == cls_id).astype(np.uint8) * 255
@@ -1035,7 +1182,29 @@ class ModelManager:
                         )
                         if det_idx < len(detections):
                             detections[det_idx]["measurements"] = measurements
+                        all_measurements.extend(measurements)
+
+                        if cls_name.lower() in target_names:
+                            edge_center_entries.append({
+                                "name": cls_name,
+                                "points": compute_edge_center_points(cnt),
+                                "det_idx": det_idx,
+                            })
                         det_idx += 1
+
+                if edge_center_entries:
+                    extra_measurements = compute_edge_center_distances(
+                        edge_center_entries,
+                        px_to_mm,
+                        show_edges=self.camera_settings.show_edge_distances,
+                        show_centers=self.camera_settings.show_center_distances,
+                    )
+                    all_measurements.extend(extra_measurements)
+
+                if all_measurements:
+                    overlay = draw_measurements_on_image(
+                        overlay, all_measurements, px_to_mm
+                    )
 
             return overlay, detections
 

@@ -696,6 +696,8 @@ const settingsToggle = document.getElementById("settingsToggle");
 const settingsBody = document.getElementById("settingsBody");
 const settingsChevron = document.getElementById("settingsChevron");
 const measurementEnabled = document.getElementById("measurementEnabled");
+const showEdgeDistances = document.getElementById("showEdgeDistances");
+const showCenterDistances = document.getElementById("showCenterDistances");
 const measurementMethod = document.getElementById("measurementMethod");
 const sensorWidth = document.getElementById("sensorWidth");
 const focalLength = document.getElementById("focalLength");
@@ -733,6 +735,8 @@ function syncEnabledState() {
         el.style.pointerEvents = on ? "auto" : "none";
     });
     measurementMethod.disabled = !on;
+    if (showEdgeDistances) showEdgeDistances.disabled = !on;
+    if (showCenterDistances) showCenterDistances.disabled = !on;
 }
 
 measurementMethod.addEventListener("change", syncMethodFields);
@@ -766,6 +770,8 @@ async function loadSettings() {
         if (!resp.ok) return;
         const s = await resp.json();
         measurementEnabled.checked = s.enabled ?? false;
+        showEdgeDistances.checked = s.show_edge_distances ?? true;
+        showCenterDistances.checked = s.show_center_distances ?? true;
         measurementMethod.value = s.method ?? "camera_intrinsics";
         // Camera intrinsics
         sensorWidth.value = s.sensor_width_mm ?? 6.17;
@@ -788,9 +794,11 @@ async function loadSettings() {
 }
 
 // Save settings to server
-btnSaveSettings.addEventListener("click", async () => {
+async function saveSettings(showToast = true) {
     const payload = {
         enabled: measurementEnabled.checked,
+        show_edge_distances: showEdgeDistances.checked,
+        show_center_distances: showCenterDistances.checked,
         method: measurementMethod.value,
         // Camera intrinsics
         sensor_width_mm: parseFloat(sensorWidth.value),
@@ -809,14 +817,22 @@ btnSaveSettings.addEventListener("click", async () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         });
-        if (resp.ok) {
+        if (resp.ok && showToast) {
             settingsSaved.style.display = "inline";
             setTimeout(() => (settingsSaved.style.display = "none"), 2000);
         }
     } catch (e) {
         console.error("Failed to save settings:", e);
     }
-});
+}
+
+btnSaveSettings.addEventListener("click", () => saveSettings(true));
+if (showEdgeDistances) {
+    showEdgeDistances.addEventListener("change", () => saveSettings(false));
+}
+if (showCenterDistances) {
+    showCenterDistances.addEventListener("change", () => saveSettings(false));
+}
 
 // Load settings on page load
 loadSettings();
