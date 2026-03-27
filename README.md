@@ -1074,6 +1074,9 @@ docker compose up --build
 | `GET` | `/api/mindvision/stream` | MJPEG stream of annotated MindVision frames |
 | `GET` | `/api/mindvision/latest` | Latest annotated MindVision frame (JPEG) |
 | `GET` | `/api/mindvision/status` | MindVision camera status |
+| `GET` | `/api/inference-logs?n=100` | Last N entries from the JSONL inference session log |
+| `GET` | `/api/inference-alerts` | Latest real-time inference validation alerts |
+| `GET` | `/api/live-metrics` | Aggregated live monitoring stats (latency, throughput, error rate) |
 
 ### Model Discovery
 
@@ -1116,3 +1119,20 @@ When measurements are enabled, the inference pipeline computes per-contour **bou
 - **Measurement settings** — collapsible panel with method selection and conditional parameter fields
 - **Save** — download annotated image + JSON (coordinates, measurements) for both live and upload flows
 - **MindVision camera viewer** — MJPEG stream for industrial USB cameras
+- **Inference Health panel** — live latency sparkline (last 60 frames), Min/Max/P95 stats, and scrolling alert feed with color-coded badges (info/warning/error) for FPS drops, high latency, missing detections, and low-confidence predictions
+
+### Inference Validation & Performance Logging
+
+The server continuously logs per-frame inference metrics to JSONL session files (`outputs/inference_logs/session_*.jsonl`) with automatic 10 MB rotation. Each entry records:
+
+```json
+{"ts":1711475100.123, "model":"unet_resnet18", "fps":22.0, "latency_ms":45.2, "detections":7, "avg_conf":0.912}
+```
+
+A real-time **validation gate** runs on every frame, generating alerts for:
+- **FPS < 5.0** — performance degradation warning
+- **Latency > 500 ms** — high latency warning
+- **0 detections** — empty frame info
+- **Confidence < 50%** — low confidence warning per detection
+
+Alerts are pushed to the client via the WebRTC DataChannel (with a REST polling fallback) and displayed in the **Inference Health** panel.

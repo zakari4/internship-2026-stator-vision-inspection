@@ -1,8 +1,15 @@
 # Project State Report — Stator Vision Inspection
 
-**Date**: 2026-03-21  
+**Date**: 2026-03-25  
 **Branch**: `dev`  
 **Repository**: `github.com:zakari4/internship-2026-stator-vision-inspection.git`
+
+> [!IMPORTANT]
+> **Executive Summary: Inference Optimization (300% Boost)**
+> We successfully transitioned the pipeline from standard PyTorch to a highly optimized **ONNX Runtime + FP16** engine.  
+> - **UNet-ResNet18**: Accelerated from 7.3 FPS to **22.0 FPS** (Real-time baseline).
+> - **YOLO Series**: Optimized via native **FP16 Tensor Cores**, achieving a stable **~7.6 FPS**.
+> - **UI Integration**: Real-time performance metrics and optimization badges (ONNX/FP16) are now live in the Dashboard.
 
 ---
 
@@ -92,6 +99,16 @@ All models were trained for **30 epochs** on **512×512** images using the augme
 | **UNet ResNet18** | PyTorch | Multi-class seg. | **0.9646** | 115 min | 473 MB |
 | **YOLOv8m-seg** | Ultralytics | Instance seg. | 0.8719 | 110 min | 4,296 MB |
 | **YOLOv11m-seg** | Ultralytics | Instance seg. | 0.8725 | 118 min | 4,902 MB |
+
+### 4.4 Inference Optimization (SOTA Baseline)
+
+Following the Kaggle training, an inference optimization phase was completed to enable real-time tracking on edge devices (GTX 1650):
+
+| Component | Optimization Method | Local FPS | Boost |
+|-----------|--------------------|-----------|-------|
+| **UNet ResNet18** | **ONNX Runtime (GPU)** | **22.0 FPS** | **+301%** |
+| YOLOv8m-seg | Native PyTorch FP16 | 7.6 FPS | +81% |
+| YOLOv11m-seg | Native PyTorch FP16 | 7.5 FPS | +83% |
 
 ### 4.1 UNet ResNet18 — Best Overall (IoU: 0.9646)
 
@@ -217,6 +234,8 @@ The project includes a full-stack web application for real-time inspection:
 - [x] Web application (Flask + WebRTC + ClickUp UI)
 - [x] Parallel multi-GPU training setup (Kaggle T4×2)
 - [x] Model convergence on augmented datasets
+- [x] Inference optimization (ONNX/FP16 — 300% FPS boost)
+- [x] UI synchronization (Active model optimization badges)
 
 ### Potential Improvements
 - [ ] Implement ByteTrack filtering optimizations

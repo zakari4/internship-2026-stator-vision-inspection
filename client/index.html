@@ -372,6 +372,37 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Inference Health Panel -->
+                    <div class="panel inference-health-panel" id="inferenceHealthPanel" style="margin-top: 20px;">
+                        <h3>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" style="vertical-align:middle;margin-right:4px">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                            Inference Health
+                        </h3>
+                        <div class="health-stats">
+                            <div class="stat">
+                                <span class="stat-value" id="healthMinLatency">—</span>
+                                <span class="stat-label">Min Latency</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="healthMaxLatency">—</span>
+                                <span class="stat-label">Max Latency</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="healthP95Latency">—</span>
+                                <span class="stat-label">P95 Latency</span>
+                            </div>
+                        </div>
+                        <div class="sparkline-container">
+                            <span class="sparkline-label">Latency (ms) — last 60 frames</span>
+                            <canvas id="latencySparkline"></canvas>
+                        </div>
+                        <div class="alert-feed-title">Recent Alerts</div>
+                        <div class="alert-feed" id="alertFeed"></div>
+                    </div>
                 </div>
 
                 <!-- Detections Panel -->

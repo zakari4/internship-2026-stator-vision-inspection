@@ -224,8 +224,11 @@ class VideoTransformTrack(MediaStreamTrack):
                 "detections": detections,
                 "inference_ms": round(inference_ms, 1),
                 "server_fps": round(self._fps, 1),
-                "model": model_manager.current_model_name or "none",
+                "model": model_manager.available_models.get(
+                    model_manager.current_model_name, {}
+                ).get("display_name", model_manager.current_model_name) or "none",
                 "timestamp": round(time.time(), 3),
+                "alerts": model_manager.get_latest_alerts(),
             }
             try:
                 dc.send(json.dumps(payload))
@@ -458,10 +461,16 @@ def api_detect_image():
 @app.route("/api/status", methods=["GET"])
 def api_status():
     """Health check / status endpoint."""
+    model_display = "none"
+    if model_manager.current_model_name:
+        model_display = model_manager.available_models.get(
+            model_manager.current_model_name, {}
+        ).get("display_name", model_manager.current_model_name)
+
     return jsonify(
         {
             "status": "running",
-            "active_model": model_manager.current_model_name,
+            "active_model": model_display,
             "active_connections": len(peer_connections),
             "available_models": len(model_manager.available_models),
             "mindvision_connected": _mv_latest_frame is not None,
@@ -472,6 +481,24 @@ def api_status():
 def api_live_metrics():
     """Return live aggregated metrics from detections.json."""
     return jsonify(metrics_tracker.get_stats())
+
+
+@app.route("/api/inference-logs", methods=["GET"])
+def api_inference_logs():
+    """Return the last N entries from the current JSONL inference session log."""
+    n = min(int(request.args.get("n", 100)), 500)
+    entries = model_manager._inference_logger.read_last_n(n)
+    return jsonify({
+        "entries": entries,
+        "session_file": str(model_manager._inference_logger.get_current_session_file().name),
+        "count": len(entries),
+    })
+
+
+@app.route("/api/inference-alerts", methods=["GET"])
+def api_inference_alerts():
+    """Return the latest inference validation alerts."""
+    return jsonify({"alerts": model_manager.get_latest_alerts()})
 
 
 # ═══════════════════════════════════════════════════════════════════════════

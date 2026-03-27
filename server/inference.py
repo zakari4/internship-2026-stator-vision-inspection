@@ -6,11 +6,14 @@ loads them on demand, and runs segmentation inference on video frames.
 Optionally performs post-processing measurements using camera calibration.
 """
 
+import json
 import os
 import sys
 import time
 import logging
 import math
+from collections import deque
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -27,6 +30,80 @@ if str(PROJECT_ROOT) not in sys.path:
 MODEL_BASE_DIR = Path(os.environ.get("MODEL_DIR", str(PROJECT_ROOT)))
 
 logger = logging.getLogger(__name__)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Inference Logger — persistent JSONL session logging
+# ═══════════════════════════════════════════════════════════════════════════
+
+class InferenceLogger:
+    """Writes per-frame inference metrics to a JSONL session file.
+
+    Each line is a JSON object with:
+        ts, model, fps, latency_ms, num_detections, avg_confidence
+
+    Files are stored under ``outputs/inference_logs/`` and rotate
+    when exceeding *max_bytes* (~10 MB).
+    """
+
+    MAX_BYTES = 10 * 1024 * 1024  # 10 MB per file
+
+    def __init__(self, log_dir: Optional[Path] = None):
+        self.log_dir = log_dir or (PROJECT_ROOT / "outputs" / "inference_logs")
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self._session_file = self._new_session_path()
+        self._bytes_written = 0
+
+    # -- public API -------------------------------------------------------
+
+    def log_frame(
+        self,
+        model_name: str,
+        fps: float,
+        latency_ms: float,
+        num_detections: int,
+        avg_confidence: float,
+    ) -> None:
+        entry = {
+            "ts": round(time.time(), 3),
+            "model": model_name,
+            "fps": round(fps, 1),
+            "latency_ms": round(latency_ms, 2),
+            "detections": num_detections,
+            "avg_conf": round(avg_confidence, 3),
+        }
+        line = json.dumps(entry, separators=(",", ":")) + "\n"
+        try:
+            with open(self._session_file, "a") as f:
+                f.write(line)
+            self._bytes_written += len(line)
+            if self._bytes_written >= self.MAX_BYTES:
+                self._rotate()
+        except OSError:
+            pass  # non-critical; silently skip
+
+    def get_current_session_file(self) -> Path:
+        return self._session_file
+
+    def read_last_n(self, n: int = 100) -> List[dict]:
+        """Read the last *n* entries from the current session file."""
+        try:
+            with open(self._session_file, "r") as f:
+                lines = f.readlines()
+            tail = lines[-n:] if len(lines) > n else lines
+            return [json.loads(l) for l in tail if l.strip()]
+        except (OSError, json.JSONDecodeError):
+            return []
+
+    # -- internals --------------------------------------------------------
+
+    def _new_session_path(self) -> Path:
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return self.log_dir / f"session_{ts}.jsonl"
+
+    def _rotate(self) -> None:
+        self._session_file = self._new_session_path()
+        self._bytes_written = 0
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -480,6 +557,13 @@ class ModelManager:
         # SOTA pipeline enhancements
         self.enable_tracking = False
         self.enable_edge_refinement = False
+
+        # Inference logging & validation
+        self._inference_logger = InferenceLogger()
+        self._latest_alerts: deque = deque(maxlen=20)
+        self._frame_fps = 0.0
+        self._fps_frame_count = 0
+        self._fps_window_start = time.monotonic()
         
         self._discover_models()
 
@@ -733,16 +817,88 @@ class ModelManager:
 
         info = self.available_models.get(self.current_model_name, {})
 
+        # FPS tracking (1-second window)
+        self._fps_frame_count += 1
+        now = time.monotonic()
+        elapsed = now - self._fps_window_start
+        if elapsed >= 1.0:
+            self._frame_fps = self._fps_frame_count / elapsed
+            self._fps_frame_count = 0
+            self._fps_window_start = now
+
+        t0 = time.monotonic()
         try:
             if info.get("type") == "yolo":
-                return self._predict_yolo(frame)
+                result = self._predict_yolo(frame)
             elif info.get("type") == "pytorch":
-                return self._predict_pytorch(frame)
+                result = self._predict_pytorch(frame)
             else:
                 return frame, []
         except Exception:
             logger.exception("Inference failed")
             return frame, []
+
+        latency_ms = (time.monotonic() - t0) * 1000
+        annotated, detections = result
+
+        # --- Logging & Validation ---
+        avg_conf = 0.0
+        if detections:
+            confs = [d.get("confidence", 0.0) for d in detections if "confidence" in d]
+            avg_conf = sum(confs) / len(confs) if confs else 0.0
+
+        self._inference_logger.log_frame(
+            model_name=self.current_model_name or "unknown",
+            fps=self._frame_fps,
+            latency_ms=latency_ms,
+            num_detections=len(detections),
+            avg_confidence=avg_conf,
+        )
+
+        alerts = self._validate_inference(
+            detections=detections,
+            fps=self._frame_fps,
+            latency_ms=latency_ms,
+        )
+        if alerts:
+            self._latest_alerts.extend(alerts)
+
+        return annotated, detections
+
+    def _validate_inference(
+        self,
+        detections: List[Dict],
+        fps: float,
+        latency_ms: float,
+    ) -> List[Dict]:
+        """Run quality checks on the latest inference frame.
+
+        Returns a list of alert dicts: ``{level, msg, ts}``.
+        Levels: ``info``, ``warning``, ``error``.
+        """
+        alerts: List[Dict] = []
+        ts = round(time.time(), 3)
+
+        if fps > 0 and fps < 5.0:
+            alerts.append({"level": "warning", "msg": f"FPS dropped to {fps:.1f}", "ts": ts})
+
+        if latency_ms > 500:
+            alerts.append({"level": "warning", "msg": f"High latency: {latency_ms:.0f} ms", "ts": ts})
+
+        if len(detections) == 0:
+            alerts.append({"level": "info", "msg": "No detections in frame", "ts": ts})
+
+        for det in detections:
+            conf = det.get("confidence", 1.0)
+            if conf < 0.5:
+                cls_name = det.get("class", "?")
+                alerts.append({"level": "warning", "msg": f"Low confidence: {cls_name} ({conf:.0%})", "ts": ts})
+
+        return alerts
+
+    def get_latest_alerts(self) -> List[Dict]:
+        """Return the most recent alerts (up to 20)."""
+        return list(self._latest_alerts)
 
     # ------------------------------------------------------------------
     # Measurement helpers

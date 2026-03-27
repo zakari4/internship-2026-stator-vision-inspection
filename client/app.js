@@ -369,6 +369,16 @@ function onDataChannelMessage(event) {
         updateStats(data);
         lastLiveDetections = data.detections || [];
         updateDetections(lastLiveDetections);
+
+        // Inference Health tracking
+        if (data.inference_ms != null) {
+            pushLatency(data.inference_ms);
+            drawSparkline();
+            updateHealthStats();
+        }
+        if (data.alerts && data.alerts.length > 0) {
+            updateAlertFeed(data.alerts);
+        }
     } catch (err) {
         console.warn("Bad DataChannel message:", err);
     }
@@ -880,3 +890,159 @@ btnSaveEnhancements.addEventListener("click", async () => {
 });
 
 loadEnhancements();
+
+// ═══════════════════════════════════════════════════════════════
+// Inference Health — Sparkline & Alert Feed
+// ═══════════════════════════════════════════════════════════════
+
+const LATENCY_BUFFER_SIZE = 60;
+const latencyBuffer = [];
+const healthMinEl = document.getElementById("healthMinLatency");
+const healthMaxEl = document.getElementById("healthMaxLatency");
+const healthP95El = document.getElementById("healthP95Latency");
+const alertFeedEl = document.getElementById("alertFeed");
+const sparkCanvas = document.getElementById("latencySparkline");
+let sparkCtx = null;
+
+if (sparkCanvas) {
+    sparkCtx = sparkCanvas.getContext("2d");
+}
+
+function pushLatency(ms) {
+    latencyBuffer.push(ms);
+    if (latencyBuffer.length > LATENCY_BUFFER_SIZE) {
+        latencyBuffer.shift();
+    }
+}
+
+function updateHealthStats() {
+    if (latencyBuffer.length === 0) return;
+
+    const sorted = [...latencyBuffer].sort((a, b) => a - b);
+    const minVal = sorted[0];
+    const maxVal = sorted[sorted.length - 1];
+    const p95Idx = Math.floor(sorted.length * 0.95);
+    const p95Val = sorted[Math.min(p95Idx, sorted.length - 1)];
+
+    if (healthMinEl) healthMinEl.textContent = minVal.toFixed(1) + " ms";
+    if (healthMaxEl) healthMaxEl.textContent = maxVal.toFixed(1) + " ms";
+    if (healthP95El) healthP95El.textContent = p95Val.toFixed(1) + " ms";
+}
+
+function drawSparkline() {
+    if (!sparkCtx || !sparkCanvas || latencyBuffer.length < 2) return;
+
+    // Resolve actual pixel dimensions (handle DPR)
+    const rect = sparkCanvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = rect.width - 16; // account for padding
+    const h = rect.height - 16;
+    sparkCanvas.width = w * dpr;
+    sparkCanvas.height = h * dpr;
+    sparkCtx.scale(dpr, dpr);
+
+    const data = latencyBuffer;
+    const maxVal = Math.max(...data) * 1.1 || 1;
+    const minVal = Math.min(...data) * 0.9 || 0;
+    const range = maxVal - minVal || 1;
+    const stepX = w / (LATENCY_BUFFER_SIZE - 1);
+
+    // Clear
+    sparkCtx.clearRect(0, 0, w, h);
+
+    // Fill gradient
+    const grad = sparkCtx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, "rgba(123, 104, 238, 0.25)");
+    grad.addColorStop(1, "rgba(123, 104, 238, 0.02)");
+
+    sparkCtx.beginPath();
+    sparkCtx.moveTo(0, h);
+    data.forEach((val, i) => {
+        const x = i * stepX;
+        const y = h - ((val - minVal) / range) * h;
+        sparkCtx.lineTo(x, y);
+    });
+    sparkCtx.lineTo((data.length - 1) * stepX, h);
+    sparkCtx.closePath();
+    sparkCtx.fillStyle = grad;
+    sparkCtx.fill();
+
+    // Line
+    sparkCtx.beginPath();
+    data.forEach((val, i) => {
+        const x = i * stepX;
+        const y = h - ((val - minVal) / range) * h;
+        if (i === 0) sparkCtx.moveTo(x, y);
+        else sparkCtx.lineTo(x, y);
+    });
+    sparkCtx.strokeStyle = "#7B68EE";
+    sparkCtx.lineWidth = 1.5;
+    sparkCtx.lineJoin = "round";
+    sparkCtx.stroke();
+
+    // Latest point dot
+    const lastX = (data.length - 1) * stepX;
+    const lastY = h - ((data[data.length - 1] - minVal) / range) * h;
+    sparkCtx.beginPath();
+    sparkCtx.arc(lastX, lastY, 3, 0, Math.PI * 2);
+    sparkCtx.fillStyle = "#7B68EE";
+    sparkCtx.fill();
+}
+
+function updateAlertFeed(alerts) {
+    if (!alertFeedEl) return;
+
+    // De-duplicate by message text within the last batch
+    const seen = new Set();
+    const unique = [];
+    for (const a of alerts) {
+        const key = a.msg;
+        if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(a);
+        }
+    }
+
+    unique.forEach(alert => {
+        const item = document.createElement("div");
+        item.className = "alert-item";
+
+        const badge = document.createElement("span");
+        badge.className = `alert-badge ${alert.level || "info"}`;
+
+        const msg = document.createElement("span");
+        msg.className = "alert-msg";
+        msg.textContent = alert.msg;
+
+        const timeEl = document.createElement("span");
+        timeEl.className = "alert-time";
+        const d = alert.ts ? new Date(alert.ts * 1000) : new Date();
+        timeEl.textContent = d.toLocaleTimeString();
+
+        item.appendChild(badge);
+        item.appendChild(msg);
+        item.appendChild(timeEl);
+
+        alertFeedEl.prepend(item);
+    });
+
+    // Cap at 30 items
+    while (alertFeedEl.children.length > 30) {
+        alertFeedEl.removeChild(alertFeedEl.lastChild);
+    }
+}
+
+// Polling fallback for alerts when DataChannel is not available
+setInterval(async () => {
+    if (dataChannel && dataChannel.readyState === "open") return; // DC handles it
+    try {
+        const res = await fetch("/api/inference-alerts");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.alerts && data.alerts.length > 0) {
+            updateAlertFeed(data.alerts);
+        }
+    } catch (e) {
+        // silently ignore
+    }
+}, 3000);
