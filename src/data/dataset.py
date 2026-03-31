@@ -151,36 +151,57 @@ def get_all_samples(
     """
     Retrieve all valid image-annotation pairs from the filesystem.
     
+    Robustly identifies images with corresponding JSON markers, explicitly
+    skipping and reporting any orphaned files (images without JSONs or
+    JSONs without images).
+    
     :param root_path: The base directory to scan.
     :param version_pattern: Optional prefix pattern (e.g. 'run_001_').
     :return: A list of consolidated Sample objects.
     """
-    samples = []
-    
-    # Get all JSON files
+    # 1. Gather all potential JSON and Image files
     if version_pattern:
-        json_pattern = os.path.join(root_path, version_pattern.replace("*", "*.json"))
+        pattern = version_pattern.replace("*", "")
+        json_glob = os.path.join(root_path, f"{pattern}*.json")
+        img_glob = os.path.join(root_path, f"{pattern}*")
     else:
-        json_pattern = os.path.join(root_path, "*.json")
+        json_glob = os.path.join(root_path, "*.json")
+        img_glob = os.path.join(root_path, "*")
     
-    json_files = glob.glob(json_pattern)
+    all_jsons = {os.path.splitext(os.path.basename(f))[0]: f for f in glob.glob(json_glob)}
     
-    for json_path in sorted(json_files):
-        # Get corresponding image path (support both .jpg and .png)
-        base_name = os.path.splitext(json_path)[0]
-        image_path = None
-        for ext in [".png", ".jpg", ".jpeg"]:
-            candidate = base_name + ext
-            if os.path.exists(candidate):
-                image_path = candidate
-                break
+    # Supported image extensions
+    IMAGE_EXTS = {".png", ".jpg", ".jpeg"}
+    all_images = {}
+    for f in glob.glob(img_glob):
+        ext = os.path.splitext(f)[1].lower()
+        if ext in IMAGE_EXTS:
+            stem = os.path.splitext(os.path.basename(f))[0]
+            all_images[stem] = f
+            
+    # 2. Find common stems (intersection)
+    valid_stems = set(all_jsons.keys()) & set(all_images.keys())
+    
+    # 3. Identify orphans for reporting
+    orphaned_images = set(all_images.keys()) - set(all_jsons.keys())
+    orphaned_jsons = set(all_jsons.keys()) - set(all_images.keys())
+    
+    if orphaned_images or orphaned_jsons:
+        print(f"\n[DATASET AUDIT] Found {len(valid_stems)} valid image-annotation pairs in {root_path}")
+        if orphaned_images:
+            print(f"  [SKIP] Found {len(orphaned_images)} images without JSON annotations: {sorted(list(orphaned_images))[:10]}{'...' if len(orphaned_images) > 10 else ''}")
+        if orphaned_jsons:
+            print(f"  [WARN] Found {len(orphaned_jsons)} JSON annotations without images: {sorted(list(orphaned_jsons))[:10]}{'...' if len(orphaned_jsons) > 10 else ''}")
+        print("")
+    
+    # 4. Construct Sample objects
+    samples = []
+    for stem in sorted(list(valid_stems)):
+        samples.append(Sample(
+            image_path=all_images[stem],
+            annotation_path=all_jsons[stem]
+        ))
         
-        if image_path is not None:
-            samples.append(Sample(
-                image_path=image_path,
-                annotation_path=json_path
-            ))
-    
     return samples
 
 

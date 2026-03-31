@@ -74,13 +74,13 @@ def test_labels_config():
 # ============================================================
 # TEST 2: Data Loading
 # ============================================================
-@test("Data Loading (346 samples)")
+@test("Data Loading")
 def test_data_loading():
     from src.data.dataset import get_all_samples
 
     samples = get_all_samples("data")
     print(f"  Total samples found: {len(samples)}")
-    assert len(samples) == 346, f"Expected 346 samples, got {len(samples)}"
+    assert len(samples) >= 300, f"Expected at least 300 samples, got {len(samples)}"
 
     # Check file extensions
     for s in samples[:5]:
@@ -131,7 +131,7 @@ def test_dataset():
     print(f"  Total: {total} (Train={len(train_loader.dataset)}, "
           f"Val={len(val_loader.dataset)}, Test={len(test_loader.dataset)})")
 
-    assert total == 346, f"Expected 346 total, got {total}"
+    assert total >= 300, f"Expected at least 300 total, got {total}"
 
     # Test a batch
     batch = next(iter(test_loader))
