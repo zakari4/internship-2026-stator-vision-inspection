@@ -156,4 +156,36 @@
     } else {
         init();
     }
+
+    // ── Measure Tool for MindVision ────────────────────────────
+    function initMVMeasure() {
+        const btnMeasure = document.getElementById("btnMeasureMV");
+        const streamImg = document.getElementById("mvStream");
+        if (!btnMeasure || !streamImg) return;
+
+        const mt = new MeasureTool(streamImg, {
+            onCalibrate: (pxToMm) => {
+                const manualInput = document.getElementById("manualPxToMm");
+                const methodSelect = document.getElementById("measurementMethod");
+                if (manualInput) manualInput.value = pxToMm.toFixed(5);
+                if (methodSelect) methodSelect.value = "manual";
+                if (typeof syncMethodFields === "function") syncMethodFields();
+            },
+        });
+        window._mvMeasure = mt;
+
+        btnMeasure.addEventListener("click", () => {
+            if (mt.active) {
+                mt.deactivate();
+            } else {
+                mt.activate();
+            }
+        });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initMVMeasure);
+    } else {
+        initMVMeasure();
+    }
 })();

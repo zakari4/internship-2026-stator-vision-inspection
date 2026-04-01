@@ -113,6 +113,12 @@
                                 <span>Show center distances</span>
                             </label>
                         </div>
+                        <div class="settings-row" style="margin-top: 6px;">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="showAlignedPairDistances">
+                                <span>Show aligned magnet/mechanical distances</span>
+                            </label>
+                        </div>
 
                         <!-- Measurement method selector -->
                         <div class="settings-row" style="margin-top:8px;">
@@ -239,6 +245,16 @@
                                 <span id="mvInference">Inference: —</span>
                                 <span id="mvDetCount">Detections: 0</span>
                             </div>
+                            <div class="mv-actions">
+                                <button id="btnMeasureMV" class="btn btn-measure btn-sm">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M2 12h4m4 0h4m4 0h4"/>
+                                        <circle cx="6" cy="12" r="2"/>
+                                        <circle cx="18" cy="12" r="2"/>
+                                    </svg>
+                                    📏 Measure
+                                </button>
+                            </div>
                             <div id="mvDetections" class="detections-list"></div>
                         </div>
                         <div class="mv-placeholder" id="mvPlaceholder">
@@ -291,6 +307,14 @@
                                 <button id="btnUploadAnother" class="btn btn-secondary">Upload Another</button>
                                 <button id="btnDownloadResult" class="btn btn-primary">Download Result</button>
                                 <button id="btnSaveUpload" class="btn btn-save">Save Image + JSON</button>
+                                <button id="btnMeasureUpload" class="btn btn-measure">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M2 12h4m4 0h4m4 0h4"/>
+                                        <circle cx="6" cy="12" r="2"/>
+                                        <circle cx="18" cy="12" r="2"/>
+                                    </svg>
+                                    📏 Measure
+                                </button>
                             </div>
                         </div>
                         <div class="upload-loading" id="uploadLoading" style="display:none;">
@@ -424,6 +448,7 @@
     <!-- Hidden canvas for snapshots -->
     <canvas id="snapshotCanvas" style="display:none;"></canvas>
 
+    <script src="/client/measure.js"></script>
     <script src="/client/app.js"></script>
     <script src="/client/mindvision.js"></script>
 </body>

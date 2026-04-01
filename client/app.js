@@ -606,7 +606,41 @@ function resetUpload() {
     uploadResult.src = "";
     uploadDetections.innerHTML = "";
     lastUploadData = null;
+    // Deactivate measure tool if active
+    if (window._uploadMeasure) window._uploadMeasure.deactivate();
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Measure Tool — Upload Section
+// ═══════════════════════════════════════════════════════════════
+
+(function initUploadMeasure() {
+    const btnMeasure = document.getElementById("btnMeasureUpload");
+    const resultImg = document.getElementById("uploadResult");
+    if (!btnMeasure || !resultImg) return;
+
+    // Create the MeasureTool once the image element exists
+    const mt = new MeasureTool(resultImg, {
+        onCalibrate: (pxToMm) => {
+            // Sync with the settings panel
+            const manualInput = document.getElementById("manualPxToMm");
+            const methodSelect = document.getElementById("measurementMethod");
+            if (manualInput) manualInput.value = pxToMm.toFixed(5);
+            if (methodSelect) methodSelect.value = "manual";
+            if (typeof syncMethodFields === "function") syncMethodFields();
+        },
+    });
+    window._uploadMeasure = mt;
+
+    btnMeasure.addEventListener("click", () => {
+        if (mt.active) {
+            mt.deactivate();
+        } else {
+            mt.activate();
+        }
+    });
+})();
+
 
 // ═══════════════════════════════════════════════════════════════
 // Save — Download predicted image + JSON coordinates
@@ -708,6 +742,7 @@ const settingsChevron = document.getElementById("settingsChevron");
 const measurementEnabled = document.getElementById("measurementEnabled");
 const showEdgeDistances = document.getElementById("showEdgeDistances");
 const showCenterDistances = document.getElementById("showCenterDistances");
+const showAlignedPairDistances = document.getElementById("showAlignedPairDistances");
 const measurementMethod = document.getElementById("measurementMethod");
 const sensorWidth = document.getElementById("sensorWidth");
 const focalLength = document.getElementById("focalLength");
@@ -747,6 +782,7 @@ function syncEnabledState() {
     measurementMethod.disabled = !on;
     if (showEdgeDistances) showEdgeDistances.disabled = !on;
     if (showCenterDistances) showCenterDistances.disabled = !on;
+    if (showAlignedPairDistances) showAlignedPairDistances.disabled = !on;
 }
 
 measurementMethod.addEventListener("change", syncMethodFields);
@@ -782,6 +818,7 @@ async function loadSettings() {
         measurementEnabled.checked = s.enabled ?? false;
         showEdgeDistances.checked = s.show_edge_distances ?? true;
         showCenterDistances.checked = s.show_center_distances ?? true;
+        showAlignedPairDistances.checked = s.show_aligned_pair_distances ?? false;
         measurementMethod.value = s.method ?? "camera_intrinsics";
         // Camera intrinsics
         sensorWidth.value = s.sensor_width_mm ?? 6.17;
@@ -809,6 +846,7 @@ async function saveSettings(showToast = true) {
         enabled: measurementEnabled.checked,
         show_edge_distances: showEdgeDistances.checked,
         show_center_distances: showCenterDistances.checked,
+        show_aligned_pair_distances: showAlignedPairDistances.checked,
         method: measurementMethod.value,
         // Camera intrinsics
         sensor_width_mm: parseFloat(sensorWidth.value),
@@ -842,6 +880,9 @@ if (showEdgeDistances) {
 }
 if (showCenterDistances) {
     showCenterDistances.addEventListener("change", () => saveSettings(false));
+}
+if (showAlignedPairDistances) {
+    showAlignedPairDistances.addEventListener("change", () => saveSettings(false));
 }
 
 // Load settings on page load

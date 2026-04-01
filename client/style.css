@@ -900,3 +900,115 @@ body {
     padding: 10px 0;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Measure Tool — Two-Point Calibration & Distance
+   ═══════════════════════════════════════════════════════════════ */
+
+.btn-measure {
+    background: linear-gradient(135deg, #00b4d8, #0096c7);
+    color: #fff;
+}
+
+.btn-measure:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0096c7, #0077b6);
+}
+
+.btn-measure svg {
+    opacity: 0.9;
+}
+
+.mv-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+/* Wrapper around the image — positions the canvas overlay */
+.measure-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.measure-wrapper img {
+    display: block;
+    width: 100%;
+}
+
+/* Transparent canvas overlay */
+.measure-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+    display: none;           /* shown when active */
+    z-index: 20;
+}
+
+/* Toolbar below the image */
+.measure-toolbar {
+    display: none;           /* shown when active */
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-top: 6px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    animation: fadeIn 0.25s ease;
+}
+
+.measure-toolbar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.measure-status {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.measure-calibrate-row {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.measure-calibrate-row label {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.measure-input {
+    width: 90px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    transition: border-color 0.2s;
+}
+
+.measure-input:focus {
+    outline: none;
+    border-color: #00b4d8;
+    box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.15);
+}
+
+.measure-btn-calibrate {
+    background: linear-gradient(135deg, #00b4d8, #0096c7) !important;
+    color: #fff !important;
+}
+
+.measure-toolbar-actions {
+    display: flex;
+    gap: 8px;
+}
