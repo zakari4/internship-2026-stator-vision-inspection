@@ -1,0 +1,35 @@
+# ==============================================================================
+# Training-only dependencies (lightweight ~3.5GB vs ~5.7GB full)
+# Install via: ./setup.sh --train
+# ==============================================================================
+
+# Core
+numpy>=1.21.0,<2.0.0
+
+# Image processing
+opencv-contrib-python>=4.5.0
+Pillow>=9.0.0
+
+# Deep Learning
+torch>=1.12.0
+torchvision>=0.13.0
+timm>=0.9.0
+
+# YOLO & RT-DETR (Ultralytics)
+ultralytics>=8.0.0
+
+# Plotting (training curves)
+matplotlib>=3.5.0
+
+# Progress bars
+tqdm>=4.64.0
+
+# Data handling
+pyyaml>=6.0
+
+# Hardware monitoring
+pynvml>=11.0.0
+psutil>=5.9.0
+
+# Natural sorting
+natsort>=8.0.0
