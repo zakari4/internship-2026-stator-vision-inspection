@@ -178,11 +178,12 @@ The project is organized as a standard Python package under `src/`:
 
 ### Automated Setup
 
-A single script handles the entire environment setup:
+A single script handles the entire environment setup. You can run it in **Default** mode (includes full Server/Web requirements) or in **Training** mode (skips heavy server packages like Flask for lean GPU training).
 
 ```bash
 chmod +x setup.sh
-./setup.sh
+./setup.sh           # Default (full environment)
+./setup.sh --train   # Lean training environment
 ```
 
 The script performs **7 sequential steps**:
@@ -1082,6 +1083,7 @@ The settings panel supports three calibration methods for converting pixel measu
 |--------|-----------|-------------|
 | **Camera Intrinsics** | `sensor_width_mm`, `focal_length_mm`, `object_distance_mm` | Computes px→mm from the pinhole camera model |
 | **Reference Label** | `reference_label_name`, `reference_known_dimension_mm`, `reference_dimension_type` | Uses a detected label with a known real-world size (diameter / width / height) as calibration reference |
+| **ML Depth (MiDaS)** | *None* | Runs dynamic monocular depth estimation (`MiDaS_Small`) locally per-frame to actively adjust the absolute distance baseline |
 | **Manual** | `manual_px_to_mm` | User-provided fixed mm-per-pixel factor |
 
 When measurements are enabled, the inference pipeline computes per-contour **bounding width/height**, **outer diameter**, **area**, **perimeter**, and **pairwise minimum distances** — all annotated directly on the output image.
@@ -1111,3 +1113,11 @@ A real-time **validation gate** runs on every frame, generating alerts for:
 - **Confidence < 50%** — low confidence warning per detection
 
 Alerts are pushed to the client via the WebRTC DataChannel (with a REST polling fallback) and displayed in the **Inference Health** panel.
+
+### Post-Processing & Heuristic Filters
+
+All predictions streaming from active YOLO and PyTorch networks bypass standard unconstrained rendering. Instead, they run through a rigorous custom engine (`apply_top_n_filtering` and `apply_spatial_heuristic_correction` in `inference.py`) that enforces physical laws natively on the stator structure:
+
+1. **Top-N Limits**: Noises and hallucinations are dropped dynamically by enforcing absolute limits sorted by highest confidence bounding probabilities: Limit `1x Circle`, `2x Magnets`, `4x Mechanical Parts`.
+2. **Spatial Autocorrection (PyTorch)**: Resolves semantic segmentation ambiguity by tracking the rotational geometry around the Stator. Components detected on the pure Cardinals (Top/Bottom/Left/Right ±25°) are hardcoded to **Magnet**, while Diagonals automatically parse to **Mechanical Part**. 
+3. **Overlaid Text Annotations**: Live YOLO and PyTorch output screens stream `cv2.putText` tags directly detailing parsed classifications and accurate confidences natively on the backend streams.

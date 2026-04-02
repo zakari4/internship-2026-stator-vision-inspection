@@ -61,3 +61,9 @@ outputs/
 !outputs/results/
 outputs/results/*
 !outputs/results/plots/
+
+# ---- Local Scripts / Maps ----
+generate_diagrams.py
+PROJECT_MAP.md
+scripts/generate_latex_report.py
+scripts/md_to_pdf.py

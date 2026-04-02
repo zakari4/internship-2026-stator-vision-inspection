@@ -120,7 +120,7 @@ class CameraSettings:
         - manual            : user provides a fixed px→mm factor
     """
 
-    VALID_METHODS = ("camera_intrinsics", "reference_label", "manual")
+    VALID_METHODS = ("camera_intrinsics", "reference_label", "manual", "ml_depth_midas")
     VALID_DIM_TYPES = ("diameter", "width", "height")
 
     def __init__(self):
@@ -131,6 +131,7 @@ class CameraSettings:
         # Measurement overlays
         self.show_edge_distances: bool = True
         self.show_center_distances: bool = True
+        self.show_aligned_pair_distances: bool = False
 
         # Camera-intrinsics parameters
         self.sensor_width_mm: float = 6.17
@@ -196,6 +197,7 @@ class CameraSettings:
             "method": self.method,
             "show_edge_distances": self.show_edge_distances,
             "show_center_distances": self.show_center_distances,
+            "show_aligned_pair_distances": self.show_aligned_pair_distances,
             # camera intrinsics
             "sensor_width_mm": self.sensor_width_mm,
             "focal_length_mm": self.focal_length_mm,
@@ -217,6 +219,8 @@ class CameraSettings:
             self.show_edge_distances = bool(data["show_edge_distances"])
         if "show_center_distances" in data:
             self.show_center_distances = bool(data["show_center_distances"])
+        if "show_aligned_pair_distances" in data:
+            self.show_aligned_pair_distances = bool(data["show_aligned_pair_distances"])
         # camera intrinsics
         if "sensor_width_mm" in data:
             self.sensor_width_mm = float(data["sensor_width_mm"])
@@ -241,6 +245,80 @@ class CameraSettings:
 # ═══════════════════════════════════════════════════════════════════════════
 # Post-processing: measurements on segmentation masks
 # ═══════════════════════════════════════════════════════════════════════════
+
+def apply_top_n_filtering(detections: List[Dict]) -> List[Dict]:
+    """
+    Limits the number of detections by confidence score:
+    - 1 Circle
+    - 2 Magnets
+    - 4 Mechanical Parts
+    """
+    limits = {
+        "circle": 1,
+        "magnet": 2,
+        "mechanical_part": 4,
+        "michanical_part": 4
+    }
+    
+    # Group by normalized class name
+    grouped = {}
+    for det in detections:
+        cname = det.get("class_name", "").lower()
+        if cname not in grouped:
+            grouped[cname] = []
+        grouped[cname].append(det)
+        
+    filtered = []
+    for cname, items in grouped.items():
+        # Sort descending by confidence
+        sorted_items = sorted(items, key=lambda x: x.get("confidence", 0.0), reverse=True)
+        # Apply limit if it exists
+        limit = limits.get(cname, len(sorted_items))
+        filtered.extend(sorted_items[:limit])
+        
+    return filtered
+
+def apply_spatial_heuristic_correction(detections: List[Dict]) -> List[Dict]:
+    """
+    Corrects misclassified Magnets and Mechanical Parts for PyTorch models using 
+    their spatial position relative to the main Stator Circle.
+    """
+    # 1. Find the circle (stator center)
+    circle_det = None
+    for det in detections:
+        if det.get("class_name", "").lower() == "circle":
+            if circle_det is None or det.get("confidence", 0.0) > circle_det.get("confidence", 0.0):
+                circle_det = det
+                
+    if not circle_det:
+        return detections  # Cannot apply spatial mapping without a center reference
+        
+    # Get circle center
+    cx1, cy1, cx2, cy2 = circle_det["bbox"]
+    circle_cx = (cx1 + cx2) / 2.0
+    circle_cy = (cy1 + cy2) / 2.0
+    
+    for det in detections:
+        cname = det.get("class_name", "").lower()
+        if cname in ["magnet", "mechanical_part", "michanical_part"]:
+            x1, y1, x2, y2 = det["bbox"]
+            det_cx = (x1 + x2) / 2.0
+            det_cy = (y1 + y2) / 2.0
+            
+            # Calculate angle in degrees
+            angle = math.degrees(math.atan2(det_cy - circle_cy, det_cx - circle_cx)) % 360
+            
+            # Near 0, 90, 180, 270 degrees (+/- 25 deg tolerance) implies Magnet
+            is_cardinal = any(abs(angle - target) <= 25 for target in [0, 90, 180, 270, 360])
+            
+            if is_cardinal:
+                det["class_name"] = "magnet"
+                det["class_id"] = 2  # Based on mapping: 2 is magnet 
+            else:
+                det["class_name"] = "michanical_part"
+                det["class_id"] = 1  # 1 is michanical_part
+                
+    return detections
 
 def compute_contour_measurements(
     contours: List[np.ndarray],
@@ -493,6 +571,108 @@ def compute_edge_center_distances(
                             "pt2": p2,
                             "det_indices": [a.get("det_idx"), b.get("det_idx")],
                         })
+
+    return measurements
+
+
+def compute_aligned_same_class_distances(
+    entries: List[Dict[str, object]],
+    px_to_mm: float,
+    alignment_ratio: float = 0.4,
+) -> List[dict]:
+    """Compute center distances for aligned same-family pairs with blocker filtering."""
+    measurements: List[dict] = []
+
+    def normalize_family(name: object) -> Optional[str]:
+        n = str(name or "").strip().lower()
+        if n in {"mechanical_part", "michanical_part"}:
+            return "mechanical_part"
+        if n == "magnet":
+            return "magnet"
+        return None
+
+    normalized_entries = []
+    for e in entries:
+        family = normalize_family(e.get("name"))
+        center = (e.get("points") or {}).get("center")
+        if family is None or not center:
+            continue
+        normalized_entries.append({
+            "family": family,
+            "center": center,
+            "det_idx": e.get("det_idx"),
+        })
+
+    for i in range(len(normalized_entries)):
+        for j in range(i + 1, len(normalized_entries)):
+            a = normalized_entries[i]
+            b = normalized_entries[j]
+
+            # Measure only same-family pairs.
+            if a["family"] != b["family"]:
+                continue
+
+            pt_a = a["center"]
+            pt_b = b["center"]
+
+            dx = abs(pt_a[0] - pt_b[0])
+            dy = abs(pt_a[1] - pt_b[1])
+            span = max(dx, dy)
+            if span < 1:
+                continue
+
+            align_tol = max(8.0, float(span) * alignment_ratio)
+            line_tol = max(6.0, align_tol * 0.75)
+
+            vertical_ok = dx <= align_tol
+            horizontal_ok = dy <= align_tol
+            if not vertical_ok and not horizontal_ok:
+                continue
+
+            # Pick the tighter axis if both are acceptable.
+            if vertical_ok and (not horizontal_ok or dx <= dy):
+                orientation = "vertical"
+            else:
+                orientation = "horizontal"
+
+            opposite_family = "magnet" if a["family"] == "mechanical_part" else "mechanical_part"
+
+            # E1->Magnet->E2 (or inverse family) blocker rule.
+            blocked = False
+            if orientation == "vertical":
+                x_line = (pt_a[0] + pt_b[0]) / 2.0
+                y_min, y_max = sorted((pt_a[1], pt_b[1]))
+                for k, c in enumerate(normalized_entries):
+                    if k in (i, j) or c["family"] != opposite_family:
+                        continue
+                    cx, cy = c["center"]
+                    if abs(cx - x_line) <= line_tol and y_min <= cy <= y_max:
+                        blocked = True
+                        break
+            else:
+                y_line = (pt_a[1] + pt_b[1]) / 2.0
+                x_min, x_max = sorted((pt_a[0], pt_b[0]))
+                for k, c in enumerate(normalized_entries):
+                    if k in (i, j) or c["family"] != opposite_family:
+                        continue
+                    cx, cy = c["center"]
+                    if abs(cy - y_line) <= line_tol and x_min <= cx <= x_max:
+                        blocked = True
+                        break
+
+            if blocked:
+                continue
+
+            dist_px = math.hypot(pt_a[0] - pt_b[0], pt_a[1] - pt_b[1])
+            measurements.append({
+                "type": "aligned_pair_distance",
+                "label": f"Aligned {a['family']} ({orientation})",
+                "value_px": round(dist_px, 1),
+                "value_mm": round(dist_px * px_to_mm, 2),
+                "pt1": pt_a,
+                "pt2": pt_b,
+                "det_indices": [a.get("det_idx"), b.get("det_idx")],
+            })
 
     return measurements
 
@@ -908,16 +1088,17 @@ class ModelManager:
         self,
         image_width: int,
         detection_masks: Optional[List[Tuple[str, np.ndarray]]] = None,
+        frame: Optional[np.ndarray] = None,
     ) -> float:
         """Compute mm-per-pixel factor based on the active method.
 
         Args:
             image_width: Width of the image in pixels.
-            detection_masks: List of (class_name, binary_mask) tuples –
-                only needed for the ``reference_label`` method.
+            detection_masks: List of (class_name, binary_mask) tuples.
+            frame: Raw BGR frame for ML-based depth generation.
 
         Returns:
-            mm-per-pixel factor (1.0 when measurements are disabled).
+            mm-per-pixel factor.
         """
         cs = self.camera_settings
         if not cs.enabled:
@@ -929,7 +1110,44 @@ class ModelManager:
         if cs.method == "reference_label":
             return self._px_to_mm_from_detections(detection_masks)
 
-        # Default: camera_intrinsics
+        if cs.method == "ml_depth_midas" and frame is not None:
+            # Dynamically estimate absolute distance using relative ML heatmap bridged to Intrinsics
+            try:
+                import torch
+                # Lazy compile loader 
+                if not hasattr(self, "_midas_model"):
+                    logger.info("Initializing MiDaS Model weights...")
+                    self._midas_model = torch.hub.load("intel-isl/MiDaS", "MiDaS_small", trust_repo=True)
+                    self._midas_transform = torch.hub.load("intel-isl/MiDaS", "transforms", trust_repo=True).small_transform
+                    self._midas_device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+                    self._midas_model.to(self._midas_device).eval()
+
+                img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                input_batch = self._midas_transform(img_rgb).to(self._midas_device)
+                with torch.no_grad():
+                    pred = self._midas_model(input_batch)
+                    pred = torch.nn.functional.interpolate(
+                        pred.unsqueeze(1),
+                        size=img_rgb.shape[:2],
+                        mode="bicubic",
+                        align_corners=False,
+                    ).squeeze()
+                
+                # Inverse depth space -> take median foreground depth 
+                depth_map = pred.cpu().numpy()
+                median_disp = float(np.median(depth_map))
+                
+                # Use focal_length and sensor width from camera_intrinsics mapped to MiDaS outputs!
+                # Since MiDaS outputs inverse depth (disparity), Distance ~ baseline / disparity
+                # We normalize it against a generic metric scalar ~10000 to reach approximate mm.
+                if median_disp > 0:
+                    inferred_distance_mm = (10000.0 / median_disp) 
+                    cs.object_distance_mm = inferred_distance_mm  # Bridge absolute baseline 
+                    return cs.pixel_to_mm_intrinsics(image_width)
+            except Exception as e:
+                logger.error("MiDaS execution failed: %s. Falling back to intrinsics.", e)
+                
+        # Default fallback
         return cs.pixel_to_mm_intrinsics(image_width)
 
     def _px_to_mm_from_detections(
@@ -982,7 +1200,7 @@ class ModelManager:
                 reference-based calibration.
         """
         h, w = mask.shape[:2]
-        px_to_mm = self._get_px_to_mm(w, detection_masks)
+        px_to_mm = self._get_px_to_mm(w, detection_masks, annotated)
 
         contours, _ = cv2.findContours(
             mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
@@ -1036,7 +1254,7 @@ class ModelManager:
             )
             
         result = results[0]
-        annotated = result.plot()
+        annotated = frame.copy()  # Instead of result.plot(), we draw manually to enforce Top-N limits
         h, w = frame.shape[:2]
 
         detections = []
@@ -1052,61 +1270,82 @@ class ModelManager:
                         result.masks is not None and i < len(result.masks)
                     ),
                     "measurements": [],
+                    "idx": i  # temporary mapping
                 }
                 if box.is_track and getattr(self, "enable_tracking", False):
                     det["track_id"] = int(box.id.item()) if box.id is not None else -1
                 detections.append(det)
 
+        # Apply Top N Filtering 
+        detections = apply_top_n_filtering(detections)
+
         # Per-detection mask processing
         if result.masks is not None:
-            # 1. Extract per-detection binary masks and largest contour
             detection_masks: List[Tuple[str, np.ndarray]] = []
             det_contours: List[Tuple[np.ndarray, str, int]] = []
             
-            # Prepare guide image for Edge Refinement if enabled
+            CLASS_COLORS_MAP = {
+                "michanical_part": (0, 255, 0),
+                "mechanical_part": (0, 255, 0),
+                "magnet": (255, 0, 255),
+                "circle": (255, 255, 0),
+            }
+
             do_edge_refine = getattr(self, "enable_edge_refinement", False)
-            guide_img = None
+            guide_filter = None
             if do_edge_refine:
                 try:
-                    # Creating a guided filter requires cv2.ximgproc
                     guide_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                     guide_filter = cv2.ximgproc.createGuidedFilter(guide_img, radius=8, eps=50)
                 except AttributeError:
-                    logger.warning("cv2.ximgproc not found; edge refinement requires opencv-contrib-python. Skipping refinement.")
                     do_edge_refine = False
 
-            for i, mask_data in enumerate(result.masks.data):
+            for det_idx, det in enumerate(detections):
+                orig_idx = det["idx"]
+                if not det["has_mask"]:
+                    continue
+                    
+                mask_data = result.masks.data[orig_idx]
                 m = mask_data.cpu().numpy()
                 m_resized = cv2.resize(m, (w, h))
                 
-                # 2. EDGE REFINEMENT (PointRend Simulator)
                 if do_edge_refine and guide_filter is not None:
-                    # Apply guided filter: guide is the high-res original gray frame, 
-                    # target is the blocky resized float mask.
                     m_refined = guide_filter.filter((m_resized * 255.0).astype(np.uint8))
                     m_bin = (m_refined > 127).astype(np.uint8) * 255
                 else:
                     m_bin = (m_resized > 0.5).astype(np.uint8) * 255
 
-                cls_name = "unknown"
-                if result.boxes is not None and i < len(result.boxes):
-                    cls_id = int(result.boxes[i].cls.item())
-                    cls_name = result.names.get(cls_id, "unknown")
+                cls_name = det.get("class_name", "unknown")
                 detection_masks.append((cls_name, m_bin))
 
-                # Largest contour for this detection
                 cnts, _ = cv2.findContours(
                     m_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
                 )
                 if cnts:
                     largest = max(cnts, key=cv2.contourArea)
                     if cv2.contourArea(largest) > 50:
-                        det_contours.append((largest, cls_name, i))
+                        det_contours.append((largest, cls_name, det_idx))
+                        
+                # Draw mask overlay manually
+                color = CLASS_COLORS_MAP.get(cls_name.lower(), (0, 255, 255))
+                color_layer = np.zeros_like(frame)
+                color_layer[m_bin > 127] = color
+                annotated = cv2.addWeighted(annotated, 1.0, color_layer, 0.35, 0)
+                
+                # UI Text & BBox Render
+                x1, y1, x2, y2 = det["bbox"]
+                cv2.rectangle(annotated, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
+                label_text = f"{cls_name} {det.get('confidence', 0.0):.2f}"
+                cv2.putText(annotated, label_text, (int(x1), max(15, int(y1) - 5)), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
 
-            # 2. Resolve px→mm (reference label inspects detected masks)
-            px_to_mm = self._get_px_to_mm(w, detection_masks)
+            # Cleanup internal mapping
+            for det in detections:
+                if "idx" in det:
+                    del det["idx"]
 
-            # 3. Per-detection measurements (only when enabled)
+            px_to_mm = self._get_px_to_mm(w, detection_masks, frame)
+
             if self.camera_settings.enabled:
                 all_measurements = []
                 edge_center_entries = []
@@ -1127,7 +1366,6 @@ class ModelManager:
                             "det_idx": det_idx,
                         })
 
-                # 4. Inter-detection min distances
                 for i in range(len(det_contours)):
                     for j in range(i + 1, len(det_contours)):
                         cnt_a, name_a, idx_a = det_contours[i]
@@ -1155,7 +1393,6 @@ class ModelManager:
                             detections[idx_b]["measurements"].append(dist_m)
                         all_measurements.append(dist_m)
 
-                # 5. Edge/center distances for mechanical parts and magnets
                 if edge_center_entries:
                     extra_measurements = compute_edge_center_distances(
                         edge_center_entries,
@@ -1164,14 +1401,20 @@ class ModelManager:
                         show_centers=self.camera_settings.show_center_distances,
                     )
                     all_measurements.extend(extra_measurements)
+                    if self.camera_settings.show_aligned_pair_distances:
+                        all_measurements.extend(
+                            compute_aligned_same_class_distances(
+                                edge_center_entries,
+                                px_to_mm,
+                            )
+                        )
 
-                # 6. Draw measurement annotations once
                 if all_measurements:
                     annotated = draw_measurements_on_image(
                         annotated, all_measurements, px_to_mm
                     )
 
-            # Always draw contour borders
+            # Draw contour borders for valid det_contours
             for contour, _, _ in det_contours:
                 cv2.drawContours(
                     annotated, [contour], -1, (0, 255, 255), 2, cv2.LINE_AA
@@ -1246,7 +1489,6 @@ class ModelManager:
                 interpolation=cv2.INTER_NEAREST
             )
 
-            # Prepare guide image for Edge Refinement if enabled
             do_edge_refine = getattr(self, "enable_edge_refinement", False)
             guide_filter = None
             if do_edge_refine:
@@ -1254,16 +1496,13 @@ class ModelManager:
                     guide_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                     guide_filter = cv2.ximgproc.createGuidedFilter(guide_img, radius=8, eps=50)
                 except AttributeError:
-                    logger.warning("cv2.ximgproc not found. Skipping refinement.")
                     do_edge_refine = False
 
-            overlay = frame.copy()
+            # --- Pass 1: Extraction & Discovery ---
             detections = []
-
-            for cls_id in range(1, num_channels):  # skip background (0)
+            for cls_id in range(1, num_channels):  # skip background
                 cls_mask = (pred_resized == cls_id).astype(np.uint8) * 255
                 
-                # EDGE REFINEMENT
                 if do_edge_refine and guide_filter is not None:
                     cls_mask = guide_filter.filter(cls_mask)
                     cls_mask = (cls_mask > 127).astype(np.uint8) * 255
@@ -1271,27 +1510,9 @@ class ModelManager:
                 if cls_mask.sum() == 0:
                     continue
 
-                # Colour overlay for this class
-                colour_layer = np.zeros_like(frame)
-                colour_layer[cls_mask > 127] = CLASS_COLORS.get(
-                    cls_id, (0, 255, 0)
-                )
-                overlay = cv2.addWeighted(overlay, 1.0, colour_layer, 0.35, 0)
-
-                # Find contours for this class
-                contours, _ = cv2.findContours(
-                    cls_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-                )
+                contours, _ = cv2.findContours(cls_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 contours = [c for c in contours if cv2.contourArea(c) > 50]
 
-                # Draw contour borders
-                cv2.drawContours(
-                    overlay, contours, -1,
-                    CLASS_COLORS.get(cls_id, (0, 255, 0)), 2, cv2.LINE_AA
-                )
-
-                # Per-contour detections
-                # Get per-class probability map resized to original frame
                 cls_prob = cv2.resize(probs[cls_id], (w, h))
 
                 for cnt in contours:
@@ -1309,58 +1530,113 @@ class ModelManager:
                         "bbox": [float(x), float(y), float(x + cw), float(y + ch)],
                         "has_mask": True,
                         "measurements": [],
+                        "contour": cnt,
                     })
 
-            # Optional measurements
+            # --- Pass 2: Heuristic Overrides & Filtering ---
+            detections = apply_spatial_heuristic_correction(detections)
+            detections = apply_top_n_filtering(detections)
+
+            # --- Pass 3: Rendering & Measurements ---
+            overlay = frame.copy()
             detection_masks = []
-            for cls_id in range(1, num_channels):
-                cls_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
-                cls_mask = (pred_resized == cls_id).astype(np.uint8) * 255
-                if cls_mask.sum() > 0:
-                    detection_masks.append((cls_name, cls_mask))
+            
+            # Combine individual objects into class masks for px_to_mm computation
+            merged_class_masks = {}
+            for det in detections:
+                cname = det["class_name"]
+                if cname not in merged_class_masks:
+                    merged_class_masks[cname] = np.zeros((h, w), dtype=np.uint8)
+                cv2.drawContours(merged_class_masks[cname], [det["contour"]], -1, 255, -1)
 
-            px_to_mm = self._get_px_to_mm(w, detection_masks)
+            for cname, m in merged_class_masks.items():
+                detection_masks.append((cname, m))
+
+            px_to_mm = self._get_px_to_mm(w, detection_masks, frame)
+            
+            all_measurements = []
+            edge_center_entries = []
+            target_names = {"mechanical_part", "michanical_part", "magnet"}
+            
+            for det_idx, det in enumerate(detections):
+                cls_name = det["class_name"]
+                cls_id = det["class_id"]
+                cnt = det["contour"]
+                color = CLASS_COLORS.get(cls_id, (0, 255, 0))
+
+                # Splash Fill
+                color_layer = np.zeros_like(frame)
+                cv2.drawContours(color_layer, [cnt], -1, color, -1)
+                overlay = cv2.addWeighted(overlay, 1.0, color_layer, 0.35, 0)
+                
+                # Borders
+                cv2.drawContours(overlay, [cnt], -1, color, 2, cv2.LINE_AA)
+                
+                # UI Text & Bounding Box
+                x1, y1, x2, y2 = det["bbox"]
+                cv2.rectangle(overlay, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
+                label_text = f"{cls_name} {det['confidence']:.2f}"
+                cv2.putText(overlay, label_text, (int(x1), max(15, int(y1) - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+                
+                # Measurements
+                if self.camera_settings.enabled:
+                    measurements = compute_single_contour_measurements(cnt, px_to_mm, cls_name)
+                    det["measurements"] = measurements
+                    all_measurements.extend(measurements)
+                    
+                    if cls_name.lower() in target_names:
+                        edge_center_entries.append({
+                            "name": cls_name,
+                            "points": compute_edge_center_points(cnt),
+                            "det_idx": det_idx,
+                        })
+
+            # Resolve inter-contour measurements
             if self.camera_settings.enabled:
-                all_measurements = []
-                edge_center_entries = []
-                target_names = {"mechanical_part", "michanical_part", "magnet"}
-                det_idx = 0
-                for cls_id in range(1, num_channels):
-                    cls_mask = (pred_resized == cls_id).astype(np.uint8) * 255
-                    contours_cls, _ = cv2.findContours(
-                        cls_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-                    )
-                    contours_cls = [c for c in contours_cls if cv2.contourArea(c) > 50]
-                    cls_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
-                    for cnt in contours_cls:
-                        measurements = compute_single_contour_measurements(
-                            cnt, px_to_mm, cls_name
-                        )
-                        if det_idx < len(detections):
-                            detections[det_idx]["measurements"] = measurements
-                        all_measurements.extend(measurements)
-
-                        if cls_name.lower() in target_names:
-                            edge_center_entries.append({
-                                "name": cls_name,
-                                "points": compute_edge_center_points(cnt),
-                                "det_idx": det_idx,
-                            })
-                        det_idx += 1
+                for i in range(len(detections)):
+                    for j in range(i + 1, len(detections)):
+                        cnt_a = detections[i]["contour"]
+                        cnt_b = detections[j]["contour"]
+                        if len(cnt_a) < 2 or len(cnt_b) < 2:
+                            continue
+                        pts_a = cnt_a.reshape(-1, 2).astype(np.float64)
+                        pts_b = cnt_b.reshape(-1, 2).astype(np.float64)
+                        dists = cdist(pts_a, pts_b)
+                        min_dist = float(np.min(dists))
+                        idx = np.unravel_index(np.argmin(dists), dists.shape)
+                        pt_a = pts_a[idx[0]].astype(int).tolist()
+                        pt_b = pts_b[idx[1]].astype(int).tolist()
+                        dist_m = {
+                            "type": "distance",
+                            "label": f"{detections[i]['class_name']} \u2194 {detections[j]['class_name']}",
+                            "value_px": round(min_dist, 1),
+                            "value_mm": round(min_dist * px_to_mm, 2),
+                            "pt1": pt_a,
+                            "pt2": pt_b,
+                        }
+                        detections[i]["measurements"].append(dist_m)
+                        detections[j]["measurements"].append(dist_m)
+                        all_measurements.append(dist_m)
 
                 if edge_center_entries:
                     extra_measurements = compute_edge_center_distances(
-                        edge_center_entries,
-                        px_to_mm,
+                        edge_center_entries, px_to_mm,
                         show_edges=self.camera_settings.show_edge_distances,
                         show_centers=self.camera_settings.show_center_distances,
                     )
                     all_measurements.extend(extra_measurements)
+                    if self.camera_settings.show_aligned_pair_distances:
+                        all_measurements.extend(
+                            compute_aligned_same_class_distances(edge_center_entries, px_to_mm)
+                        )
 
                 if all_measurements:
-                    overlay = draw_measurements_on_image(
-                        overlay, all_measurements, px_to_mm
-                    )
+                    overlay = draw_measurements_on_image(overlay, all_measurements, px_to_mm)
+
+            # Cleanup internal container
+            for det in detections:
+                if "contour" in det:
+                    del det["contour"]
 
             return overlay, detections
 
@@ -1417,7 +1693,7 @@ class ModelManager:
             })
 
         detection_masks = [("foreground", mask_resized)]
-        px_to_mm = self._get_px_to_mm(w, detection_masks)
+        px_to_mm = self._get_px_to_mm(w, detection_masks, frame)
 
         if self.camera_settings.enabled and contours:
             for i, cnt in enumerate(contours):

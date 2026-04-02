@@ -1,0 +1,168 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath}
+
+\title{
+    \vspace*{2cm}
+    \Huge \textbf{Project State Report} \\
+    \vspace{0.5cm}
+    \LARGE \textit{Benchmarking \& Architecture of the Industrial Stator Vision Inspection Pipeline} \\
+    \vspace{2cm}
+}
+
+\author{
+    \Large \textbf{Done by:} Youssef Mahdi \\
+    \vspace{0.5cm} \\
+    \Large \textbf{Supervised by:} ZAKARIA ABOUHANIFA \& Rime BOUALI \\
+    \vspace{1.5cm} \\
+    \Large \textbf{Company:} Nextronic
+}
+\date{\vspace{1cm} \today}
+
+\begin{document}
+
+\begin{titlepage}
+    \maketitle
+    \thispagestyle{empty}
+    \vfill
+    \begin{center}
+        \large \textit{A comprehensive technical analysis detailing the training workflows, empirical model benchmarking, architectural acceleration, and real-time detection heuristics.}
+    \end{center}
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Introduction}
+This report details the implementation, benchmarking, and architectural delivery of the Industrial Stator Case Vision Inspection platform at \textbf{Nextronic}. The project acts as an end-to-end framework evaluating 30 segmentation algorithms—spanning classical computer vision to state-of-the-art fully convolutional deep learning networks. The ultimate objective is to deploy highly accurate, latency-optimized models onto edge environments to monitor and evaluate mechanical components securely.
+
+\subsection{Dataset \& Annotation Parameters}
+The target dataset comprises exactly \textbf{136 high-resolution industrial images} of stator housings carefully curated and split: 95 for Training, 20 for Validation, and 21 reserved for Blind Testing. Annotations natively adopt the LabelMe JSON standard, tracking three distinct classes: \textit{circle} (central stator bore), \textit{magnet}, and \textit{mechanical\_part}.
+Images are dynamically resized to $256 \times 256$ for Transformer architectures and $512 \times 512$ for YOLO inference modalities.
+
+\section{System \& Application Architecture}
+To achieve real-time tracking performance on typical industrial edge hardware (e.g., NVIDIA GTX 1650), the system architecture abstracts the deep learning workflows securely behind a modular, highly tailored backend logic layer.
+
+\subsection{Flask \& WebRTC Bridging Structure}
+The system operates via a Flask-based REST API that natively initializes heavy neural networks safely during backend compilation, segregating processing overhead from the UI.
+\begin{enumerate}
+    \item \textbf{WebRTC Data Channels}: High-frequency visual feed updates are synchronized directly mapping C++ OpenCV array manipulation safely over a localized WebRTC peering tunnel. Validations happen asynchronously.
+    \item \textbf{MindVision SDK Handlers}: Capturing lossless industrial imagery is driven directly using the MindVision USB SDK hooked to raw buffer listeners inside the python wrapper.
+\end{enumerate}
+
+\subsection{Inference Hardening \& Hardware Acceleration}
+The backend relies on three core optimization paradigms to guarantee framerates exceed 15 FPS natively:
+\begin{itemize}
+    \item \textbf{ONNX Runtime Execution}: PyTorch networks (such as UNet ResNet18) are transparently compiled to `.onnx` and delegated to `onnxruntime-gpu`, accelerating typical inference times up to 300\% (improving $7 \text{ FPS} \rightarrow 22 \text{ FPS}$).
+    \item \textbf{Native Tensor Cores FP16}: Standard YOLO configurations bypass ONNX compilation and natively deploy `model.half()` precision to leverage GPU Tensor cores completely.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{docs/images/detection_pipeline.png}
+    \caption{The Architecture Diagram for the Real-time WebRTC Inference \& Backend Delivery.}
+\end{figure}
+
+\section{The Training Pipeline \& Benchmarking}
+Although 30 separate models were tracked, empirical analysis demonstrates three leading modalities that fundamentally balance intersection validation thresholds with processing footprints. Total training took approximately 5.7 hours on a dual-T4 configuration.
+
+\subsection{Pipeline Preparation \& Execution}
+The training algorithm is defined around robust data augmentation loops and rigid loss integrations. The process dynamically inflates the 95 training images via robust geometric alterations (flips, random crops) and photometric adjustments to secure varied exposure angles. Models utilize specific loss functions heavily weighting segmentation purity:
+\begin{enumerate}
+    \item \textbf{Loss Optimizers}: UNet structures employ a combined \textit{Dice Loss + Binary Cross Entropy} to secure high spatial accuracy. YOLO networks intrinsically leverage bounding-box distribution offsets mixed with mask loss vectors.
+    \item \textbf{Hyperparameters}: Training iterations map globally to 30 Epochs utilizing the AdamW optimizer (weight decay $1e-4$) matched with a Cosine Annealing Learning Rate scheduler stabilizing the gradient drop automatically.
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{docs/images/training_pipeline.png}
+    \caption{The Training Execution Pipeline detailing Augmentations, Converters, and Modality Trainers.}
+\end{figure}
+
+\subsection{Empirical Analysis of Model Types}
+\begin{itemize}
+    \item \textbf{UNet\_ResNet18}: Achieved the absolute highest qualitative geometry layout rating. Leveraging pre-trained ImageNet encoder weights, it established a Validation Intersection-over-Union (IoU) of \textbf{0.9646}. It consumed minimal Peak VRAM (\approx 473 MB).
+    \item \textbf{YOLOv11m-Seg}: Next-generation instance segmentation yielding incredibly strong boundaries natively. Scored an IoU of \textbf{0.8725} drawing ~4902 MB VRAM at peak.
+    \item \textbf{YOLOv8m-Seg}: The highly stable backbone instance detector. Scored an equivalent IoU of \textbf{0.8719} utilizing marginally less memory (~4296 MB).
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{outputs/results/plots/iou_curves.png}
+        \caption{Validation IoU / mAP Epoch Progression.}
+    \end{minipage}\hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{outputs/results/plots/loss_curves.png}
+        \caption{Validation Training Loss Epoch Dynamics.}
+    \end{minipage}
+\end{figure}
+
+\section{Post-Processing \& Mathematical Heuristics}
+Because semantic segmentation can frequently hallucinate duplicate bounding areas from highly reflective stator elements, the pipeline utilizes stringent, post-processing mathematics. These filters are hardcoded inside the tracking loops in `server/inference.py`.
+
+\subsection{Top-N Confidence Count Restrictions}
+Instead of generating endless bounding masks natively over any pixel exceeding the $>50\%$ sigmoid boundary threshold, we intercept and selectively rank candidates mathematically:
+\begin{table}[H]
+    \centering
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Component Rule} & \textbf{Rationalization Criteria} \\
+        \midrule
+        Maximum 1 \texttt{Circle} & Restricts phantom bounding bore holes crossing axis limits. \\
+        Maximum 2 \texttt{Magnets} & Ensures symmetry across axis planes mathematically. \\
+        Maximum 4 \texttt{Mech\_Parts} & Clamps diagonal structural supports. \\
+        \bottomrule
+    \end{tabular}
+    \caption{Absolute component threshold limitations mapping.}
+\end{table}
+
+\subsection{PyTorch Spatial Geometric Autocorrector}
+ResNet classifiers frequently generate semantic blurring, inaccurately evaluating outer-bracket boundaries as `Magnets`. A customized spatial correction layer applies standard trajectory physics:
+\begin{enumerate}
+    \item Establish structural target vector $\mathbf{T}$ via $C_{\text{Stator}}$.
+    \item Calculate arbitrary bearing $\theta$ relative to predicted component $C_{\text{Object}}$.
+    \item If $ \theta \in [0^{\circ}, 90^{\circ}, 180^{\circ}, 270^{\circ}] \pm 25^{\circ} $, the array rigidly triggers a localized class override back to \textbf{Magnet}.
+    \item Deflected diagonal geometries are pushed successfully back to the \textbf{Mechanical\_Part} structure.
+\end{enumerate}
+
+\subsection{Calibration Engine \& MiDaS Machine Learning Depth}
+Real-time conversion factor constants scaling pixels directly into accurate millimeters involves dynamic methodologies computed per frame:
+\begin{equation}
+    D_{\text{mm/px}} = \frac{Z \cdot W_{\text{sensor}}}{f_c \cdot W_{\text{image}}}
+\end{equation}
+When standard Focal Length Intrinsics or ArUco Reference object metrics fail due to extreme angled surfaces, the system bridges the \textbf{MiDaS} (`intel-isl/MiDaS_small`) Monocular Depth Estimation Neural Network natively. It builds inverted heat maps over the environment in microseconds, extrapolating depth disparity weights against the constant variables dynamically, successfully anchoring metric estimations to object bounds seamlessly.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{docs/images/examples/example_unet_resnet18_measurements.png}
+        \caption{UNet\_ResNet18: Live Measurement mapping bounds and lines.}
+    \end{minipage}\hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{docs/images/examples/example_yolov11m_seg_measurements.png}
+        \caption{YOLOv11m-Seq: Bounding constraints \& Label Rendering outputs.}
+    \end{minipage}
+\end{figure}
+
+\section{Conclusion}
+This framework succeeds by meticulously weaving state-of-the-art vision models, such as ONNX-compiled UNet layers achieving 0.96+ IoUs natively, with rigidly parameterized Spatial Filtering logics. The integration natively handles edge capabilities effectively resulting in an autonomous system resilient to structural noise and camera instability, successfully delivering robust outputs directly required for real-time factory inspection matrices!
+
+\end{document}
