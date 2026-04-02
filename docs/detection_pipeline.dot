@@ -1,60 +1,84 @@
-digraph DetectionPipeline {
-    node [shape=box, style="rounded,filled", fillcolor="#fff3e0", color="#f57c00", fontname="Arial", fontsize=12];
-    edge [color="#f57c00", fontname="Arial", fontsize=10];
+digraph DetailedDetectionPipeline {
+    node [shape=box, style="solid", color="black", fillcolor="white", fontname="Arial", fontsize=11];
+    edge [color="black", fontname="Arial", fontsize=10];
     fontname="Arial";
     rankdir=TD;
-    nodesep=0.5;
-    ranksep=0.7;
+    compound=true;
+    nodesep=0.7;
+    ranksep=0.8;
 
-    subgraph cluster_input {
-        label="1. Context & Inputs";
-        style="rounded,filled";
-        fillcolor="#f5f5f5";
-        color="#bdbdbd";
-        A [label="Camera Feed / Upload\n(WebRTC / Local Image)", fillcolor="#e1f5fe", color="#0288d1"];
-        B [label="Image Preprocessing\n(RGB Conversion & Sizing)"];
-        A -> B;
+    subgraph cluster_capture {
+        label="1. Capture & Signal Preprocessing";
+        style="solid";
+        color="black";
+        
+        InputSrc [label="Data Source\n- WebRTC Protocol Stream\n- MindVision USB Device SDK\n- Manual Image Upload", shape=invhouse];
+        PreConv [label="Color Format & Resize\n- Format adaptation (BGR -> RGB)\n- Scale to Model Input Spec (e.g. 512x512)"];
+        PreClass [label="Classical CV Preprocessing\n- Bilateral Filter -> CLAHE -> Morphological Close"];
+        
+        InputSrc -> PreConv;
+        PreConv -> PreClass [label=" Classical Models Only"];
     }
 
     subgraph cluster_inference {
-        label="2. Inference Engine";
-        style="rounded,filled";
-        fillcolor="#f5f5f5";
-        color="#bdbdbd";
-        C [label="Deep Learning Model\n(PyTorch / YOLO Segment)"];
-        D [label="Mask Post-processing\n(Confidence Extraction > 0.5)"];
-        E [label="Edge Refinement\n(Guided Filter / Tracking)"];
-        B -> C;
-        C -> D;
-        D -> E [label=" Optional"];
+        label="2. Deep Learning Inference & Confidence Masking";
+        style="solid";
+        color="black";
+        
+        ModelInf [label="Inference Execution Engine\n- Forward pass (PyTorch / YOLO)\n- PyTorch Native vs. Ultralytics segment()"];
+        MaskExt [label="Mask Post-processing\n- Probability Sigmoid\n- Thresholding (Confidence > 0.5)\n- NMS (Non-Maximum Suppression)"];
+        EdgeRefine [label="Edge & Boundary Optimization\n(Guided Filter / Edge Refinement Module)"];
+        
+        PreConv -> ModelInf;
+        PreClass -> ModelInf;
+        ModelInf -> MaskExt;
+        MaskExt -> EdgeRefine [label=" Optional post-pass"];
     }
 
-    subgraph cluster_post {
-        label="3. Analysis & Measurement";
-        style="rounded,filled";
-        fillcolor="#f5f5f5";
-        color="#bdbdbd";
-        F [label="Contour Extraction\n(OpenCV findContours)", fillcolor="#e8f5e9", color="#388e3c"];
-        G [label="Geometry Fitting\n(Bounding Box, Enclosing Circle)", fillcolor="#e8f5e9", color="#388e3c"];
-        H [label="Real-World Calibration\n(Dynamic px to mm)"];
-        I [label="Physical Characteristics\n(Area, Radius computations)"];
+    subgraph cluster_geometry {
+        label="3. Feature Extraction & Geometry Fitting";
+        style="solid";
+        color="black";
         
-        D -> F;
-        E -> F;
-        F -> G;
-        G -> H;
-        H -> I;
+        FindContours [label="Contour Extractor\n- cv2.findContours (Topology)\n- Douglas-Peucker Approximation\n- Area & Length Threshold Filtering"];
+        GeomFit [label="Geometry Fitter\n- Algebraic Circle Fit\n- Minimum Enclosing Circle\n- Rotated Bounding Box Fitting"];
+        
+        EdgeRefine -> FindContours;
+        MaskExt -> FindContours;
+        FindContours -> GeomFit;
     }
 
-    subgraph cluster_ui {
-        label="4. Presentation & Storage";
-        style="rounded,filled";
-        fillcolor="#f5f5f5";
-        color="#bdbdbd";
-        J [label="Web Dashboard Display\n(HTML5 Canvas UI Overlay)", fillcolor="#fce4ec", color="#c2185b"];
-        K [label="Live Result Logging\n(Local History / JSON Export)", fillcolor="#fce4ec", color="#c2185b"];
+    subgraph cluster_metrics {
+        label="4. Real-World Measurement & Calibration Methodology";
+        style="solid";
+        color="black";
         
-        I -> J;
-        J -> K;
+        Calib [label="Calibration Manager\n(Dynamic px -> mm Ratio Setup)", shape=diamond];
+        MethA [label="Method A: Reference Object\n- Known dimension mappings (e.g. specific label size)\n- Autodetects ArUco fiducial markers"];
+        MethB [label="Method B: Camera Intrinsics\n- Uses physical Sensor Width, Focal Length, Distance"];
+        MethC [label="Method C: ML Depth Map (MiDaS)\n- Estimates object depth map for scaling factor dynamically"];
+        Lens [label="Lens Undistortion Checkerboard Matrix"];
+        
+        MeasComp [label="Measurement Computer Engine\n- Computes: Radius (mm), Area (mm²)\n- Calculates Euclidean real-world distances", shape=note];
+
+        GeomFit -> Calib;
+        Calib -> MethA;
+        Calib -> MethB;
+        Calib -> MethC;
+        MethA -> Lens [label=" Spatial un-warping"];
+        MethB -> Lens;
+        Calib -> MeasComp;
+    }
+
+    subgraph cluster_presentation {
+        label="5. Application UI Visualization & Archival";
+        style="solid";
+        color="black";
+        
+        Render [label="Canvas Rendering Engine\n- HTML5 Overlay drawn atop WebRTC stream\n- Renders Bounding Rectangles, Centroids, Text Metrics"];
+        Storage [label="Persistent Storage\n- Sync to API Endpoint (POST /api/settings)\n- SQLite/JSON local history archival", shape=cylinder];
+        
+        MeasComp -> Render;
+        Render -> Storage;
     }
 }
