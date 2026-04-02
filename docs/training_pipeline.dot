@@ -1,0 +1,54 @@
+digraph TrainingPipeline {
+    node [shape=box, style="rounded,filled", fillcolor="#e1f5fe", color="#0288d1", fontname="Arial", fontsize=12];
+    edge [color="#0288d1", fontname="Arial", fontsize=10];
+    fontname="Arial";
+    rankdir=TD;
+    nodesep=0.5;
+    ranksep=0.7;
+
+    subgraph cluster_data {
+        label="1. Data Preparation";
+        style="rounded,filled";
+        fillcolor="#f5f5f5";
+        color="#bdbdbd";
+        A [label="Raw Images & JSON\n(LabelMe Annotations)"];
+        B [label="Dataset Splitting\n(Train/Val/Test)"];
+        C [label="Mask Generation\n(Binary/Multi-class arrays)"];
+        D [label="Data Augmentation\n(10x offline generation)"];
+        E [label="YOLO Format Conversion\n(Coordinates & data.yaml)"];
+        
+        A -> B;
+        B -> C [label=" Extract Polygons"];
+        C -> D;
+        D -> E [label=" Generate labels"];
+    }
+
+    subgraph cluster_training {
+        label="2. Model Architecture & Training";
+        style="rounded,filled";
+        fillcolor="#f5f5f5";
+        color="#bdbdbd";
+        F [label="PyTorch Models\n(UNet, SegFormer)", fillcolor="#e8f5e9", color="#388e3c"];
+        G [label="Ultralytics Models\n(YOLOv8, YOLOv11)", fillcolor="#e8f5e9", color="#388e3c"];
+        H [label="Training Engine\n(& Hardware Profiling)", fillcolor="#fff3e0", color="#f57c00"];
+        
+        C -> F [label=" Custom Dataloader"];
+        E -> G [label=" YOLO Dataset"];
+        F -> H;
+        G -> H;
+    }
+
+    subgraph cluster_eval {
+        label="3. Evaluation & Output";
+        style="rounded,filled";
+        fillcolor="#f5f5f5";
+        color="#bdbdbd";
+        I [label="Inference Benchmark\n(Latency & GPU Mem)"];
+        J [label="Benchmark Report\n(IoU, Dice, Latency)", fillcolor="#fff9c4", color="#fbc02d"];
+        K [label="Model Weights\n(.pt/.pth checkpoints)", fillcolor="#fff9c4", color="#fbc02d"];
+        
+        H -> I [label=" Validation phase"];
+        I -> J;
+        H -> K;
+    }
+}

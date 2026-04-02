@@ -155,39 +155,14 @@ The project is organized as a standard Python package under `src/`:
 
 ### Data Flow
 
-```
-               ┌─────────────────────────────────────────────────────────┐
-               │                    SETUP PHASE                          │
-               │                                                         │
-    Raw Data   │   Augmentation (72x)     YOLO Format    Weight Download │
-    data/*.png ──→ outputs/augmented/ ──→ outputs/yolo/   weights/*.pt  │
-    data/*.json│                                                         │
-               └────────────────────────────┬────────────────────────────┘
-                                            │
-               ┌────────────────────────────▼────────────────────────────┐
-               │                   TRAINING PHASE                        │
-               │                                                         │
-               │  IndustrialDataset ──→ DataLoader ──→ ComprehensiveTrainer
-               │       (masks)           (batches)       (train/val loop) │
-               │                                              │          │
-               │                              ┌───────────────┼──────┐   │
-               │                              │  Loss (BCE+Dice)     │   │
-               │                              │  Optimizer (AdamW)   │   │
-               │                              │  Scheduler (Cosine)  │   │
-               │                              │  GradScaler (AMP)    │   │
-               │                              └──────────────────────┘   │
-               └────────────────────────────┬────────────────────────────┘
-                                            │
-               ┌────────────────────────────▼────────────────────────────┐
-               │                 BENCHMARK PHASE                         │
-               │                                                         │
-               │  BenchmarkRunner ──→ Metrics (IoU, Dice, F1, Latency)  │
-               │       │          ──→ Hardware Profiling (GPU/CPU)       │
-               │       │          ──→ Contour Extraction                 │
-               │       ▼                                                 │
-               │  Reports, Plots, Visualizations, JSON Results           │
-               └─────────────────────────────────────────────────────────┘
-```
+### Training Pipeline Data Flow
+
+![Training Pipeline Process](docs/images/training_pipeline.png)
+
+### Inference & Detection Data Flow
+
+![Detection Pipeline Process](docs/images/detection_pipeline.png)
+
 
 **All paths are resolved dynamically** via `PROJECT_ROOT = Path(__file__).resolve().parent.parent` in `src/config.py`, so the project runs correctly from any working directory.
 
