@@ -24,9 +24,7 @@ env/
 
 # ---- Model Weights ----
 weights/
-*.pt
-*.pth
-*.onnx
+
 
 # ---- Generated Outputs ----
 augmented_data/
@@ -61,7 +59,9 @@ outputs/
 !outputs/results/
 outputs/results/*
 !outputs/results/plots/
-
+!outputs/results/**/*.pt
+!outputs/results/**/*.pth
+!outputs/results/**/*.onnx
 # ---- Local Scripts / Maps ----
 generate_diagrams.py
 PROJECT_MAP.md
