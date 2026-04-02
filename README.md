@@ -155,13 +155,20 @@ The project is organized as a standard Python package under `src/`:
 
 ### Data Flow
 
-### Training Pipeline Data Flow
+#### 1. Training Pipeline Detail
+The training ecosystem is built on a structured **8x8 augmentation matrix** (8 geometric × 9 photometric) that expands the localized stator dataset by 72x. 
+- **Offline Data Augmentation**: Generates variant exposures and rotational offsets to ensure invariance to lighting and lens distortion.
+- **Model Training**: Employs hybrid loss functions—specifically **Dice + BCE Loss** for UNet architectures to optimize spatial boundaries, and standard Cls/Box loss for YOLO.
+- **Validation**: Strict tracking of IoU (Intersection-over-Union) and Dice metrics across a blind validation set of 20 industrial frames.
 
-![Training Pipeline Process](docs/images/training_pipeline.png)
+![Training Pipeline Process](./docs/images/training_pipeline.png)
 
-### Inference & Detection Data Flow
+#### 2. Inference & Detection Data Flow
+Real-time frame capture from MindVision USB cameras feeds into a high-performance inference loop utilizing **ONNX Runtime** for PyTorch and **FP16 Half-Precision** for YOLO to minimize latency.
+- **Post-Processing**: Applies Top-N instance filtering (1 Circle, 2 Magnets, 4 Parts) and spatial geometry correction (ResNet-based cardinal angle overrides).
+- **Metric Mapping**: Dynamic calibration via Pinhole intrinsics or **MiDaS ML Depth** estimation converts pixel offsets to absolute millimeters.
 
-![Detection Pipeline Process](docs/images/detection_pipeline.png)
+![Detection Pipeline Process](./docs/images/detection_pipeline.png)
 
 
 **All paths are resolved dynamically** via `PROJECT_ROOT = Path(__file__).resolve().parent.parent` in `src/config.py`, so the project runs correctly from any working directory.
