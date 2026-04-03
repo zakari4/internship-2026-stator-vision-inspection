@@ -146,6 +146,9 @@ class CameraSettings:
         # Manual factor
         self.manual_px_to_mm: float = 0.1
 
+        # Visualization
+        self.show_depth_map: bool = False
+
     # -- px→mm helpers ---------------------------------------------------
 
     def pixel_to_mm_intrinsics(self, image_width_px: int) -> float:
@@ -208,6 +211,8 @@ class CameraSettings:
             "reference_dimension_type": self.reference_dimension_type,
             # manual
             "manual_px_to_mm": self.manual_px_to_mm,
+            # visualization
+            "show_depth_map": self.show_depth_map,
         }
 
     def update(self, data: dict):
@@ -240,6 +245,9 @@ class CameraSettings:
         # manual
         if "manual_px_to_mm" in data:
             self.manual_px_to_mm = float(data["manual_px_to_mm"])
+        # visualization
+        if "show_depth_map" in data:
+            self.show_depth_map = bool(data["show_depth_map"])
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1113,33 +1121,10 @@ class ModelManager:
         if cs.method == "ml_depth_midas" and frame is not None:
             # Dynamically estimate absolute distance using relative ML heatmap bridged to Intrinsics
             try:
-                import torch
-                # Lazy compile loader 
-                if not hasattr(self, "_midas_model"):
-                    logger.info("Initializing MiDaS Model weights...")
-                    self._midas_model = torch.hub.load("intel-isl/MiDaS", "MiDaS_small", trust_repo=True)
-                    self._midas_transform = torch.hub.load("intel-isl/MiDaS", "transforms", trust_repo=True).small_transform
-                    self._midas_device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-                    self._midas_model.to(self._midas_device).eval()
-
-                img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                input_batch = self._midas_transform(img_rgb).to(self._midas_device)
-                with torch.no_grad():
-                    pred = self._midas_model(input_batch)
-                    pred = torch.nn.functional.interpolate(
-                        pred.unsqueeze(1),
-                        size=img_rgb.shape[:2],
-                        mode="bicubic",
-                        align_corners=False,
-                    ).squeeze()
-                
-                # Inverse depth space -> take median foreground depth 
-                depth_map = pred.cpu().numpy()
+                # Use predict_depth helper to get raw disparity
+                _, depth_map = self.predict_depth(frame)
                 median_disp = float(np.median(depth_map))
                 
-                # Use focal_length and sensor width from camera_intrinsics mapped to MiDaS outputs!
-                # Since MiDaS outputs inverse depth (disparity), Distance ~ baseline / disparity
-                # We normalize it against a generic metric scalar ~10000 to reach approximate mm.
                 if median_disp > 0:
                     inferred_distance_mm = (10000.0 / median_disp) 
                     cs.object_distance_mm = inferred_distance_mm  # Bridge absolute baseline 
@@ -1149,6 +1134,57 @@ class ModelManager:
                 
         # Default fallback
         return cs.pixel_to_mm_intrinsics(image_width)
+
+    def _lazy_init_midas(self):
+        """Initializes the MiDaS model, transform and device only once when needed."""
+        import torch
+        if not hasattr(self, "_midas_model"):
+            logger.info("Initializing MiDaS Model weights...")
+            try:
+                # Use small model for higher speed in real-time edge environments
+                self._midas_model = torch.hub.load("intel-isl/MiDaS", "MiDaS_small", trust_repo=True)
+                self._midas_transform = torch.hub.load("intel-isl/MiDaS", "transforms", trust_repo=True).small_transform
+                self._midas_device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+                self._midas_model.to(self._midas_device).eval()
+            except Exception as e:
+                logger.error(f"Failed to load MiDaS: {e}")
+                raise
+
+    def predict_depth(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Runs MiDaS depth estimation.
+        Returns:
+            (colored_viz, raw_disparity_map)
+        """
+        import torch
+        self._lazy_init_midas()
+
+        img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        input_batch = self._midas_transform(img_rgb).to(self._midas_device)
+
+        with torch.no_grad():
+            pred = self._midas_model(input_batch)
+            pred = torch.nn.functional.interpolate(
+                pred.unsqueeze(1),
+                size=img_rgb.shape[:2],
+                mode="bicubic",
+                align_corners=False,
+            ).squeeze()
+
+        raw_disparity = pred.cpu().numpy()
+
+        # Normalize depth map for better visualization [0, 255]
+        d_min = raw_disparity.min()
+        d_max = raw_disparity.max()
+        if d_max > d_min:
+            depth_norm = (raw_disparity - d_min) / (d_max - d_min)
+        else:
+            depth_norm = np.zeros_like(raw_disparity)
+
+        depth_8u = (depth_norm * 255).astype(np.uint8)
+        depth_colored = cv2.applyColorMap(depth_8u, cv2.COLORMAP_MAGMA)
+        
+        return depth_colored, raw_disparity
 
     def _px_to_mm_from_detections(
         self,
@@ -1419,6 +1455,45 @@ class ModelManager:
                 cv2.drawContours(
                     annotated, [contour], -1, (0, 255, 255), 2, cv2.LINE_AA
                 )
+
+            # --- Depth Map Overlay & Metric Depth Integration ---
+            if self.camera_settings.show_depth_map:
+                try:
+                    depth_viz, raw_disp = self.predict_depth(frame)
+                    # Blend depth visualization (40% opacity) into the annotated results
+                    annotated = cv2.addWeighted(annotated, 1.0, depth_viz, 0.4, 0)
+                    
+                    # Compute metric depth per object
+                    ref_dist = self.camera_settings.object_distance_mm
+                    global_median = float(np.median(raw_disp))
+                    
+                    if global_median > 0:
+                        for det in detections:
+                            det_idx = det.get("det_idx") # Internal helper check
+                            # Find matching mask in det_contours mapping if available
+                            # Or just use the bounding box to sample if mask not conveniently available
+                            # However, we have det_contours already.
+                            
+                            # For simplicity and robustness across models (YOLO/UNet),
+                            # we compute median disparity within the bounding box
+                            x1, y1, x2, y2 = map(int, det["bbox"])
+                            x1, y1 = max(0, x1), max(0, y1)
+                            x2, y2 = min(w, x2), min(h, y2)
+                            
+                            if x2 > x1 and y2 > y1:
+                                obj_disp = float(np.median(raw_disp[y1:y2, x1:x2]))
+                                if obj_disp > 0:
+                                    # Absolute depth ~ 1/disparity
+                                    # Ratio mapping: depth_obj / depth_global = disp_global / disp_obj
+                                    approx_depth = (global_median / obj_disp) * ref_dist
+                                    det["approx_depth_mm"] = round(approx_depth, 1)
+                                    
+                                    # Draw depth on overlay
+                                    d_text = f"D: {det['approx_depth_mm']}mm"
+                                    cv2.putText(annotated, d_text, (x1, min(h-5, y2 + 15)),
+                                                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
+                except Exception as e:
+                    logger.error("Failed to apply depth metrics: %s", e)
 
         return annotated, detections
 

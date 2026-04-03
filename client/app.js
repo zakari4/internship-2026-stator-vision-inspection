@@ -17,6 +17,9 @@ const modelSelect = document.getElementById("modelSelect");
 const btnConnect = document.getElementById("btnConnect");
 const btnDisconnect = document.getElementById("btnDisconnect");
 const btnSnapshot = document.getElementById("btnSnapshot");
+const enableDepthViz = document.getElementById("enableDepthViz");
+const depthPanel = document.getElementById("depthPanel");
+const depthStream = document.getElementById("depthStream");
 
 // Stats
 const statInference = document.getElementById("statInference");
@@ -58,6 +61,8 @@ const uploadResult = document.getElementById("uploadResult");
 const uploadInference = document.getElementById("uploadInference");
 const uploadModel = document.getElementById("uploadModel");
 const uploadDetections = document.getElementById("uploadDetections");
+const uploadDepth = document.getElementById("uploadDepth");
+const uploadDepthWrap = document.getElementById("uploadDepthWrap");
 const btnUploadAnother = document.getElementById("btnUploadAnother");
 const btnDownloadResult = document.getElementById("btnDownloadResult");
 const btnSaveUpload = document.getElementById("btnSaveUpload");
@@ -425,6 +430,7 @@ function updateDetections(detections) {
                     <span class="detection-conf ${confClass}">
                         ${(conf * 100).toFixed(1)}%
                     </span>
+                    ${d.approx_depth_mm ? `<span class="measurement-tag depth-tag">Depth: ~${d.approx_depth_mm} mm</span>` : ""}
                     ${renderMeasurementHtml(d.measurements)}
                 </div>`;
         })
@@ -565,6 +571,15 @@ async function handleUpload(file) {
         uploadInference.textContent = `Inference: ${data.inference_ms} ms`;
         uploadModel.textContent = `Model: ${data.model}`;
 
+        // Show depth heatmap if available
+        if (data.depth_image) {
+            uploadDepth.src = data.depth_image;
+            uploadDepthWrap.style.display = "block";
+        } else {
+            uploadDepth.src = "";
+            uploadDepthWrap.style.display = "none";
+        }
+
         // Show detections
         if (data.detections && data.detections.length > 0) {
             uploadDetections.innerHTML = data.detections
@@ -579,6 +594,7 @@ async function handleUpload(file) {
                             <span class="detection-conf ${confClass}">
                                 ${(conf * 100).toFixed(1)}%
                             </span>
+                            ${d.approx_depth_mm ? `<span class="measurement-tag depth-tag">Depth: ~${d.approx_depth_mm} mm</span>` : ""}
                             ${renderMeasurementHtml(d.measurements)}
                         </div>`;
                 })
@@ -604,6 +620,8 @@ function resetUpload() {
     fileInput.value = "";
     uploadOriginal.src = "";
     uploadResult.src = "";
+    uploadDepth.src = "";
+    uploadDepthWrap.style.display = "none";
     uploadDetections.innerHTML = "";
     lastUploadData = null;
     // Deactivate measure tool if active
@@ -829,6 +847,9 @@ async function loadSettings() {
         refDimType.value = s.reference_dimension_type ?? "diameter";
         // Manual
         manualPxToMm.value = s.manual_px_to_mm ?? 0.1;
+        // Depth
+        enableDepthViz.checked = s.show_depth_map ?? false;
+        syncDepthPanel();
         // Sync UI
         syncMethodFields();
         syncEnabledState();
@@ -858,6 +879,8 @@ async function saveSettings(showToast = true) {
         reference_dimension_type: refDimType.value,
         // Manual
         manual_px_to_mm: parseFloat(manualPxToMm.value),
+        // Depth
+        show_depth_map: enableDepthViz.checked,
     };
     try {
         const resp = await fetch(`${API_BASE}/api/settings`, {
@@ -883,6 +906,23 @@ if (showCenterDistances) {
 }
 if (showAlignedPairDistances) {
     showAlignedPairDistances.addEventListener("change", () => saveSettings(false));
+}
+if (enableDepthViz) {
+    enableDepthViz.addEventListener("change", () => {
+        saveSettings(false);
+        syncDepthPanel();
+    });
+}
+
+function syncDepthPanel() {
+    if (!depthPanel || !depthStream) return;
+    const enabled = enableDepthViz.checked;
+    depthPanel.style.display = enabled ? "block" : "none";
+    if (enabled) {
+        depthStream.src = `${API_BASE}/api/mindvision/depth-stream?t=${Date.now()}`;
+    } else {
+        depthStream.src = "";
+    }
 }
 
 // Load settings on page load

@@ -450,8 +450,18 @@ def api_detect_image():
     _, buf = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 90])
     b64 = base64.b64encode(buf.tobytes()).decode("utf-8")
 
+    depth_b64 = None
+    if model_manager.camera_settings.show_depth_map:
+        try:
+            depth_viz = model_manager.predict_depth(img)
+            _, d_buf = cv2.imencode(".jpg", depth_viz, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            depth_b64 = base64.b64encode(d_buf.tobytes()).decode("utf-8")
+        except Exception as e:
+            logger.error("Upload depth viz failed: %s", e)
+
     return jsonify({
         "image": f"data:image/jpeg;base64,{b64}",
+        "depth_image": f"data:image/jpeg;base64,{depth_b64}" if depth_b64 else None,
         "detections": detections,
         "inference_ms": round(inference_ms, 1),
         "model": model_manager.current_model_name,
@@ -543,6 +553,7 @@ import threading as _mv_threading
 
 _mv_latest_frame: bytes | None = None          # Latest raw JPEG from camera
 _mv_latest_annotated: bytes | None = None      # Latest annotated JPEG after detection
+_mv_latest_depth: bytes | None = None          # Latest depth map JPEG
 _mv_latest_detections: list = []               # Latest detection metadata
 _mv_latest_model: str | None = None
 _mv_latest_inference_ms: float = 0
@@ -585,9 +596,19 @@ def mv_receive_frame():
 
     # Encode annotated frame
     _, buf = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    
+    depth_buf = None
+    if model_manager.camera_settings.show_depth_map:
+        try:
+            depth_viz = model_manager.predict_depth(img)
+            _, d_buf = cv2.imencode(".jpg", depth_viz, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            depth_buf = d_buf.tobytes()
+        except Exception as e:
+            logger.error("Depth visualization failed: %s", e)
 
     with _mv_frame_lock:
         _mv_latest_annotated = buf.tobytes()
+        _mv_latest_depth = depth_buf
         _mv_latest_detections = detections
         _mv_latest_model = model_manager.current_model_name
         _mv_latest_inference_ms = round(inference_ms, 1)
@@ -613,7 +634,29 @@ def mv_stream():
     )
 
 
-@app.route("/api/mindvision/latest")
+@app.route("/api/mindvision/depth-stream")
+def mv_depth_stream():
+    """MJPEG stream of MiDaS depth estimates for the web client."""
+    def generate():
+        while True:
+            # We check the lock briefly to copy the bytes
+            with _mv_frame_lock:
+                frame = _mv_latest_depth
+            
+            if frame:
+                yield (b"--frame\r\n"
+                       b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
+            else:
+                # If depth is disabled, send an empty placeholder or wait
+                time.sleep(0.2)
+                continue
+                
+            time.sleep(0.06)  # ~15 FPS max for depth to save bandwidth
+
+    return Response(
+        generate(),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+    )
 def mv_latest():
     """Get the latest annotated frame + detections as JSON."""
     with _mv_frame_lock:

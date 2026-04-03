@@ -211,6 +211,12 @@
                                 <span>Enable Edge Refinement (Crisp Masks)</span>
                             </label>
                         </div>
+                        <div class="settings-row" style="margin-top: 12px;">
+                            <label class="toggle-label" title="Runs MiDaS Small to generate a real-time depth heatmap.">
+                                <input type="checkbox" id="enableDepthViz">
+                                <span>Enable MiDaS Depth Visualization (Heatmap)</span>
+                            </label>
+                        </div>
                         <div class="settings-actions" style="margin-top: 16px;">
                             <button id="btnSaveEnhancements" class="btn btn-primary btn-sm">Apply Enhancements</button>
                             <span id="enhancementsSaved" class="settings-saved" style="display:none;">✓ Applied</span>
@@ -239,6 +245,10 @@
                             <div class="video-card primary">
                                 <div class="video-label">MindVision — Live Detection</div>
                                 <img id="mvStream" alt="MindVision Stream">
+                            </div>
+                            <div class="video-card primary" id="depthPanel" style="display:none; margin-top: 12px;">
+                                <div class="video-label">MiDaS — Real-time Depth Map</div>
+                                <img id="depthStream" alt="MiDaS Depth Stream">
                             </div>
                             <div class="mv-stats">
                                 <span id="mvModel">Model: —</span>
@@ -296,6 +306,10 @@
                                 <div class="upload-img-wrap">
                                     <div class="video-label">Detection</div>
                                     <img id="uploadResult" alt="Detection Result">
+                                </div>
+                                <div class="upload-img-wrap" id="uploadDepthWrap" style="display:none;">
+                                    <div class="video-label">Depth Heatmap (MiDaS)</div>
+                                    <img id="uploadDepth" alt="Depth Heatmap">
                                 </div>
                             </div>
                             <div class="upload-info">
