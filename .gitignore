@@ -51,17 +51,10 @@ Thumbs.db
 *.log
 
 sdkmindvision/
-
+outputs/augmented_data/
 Camera/
 rtdetr-x/
 data.zip
-outputs/
-!outputs/results/
-outputs/results/*
-!outputs/results/plots/
-!outputs/results/**/*.pt
-!outputs/results/**/*.pth
-!outputs/results/**/*.onnx
 # ---- Local Scripts / Maps ----
 generate_diagrams.py
 PROJECT_MAP.md
