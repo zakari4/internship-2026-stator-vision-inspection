@@ -254,7 +254,7 @@ python src/data/yolo_prep.py --source outputs/augmented_data --output outputs/yo
 
 The dataset uses **LabelMe JSON** annotations with paired files (`.png` + `.json`). Each JSON file contains shapes with:
 - **Shape types**: `polygon`, `linestrip`, `line`
-- **Labels**: `michanical_part`, `magnet`, `circle`
+- **Labels**: `mechanical_part`, `magnet`, `circle`
 
 ### Mask Generation
 
@@ -273,7 +273,7 @@ The `--labels` flag allows training on specific object types only:
 
 ```bash
 # Train on specific labels only
-python scripts/train.py --mode train --labels michanical_part magnet
+python scripts/train.py --mode train --labels mechanical_part magnet
 
 # Train on all labels (default)
 python scripts/train.py --mode train
@@ -398,7 +398,7 @@ python scripts/train.py --mode train --optimizer adamw --early-stopping 10
 python scripts/train.py --mode train --models unet_lightweight --epochs 30
 
 # Train with label filtering
-python scripts/train.py --mode train --labels michanical_part magnet
+python scripts/train.py --mode train --labels mechanical_part magnet
 
 # Run inference benchmark only
 python scripts/train.py --mode benchmark
@@ -663,7 +663,7 @@ Three calibration methodologies are available in `src/utils/measurements.py`, ea
 
 The most accurate approach. Uses a **detected label** of known real-world dimensions as the calibration reference — no external markers needed.
 
-- **How it works**: The model detects labels in the image (e.g., `michanical_part`). Since you know the real-world size of that object, its contour is used to compute the Pixels Per Metric (PPM) ratio:
+- **How it works**: The model detects labels in the image (e.g., `mechanical_part`). Since you know the real-world size of that object, its contour is used to compute the Pixels Per Metric (PPM) ratio:
 
   ```
   PPM = object_dimension_px / object_dimension_mm
@@ -672,7 +672,7 @@ The most accurate approach. Uses a **detected label** of known real-world dimens
 
 - **Configuration** (in `src/config.py` → `MeasurementConfig`):
   ```python
-  reference_label_name = "michanical_part"        # Label to use as reference
+  reference_label_name = "mechanical_part"        # Label to use as reference
   reference_known_dimension_mm = 52.0             # Its real-world size in mm
   reference_dimension_type = "diameter"            # "diameter", "width", or "height"
   ```
@@ -685,7 +685,7 @@ The most accurate approach. Uses a **detected label** of known real-world dimens
   # Automatically find the reference label in model predictions and calibrate
   cal.calibrate_from_predictions(
       prediction=predicted_contours,   # dict: {label: [contours]} or mask array
-      reference_label="michanical_part",
+      reference_label="mechanical_part",
       known_dimension_mm=52.0,
       dimension_type="diameter"
   )
@@ -932,7 +932,7 @@ focal_length_mm = 4.0
 object_distance_mm = 300.0
 
 # Dynamic calibration
-reference_label_name = "michanical_part"
+reference_label_name = "mechanical_part"
 reference_known_dimension_mm = 52.0
 reference_dimension_type = "diameter"
 ```

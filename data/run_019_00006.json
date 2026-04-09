@@ -3,7 +3,7 @@
   "flags": {},
   "shapes": [
     {
-      "label": "michanical_part",
+      "label": "mechanical_part",
       "points": [
         [
           315.60439560439556,
@@ -95,7 +95,7 @@
       "mask": null
     },
     {
-      "label": "michanical_part",
+      "label": "mechanical_part",
       "points": [
         [
           408.46153846153845,
@@ -137,7 +137,7 @@
       "mask": null
     },
     {
-      "label": "michanical_part",
+      "label": "mechanical_part",
       "points": [
         [
           114.5054945054945,
@@ -217,7 +217,7 @@
       "mask": null
     },
     {
-      "label": "michanical_part",
+      "label": "mechanical_part",
       "points": [
         [
           207.91208791208788,

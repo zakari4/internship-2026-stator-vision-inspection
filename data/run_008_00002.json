@@ -169,7 +169,7 @@
       "mask": null
     },
     {
-      "label": "michanical_part",
+      "label": "mechanical_part",
       "points": [
         [
           235.38461538461536,
@@ -277,7 +277,7 @@
       "mask": null
     },
     {
-      "label": "michanical_part",
+      "label": "mechanical_part",
       "points": [
         [
           138.1318681318681,
@@ -327,7 +327,7 @@
       "mask": null
     },
     {
-      "label": "michanical_part",
+      "label": "mechanical_part",
       "points": [
         [
           440.3296703296703,
@@ -447,7 +447,7 @@
       "mask": null
     },
     {
-      "label": "michanical_part",
+      "label": "mechanical_part",
       "points": [
         [
           240.87912087912082,

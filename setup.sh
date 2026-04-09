@@ -123,8 +123,8 @@ else
         python "$PROJECT_DIR/src/data/yolo_prep.py" \
             --source "$AUG_DIR" \
             --output "$YOLO_DIR" \
-            --labels michanical_part magnet circle
-        echo "      YOLO dataset ready (Labels: michanical_part, magnet, circle)."
+            --labels mechanical_part magnet circle
+        echo "      YOLO dataset ready (Labels: mechanical_part, magnet, circle)."
     fi
 fi
 

@@ -325,8 +325,8 @@ class UNetLightModel(BaseDeepLearningModel):
     :param base_filters: Initial channel depth (default: from config).
     """
     
-    def __init__(self, base_filters: int = None):
-        super().__init__("UNet_Lightweight")
+    def __init__(self, base_filters: int = None, num_classes: int = 1):
+        super().__init__("UNet_Lightweight", num_classes=num_classes)
         
         cfg = config.deep_learning
         self.base_filters = base_filters or cfg.unet_light_base_filters
@@ -337,7 +337,7 @@ class UNetLightModel(BaseDeepLearningModel):
         """Initialize the Lightweight UNet architecture."""
         return UNetLightweight(
             n_channels=3,
-            n_classes=1,
+            n_classes=self.num_classes,
             base_filters=self.base_filters
         )
     
@@ -441,15 +441,15 @@ class UNetResNet18Model(BaseDeepLearningModel):
     :param pretrained: Load ImageNet weights for encoder (default: True).
     """
     
-    def __init__(self, pretrained: bool = True):
-        super().__init__("UNet_ResNet18")
+    def __init__(self, pretrained: bool = True, num_classes: int = 1):
+        super().__init__("UNet_ResNet18", num_classes=num_classes)
         self.pretrained = pretrained
         self.model = self.build_model()
         self.to_device()
     
     def build_model(self) -> nn.Module:
         """Initialize UNet with ResNet18 backbone."""
-        return UNetResNet18(n_classes=1, pretrained=self.pretrained)
+        return UNetResNet18(n_classes=self.num_classes, pretrained=self.pretrained)
     
     def segment(self, image: np.ndarray) -> DeepLearningResult:
         """

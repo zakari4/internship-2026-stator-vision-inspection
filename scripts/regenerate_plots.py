@@ -17,14 +17,15 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import MaxNLocator
+import argparse
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS_DIR = os.path.join(PROJECT_ROOT, "outputs", "results")
-PLOTS_DIR = os.path.join(RESULTS_DIR, "plots")
-LOGS_DIR = os.path.join(RESULTS_DIR, "training_logs")
-YOLO_DIR = os.path.join(RESULTS_DIR, "yolo_training")
 
-os.makedirs(PLOTS_DIR, exist_ok=True)
+# Global variables that will be set in main()
+RESULTS_DIR = ""
+PLOTS_DIR = ""
+LOGS_DIR = ""
+YOLO_DIR = ""
 
 plt.style.use('seaborn-v0_8-whitegrid')
 COLORS = {
@@ -459,22 +460,53 @@ def plot_final_table(models, save_path):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Regenerate training plots.")
+    parser.add_argument("--results-dir", type=str, default="outputs/results",
+                        help="Path to results directory (relative to project root or absolute)")
+    args = parser.parse_args()
+
+    global RESULTS_DIR, PLOTS_DIR, LOGS_DIR, YOLO_DIR
+    
+    if os.path.isabs(args.results_dir):
+        RESULTS_DIR = args.results_dir
+    else:
+        RESULTS_DIR = os.path.join(PROJECT_ROOT, args.results_dir)
+        
+    PLOTS_DIR = os.path.join(RESULTS_DIR, "plots")
+    LOGS_DIR = os.path.join(RESULTS_DIR, "training_logs")
+    YOLO_DIR = os.path.join(RESULTS_DIR, "yolo_training")
+
+    print(f"Targeting Results Directory: {RESULTS_DIR}")
+    os.makedirs(PLOTS_DIR, exist_ok=True)
+
     print("Loading model histories...")
 
-    # PyTorch models
-    unet = load_pytorch_history("unet_resnet18")
-    segformer = load_pytorch_history("segformer_b0")
+    all_models = []
+    
+    try:
+        unet = load_pytorch_history("unet_resnet18")
+        all_models.append(unet)
+        print(f"  UNet ResNet18:  best IoU={unet['best_val_iou']:.4f}, {unet['total_train_time_sec']/60:.1f} min")
+    except FileNotFoundError: pass
 
-    # YOLO models
-    yolov8 = load_yolo_history("yolov8m_seg")
-    yolov11 = load_yolo_history("yolov11m_seg")
+    try:
+        segformer = load_pytorch_history("segformer_b0")
+        all_models.append(segformer)
+        print(f"  SegFormer B0:   best IoU={segformer['best_val_iou']:.4f}, {segformer['total_train_time_sec']/60:.1f} min")
+    except FileNotFoundError: pass
 
-    all_models = [unet, segformer, yolov8, yolov11]
+    try:
+        yolov8 = load_yolo_history("yolov8m_seg")
+        all_models.append(yolov8)
+        print(f"  YOLOv8m-seg:    best IoU={yolov8['best_val_iou']:.4f}, {yolov8['total_train_time_sec']/60:.1f} min")
+    except FileNotFoundError: pass
 
-    print(f"  UNet ResNet18:  best IoU={unet['best_val_iou']:.4f}, {unet['total_train_time_sec']/60:.1f} min")
-    print(f"  SegFormer B0:   best IoU={segformer['best_val_iou']:.4f}, {segformer['total_train_time_sec']/60:.1f} min")
-    print(f"  YOLOv8m-seg:    best IoU={yolov8['best_val_iou']:.4f}, {yolov8['total_train_time_sec']/60:.1f} min")
-    print(f"  YOLOv11m-seg:   best IoU={yolov11['best_val_iou']:.4f}, {yolov11['total_train_time_sec']/60:.1f} min")
+    try:
+        yolov11 = load_yolo_history("yolov11m_seg")
+        all_models.append(yolov11)
+        print(f"  YOLOv11m-seg:   best IoU={yolov11['best_val_iou']:.4f}, {yolov11['total_train_time_sec']/60:.1f} min")
+    except FileNotFoundError: pass
+
 
     print("\nGenerating plots...")
 

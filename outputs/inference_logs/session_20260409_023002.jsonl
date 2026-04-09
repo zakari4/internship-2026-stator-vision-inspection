@@ -1,0 +1,7 @@
+{"ts":1775698277.444,"model":"yolov11m_seg","fps":0.0,"latency_ms":7219.98,"detections":3,"avg_conf":0.841}
+{"ts":1775698315.996,"model":"yolov11m_seg","fps":0.0,"latency_ms":3723.92,"detections":3,"avg_conf":0.865}
+{"ts":1775698635.003,"model":"unet_resnet18","fps":0.0,"latency_ms":98474.19,"detections":0,"avg_conf":0.0}
+{"ts":1775698714.731,"model":"unet_resnet18","fps":0.0,"latency_ms":508.56,"detections":0,"avg_conf":0.0}
+{"ts":1775698730.188,"model":"unet_resnet18","fps":0.1,"latency_ms":215.24,"detections":0,"avg_conf":0.0}
+{"ts":1775698746.879,"model":"yolov8m_seg","fps":0.1,"latency_ms":2063.48,"detections":0,"avg_conf":0.0}
+{"ts":1775698767.901,"model":"yolov11m_seg","fps":0.1,"latency_ms":6560.79,"detections":7,"avg_conf":0.826}

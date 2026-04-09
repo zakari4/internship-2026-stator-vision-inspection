@@ -4,7 +4,7 @@
 **Hardware**: 2× NVIDIA Tesla T4 (16 GB VRAM each, 32 GB total) — Kaggle  
 **Parallelism**: `nn.DataParallel` (PyTorch) / `device=[0,1]` (Ultralytics)  
 **Training**: 30 epochs, AdamW with Cosine Annealing LR, batch size 16 (8 per GPU), 512×512  
-**Labels**: `michanical_part`, `magnet`, `circle` (multi-class segmentation, 4 classes incl. background)
+**Labels**: `mechanical_part`, `magnet`, `circle` (multi-class segmentation, 4 classes incl. background)
 
 > **Dataset Note**:  
 > - **All models** were trained on **augmented data** (3,460 images — 10× augmentation: 2 geometric × 5 photometric, no rotation).  
@@ -179,10 +179,10 @@ All examples use test image `run_001_00003` (640×480) containing **7 objects**:
 | 1 | circle | 96.85% |
 | 2 | magnet | 93.05% |
 | 3 | magnet | 92.54% |
-| 4 | michanical_part | 89.02% |
-| 5 | michanical_part | 88.19% |
-| 6 | michanical_part | 87.67% |
-| 7 | michanical_part | 85.63% |
+| 4 | mechanical_part | 89.02% |
+| 5 | mechanical_part | 88.19% |
+| 6 | mechanical_part | 87.67% |
+| 7 | mechanical_part | 85.63% |
 
 #### YOLOv11m-seg (7 detections)
 
@@ -195,10 +195,10 @@ All examples use test image `run_001_00003` (640×480) containing **7 objects**:
 | 1 | circle | 95.87% |
 | 2 | magnet | 91.37% |
 | 3 | magnet | 90.39% |
-| 4 | michanical_part | 87.02% |
-| 5 | michanical_part | 85.30% |
-| 6 | michanical_part | 82.33% |
-| 7 | michanical_part | 82.05% |
+| 4 | mechanical_part | 87.02% |
+| 5 | mechanical_part | 85.30% |
+| 6 | mechanical_part | 82.33% |
+| 7 | mechanical_part | 82.05% |
 
 #### UNet ResNet18 (7 detections)
 
@@ -208,10 +208,10 @@ All examples use test image `run_001_00003` (640×480) containing **7 objects**:
 
 | # | Class | Confidence |
 |---|-------|-----------| 
-| 1 | michanical_part | 93.39% |
-| 2 | michanical_part | 89.88% |
-| 3 | michanical_part | 93.33% |
-| 4 | michanical_part | 91.41% |
+| 1 | mechanical_part | 93.39% |
+| 2 | mechanical_part | 89.88% |
+| 3 | mechanical_part | 93.33% |
+| 4 | mechanical_part | 91.41% |
 | 5 | magnet | 92.29% |
 | 6 | magnet | 93.33% |
 | 7 | circle | 86.02% |

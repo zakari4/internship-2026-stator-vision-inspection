@@ -1,0 +1,7 @@
+{
+  "model_name": "yolov11m_seg",
+  "best_epoch": 39,
+  "best_val_iou": 0.96056,
+  "total_train_time_sec": 1836.0593349933624,
+  "peak_gpu_memory_mb": 4798.25
+}

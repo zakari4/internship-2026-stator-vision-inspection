@@ -1,0 +1,4 @@
+{"ts":1775750441.773,"model":"yolov11m_seg","fps":0.0,"latency_ms":8328.21,"detections":7,"avg_conf":0.813}
+{"ts":1775750469.512,"model":"yolov8m_seg","fps":0.0,"latency_ms":2058.69,"detections":0,"avg_conf":0.0}
+{"ts":1775750487.188,"model":"yolov8m_seg","fps":0.1,"latency_ms":674.67,"detections":0,"avg_conf":0.0}
+{"ts":1775750525.559,"model":"unet_resnet18","fps":0.0,"latency_ms":15259.47,"detections":0,"avg_conf":0.0}

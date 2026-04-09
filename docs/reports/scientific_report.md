@@ -115,7 +115,7 @@ Images were captured using an industrial camera positioned above stator assembli
 | Original annotated images | 346 |
 | Resolution | 640 × 480 px |
 | Annotation format | LabelMe JSON (polygon shapes) |
-| Classes | `background` (0), `michanical_part` (1), `magnet` (2), `circle` (3) |
+| Classes | `background` (0), `mechanical_part` (1), `magnet` (2), `circle` (3) |
 | Typical image content | 7 objects: 1 circle, 2 magnets, 4 mechanical parts |
 | Training input size | 512 × 512 px (resized) |
 
@@ -465,10 +465,10 @@ All examples use test image `run_001_00003` (640×480) containing **7 ground-tru
 
 | # | Class | Confidence |
 |:-:|-------|:---------:|
-| 1 | michanical_part | 93.39% |
-| 2 | michanical_part | 89.88% |
-| 3 | michanical_part | 93.33% |
-| 4 | michanical_part | 91.41% |
+| 1 | mechanical_part | 93.39% |
+| 2 | mechanical_part | 89.88% |
+| 3 | mechanical_part | 93.33% |
+| 4 | mechanical_part | 91.41% |
 | 5 | magnet | 92.29% |
 | 6 | magnet | 93.33% |
 | 7 | circle | 86.02% |
@@ -486,10 +486,10 @@ All 7 objects correctly detected with high confidence (86–93%).
 | 1 | circle | 96.85% |
 | 2 | magnet | 93.05% |
 | 3 | magnet | 92.54% |
-| 4 | michanical_part | 89.02% |
-| 5 | michanical_part | 88.19% |
-| 6 | michanical_part | 87.67% |
-| 7 | michanical_part | 85.63% |
+| 4 | mechanical_part | 89.02% |
+| 5 | mechanical_part | 88.19% |
+| 6 | mechanical_part | 87.67% |
+| 7 | mechanical_part | 85.63% |
 
 All 7 objects correctly detected with confidence ranging from 85.6% to 96.9%.
 
@@ -504,10 +504,10 @@ All 7 objects correctly detected with confidence ranging from 85.6% to 96.9%.
 | 1 | circle | 95.87% |
 | 2 | magnet | 91.37% |
 | 3 | magnet | 90.39% |
-| 4 | michanical_part | 87.02% |
-| 5 | michanical_part | 85.30% |
-| 6 | michanical_part | 82.33% |
-| 7 | michanical_part | 82.05% |
+| 4 | mechanical_part | 87.02% |
+| 5 | mechanical_part | 85.30% |
+| 6 | mechanical_part | 82.33% |
+| 7 | mechanical_part | 82.05% |
 
 All 7 objects detected. Slightly lower confidence than YOLOv8m (82–96%).
 
@@ -519,10 +519,10 @@ All 7 objects detected. Slightly lower confidence than YOLOv8m (82–96%).
 
 | # | Class | Confidence |
 |:-:|-------|:---------:|
-| 1 | michanical_part | 79.44% |
-| 2 | michanical_part | 77.15% |
-| 3 | michanical_part | 87.51% |
-| 4 | michanical_part | 78.17% |
+| 1 | mechanical_part | 79.44% |
+| 2 | mechanical_part | 77.15% |
+| 3 | mechanical_part | 87.51% |
+| 4 | mechanical_part | 78.17% |
 | 5 | magnet | 44.55% |
 | 6 | magnet | 76.33% |
 | 7 | magnet | 84.96% |
@@ -550,7 +550,7 @@ SegFormer detects **8 objects** (1 spurious extra magnet region) with generally 
 |-----------|--------|------------|
 | **Limited GPU memory** (4 GB VRAM) | Cannot train PyTorch models on augmented data (3,460 images) with reasonable batch sizes; restricted to batch size 4 on original data | Trained YOLO on augmented data (efficient pipeline); used original data for PyTorch |
 | **Long YOLO training times** | YOLOv11m-seg takes 2.5h on the augmented set; iterating on hyperparameters is costly | Limited to 20 epochs; used default Ultralytics hyperparameters |
-| **Class imbalance** | Background pixels vastly outnumber object pixels; `circle` appears once per image vs. 4 `michanical_part` instances | Combined CE + Dice loss; Dice directly optimises overlap per class |
+| **Class imbalance** | Background pixels vastly outnumber object pixels; `circle` appears once per image vs. 4 `mechanical_part` instances | Combined CE + Dice loss; Dice directly optimises overlap per class |
 | **ImageNet normalisation mismatch** | Initial models used ImageNet mean/std normalisation, degrading accuracy on industrial images with different colour statistics | Removed ImageNet normalisation; use intensity normalisation (0–1) only |
 | **Colour channel ordering** | OpenCV loads images in BGR; PyTorch models expect RGB | Explicit BGR→RGB conversion in preprocessing pipeline |
 | **Binary to multi-class migration** | Original pipeline used binary segmentation (foreground/background); extending to 4 classes required loss function, metric, and dataset loader changes | Redesigned `MultiClassCombinedLoss`, updated mask generation to encode class indices |

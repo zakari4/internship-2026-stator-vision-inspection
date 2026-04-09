@@ -52,9 +52,9 @@ class DatasetConfig:
     
     # Classes
     classes: List[str] = field(default_factory=lambda: [
-        "background", "michanical_part", "magnet", "circle"
+        "background", "mechanical_part", "magnet", "circle"
     ])
-    num_classes: int = 4  # Multi-class: background(0) + michanical_part(1) + magnet(2) + circle(3)
+    num_classes: int = 4  # Multi-class: background(0) + mechanical_part(1) + magnet(2) + circle(3)
     
     # Label filter (select specific labels for training/benchmark)
     # If None, all labels in self.classes are used.
@@ -230,7 +230,7 @@ class MeasurementConfig:
     circle_fitting_enabled: bool = True
     
     # Dynamic calibration settings
-    reference_label_name: str = "michanical_part"
+    reference_label_name: str = "mechanical_part"
     reference_known_dimension_mm: float = 52.0
     reference_dimension_type: str = "diameter"
     

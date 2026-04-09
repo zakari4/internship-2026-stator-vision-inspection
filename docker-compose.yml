@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════
-# Chignon Detection — Docker Compose
+# Stator Detection — Docker Compose
 # ══════════════════════════════════════════════════════════════
 # Server: Flask+WebRTC with model weights baked in
 # Client: Nginx serving static files + reverse proxy to server
@@ -23,7 +23,7 @@ services:
       - ./client:/app/client:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/status')"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/status')" ]
       interval: 30s
       timeout: 5s
       start_period: 15s
@@ -34,7 +34,7 @@ services:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
+              capabilities: [ gpu ]
 
   # ── Client (Nginx static file server) ──────────────────────
   client:

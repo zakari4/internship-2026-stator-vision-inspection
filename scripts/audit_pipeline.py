@@ -58,7 +58,7 @@ def test_labels_config():
     print(f"  config.dataset.root_path: {config.dataset.root_path}")
 
     assert "background" in LABELS, "Missing 'background' in LABELS"
-    assert "michanical_part" in LABELS, "Missing 'michanical_part' in LABELS"
+    assert "mechanical_part" in LABELS, "Missing 'mechanical_part' in LABELS"
     assert "magnet" in LABELS, "Missing 'magnet' in LABELS"
     assert "circle" in LABELS, "Missing 'circle' in LABELS"
     assert len(LABELS) == 4, f"Expected 4 labels, got {len(LABELS)}"
@@ -330,7 +330,7 @@ def test_yolo_prep():
 
     class_names = [label for label in LABELS if label != 'background']
     print(f"  YOLO class names: {class_names}")
-    assert "michanical_part" in class_names
+    assert "mechanical_part" in class_names
     assert "magnet" in class_names
     assert "circle" in class_names
     assert "chignon" not in class_names, "Old label 'chignon' still in YOLO classes"

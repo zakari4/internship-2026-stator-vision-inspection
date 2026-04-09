@@ -1,0 +1,2 @@
+{"ts":1775752290.295,"model":"yolov8m_seg","fps":0.0,"latency_ms":3055.87,"detections":0,"avg_conf":0.0}
+{"ts":1775752315.696,"model":"yolov11m_seg","fps":0.0,"latency_ms":6630.57,"detections":6,"avg_conf":0.823}

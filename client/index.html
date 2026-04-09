@@ -18,6 +18,14 @@
             </div>
             <div class="header-right">
                 <div class="model-selector">
+                    <label for="domainSelect">Target</label>
+                    <select id="domainSelect">
+                        <option value="stator" selected>Stator</option>
+                        <option value="chignon">Chignon</option>
+                        <option value="file">File</option>
+                    </select>
+                </div>
+                <div class="model-selector">
                     <label for="modelSelect">Model</label>
                     <select id="modelSelect" disabled>
                         <option value="">Loading…</option>
@@ -28,52 +36,63 @@
 
         <!-- Main content -->
         <main class="main">
-            <!-- Video feeds -->
-            <div class="video-grid">
-                <div class="video-card">
-                    <div class="video-label">Camera Feed</div>
-                    <video id="localVideo" autoplay muted playsinline></video>
-                </div>
-                <div class="video-card primary">
-                    <div class="video-label">Detection Result</div>
-                    <video id="remoteVideo" autoplay playsinline></video>
-                    <div class="video-overlay" id="videoOverlay">
-                        <span>Waiting for connection…</span>
+
+            <!-- MindVision Industrial Camera -->
+            <div class="mindvision-section">
+                <div class="panel">
+                    <h3>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="vertical-align:middle;margin-right:6px">
+                            <path
+                                d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                        </svg>
+                        MindVision Industrial Camera (USB)
+                        <span class="badge mv-badge" id="mvStatusBadge">Disconnected</span>
+                    </h3>
+                    <p class="mv-hint">Run <code>python server/mindvision_capture.py --show</code> to connect the camera
+                    </p>
+                    <div class="mv-feed-container">
+                        <div class="mv-feed" id="mvFeedWrapper" style="display:none;">
+                            <div class="video-card primary">
+                                <div class="video-label">MindVision — Live Detection</div>
+                                <img id="mvStream" alt="MindVision Stream">
+                            </div>
+                            <div class="video-card primary" id="depthPanel" style="display:none; margin-top: 12px;">
+                                <div class="video-label">MiDaS — Real-time Depth Map</div>
+                                <img id="depthStream" alt="MiDaS Depth Stream">
+                            </div>
+                            <div class="mv-stats">
+                                <span id="mvModel">Model: —</span>
+                                <span id="mvInference">Inference: —</span>
+                                <span id="mvDetCount">Detections: 0</span>
+                            </div>
+                            <div class="mv-actions">
+                                <button id="btnMeasureMV" class="btn btn-measure btn-sm">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M2 12h4m4 0h4m4 0h4"/>
+                                        <circle cx="6" cy="12" r="2"/>
+                                        <circle cx="18" cy="12" r="2"/>
+                                    </svg>
+                                    📏 Measure
+                                </button>
+                            </div>
+                            <div id="mvDetections" class="detections-list"></div>
+                        </div>
+                        <div class="mv-placeholder" id="mvPlaceholder">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5" opacity="0.3">
+                                <path
+                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                <circle cx="12" cy="13" r="4" />
+                            </svg>
+                            <p>No MindVision camera connected</p>
+                            <p class="upload-hint">Start the capture script to see live detection here</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Controls -->
-            <div class="controls">
-                <button id="btnConnect" class="btn btn-primary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                    </svg>
-                    Start Detection
-                </button>
-                <button id="btnDisconnect" class="btn btn-danger" disabled>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="6" y="4" width="4" height="16"></rect>
-                        <rect x="14" y="4" width="4" height="16"></rect>
-                    </svg>
-                    Stop
-                </button>
-                <button id="btnSnapshot" class="btn btn-secondary" disabled>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                    Snapshot
-                </button>
-                <button id="btnSaveLive" class="btn btn-save" disabled>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                        <polyline points="17 21 17 13 7 13 7 21" />
-                        <polyline points="7 3 7 8 15 8" />
-                    </svg>
-                    Save
-                </button>
-            </div>
 
             <!-- Camera Settings & Measurement Post-Processing -->
             <div class="settings-section">
@@ -116,7 +135,13 @@
                         <div class="settings-row" style="margin-top: 6px;">
                             <label class="toggle-label">
                                 <input type="checkbox" id="showAlignedPairDistances">
-                                <span>Show aligned magnet/mechanical distances</span>
+                                <span>Show aligned magnet/mechanical part distances</span>
+                            </label>
+                        </div>
+                        <div class="settings-row" style="margin-top: 6px;">
+                            <label class="toggle-label" title="Measures distance between opposite cross-diametric elements.">
+                                <input type="checkbox" id="showOppositeDistances">
+                                <span>Show Cross-Diametric Distances (Opposites)</span>
                             </label>
                         </div>
 
@@ -185,7 +210,7 @@
                 </div>
             </div>
 
-            <!-- Pipeline Enhancements Section -->
+            <!-- Post-processing & Enhancements Section -->
             <div class="enhancements-section" style="margin-bottom: 20px;">
                 <div class="panel">
                     <h3 class="settings-header" id="enhancementsToggle">
@@ -194,88 +219,83 @@
                             style="vertical-align:middle;margin-right:6px">
                             <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                         </svg>
-                        SOTA Pipeline Enhancements
+                        Post-processing Control Panel
                         <span class="settings-chevron" id="enhancementsChevron">▾</span>
                     </h3>
                     
                     <div class="settings-body" id="enhancementsBody">
-                        <div class="settings-row">
-                            <label class="toggle-label" title="Uses ByteTrack/DeepSORT to persist object IDs across frames. Highly recommended for counting moving stator motors.">
-                                <input type="checkbox" id="enableTracking">
-                                <span>Enable ByteTrack (Object Tracking)</span>
-                            </label>
+                        <div class="settings-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div class="settings-row">
+                                <label class="toggle-label" title="Global switch for all annotations and measurements.">
+                                    <input type="checkbox" id="enablePostprocessing" checked>
+                                    <span>Global Post-processing</span>
+                                </label>
+                            </div>
+                            <div class="settings-row" id="rowHeuristic">
+                                <label class="toggle-label" title="Uses spatial logic to fix ResNet misclassifications (Stator only).">
+                                    <input type="checkbox" id="enableHeuristic" checked>
+                                    <span>Spatial Heuristic (ResNet Fix)</span>
+                                </label>
+                            </div>
+                            <div class="settings-row">
+                                <label class="toggle-label" title="Limits detections to the strongest N objects.">
+                                    <input type="checkbox" id="enableTopN" checked>
+                                    <span>Top-N Filtering</span>
+                                </label>
+                            </div>
+                            <div class="settings-row" id="rowTracking">
+                                <label class="toggle-label" title="Uses ByteTrack to persist object IDs.">
+                                    <input type="checkbox" id="enableTracking">
+                                    <span>Object Tracking (ByteTrack)</span>
+                                </label>
+                            </div>
+                            <div class="settings-row">
+                                <label class="toggle-label" title="Crisp masks using Guided Filtering.">
+                                    <input type="checkbox" id="enableEdgeRefinement">
+                                    <span>Edge Refinement</span>
+                                </label>
+                            </div>
+                            <div class="settings-row">
+                                <label class="toggle-label" title="Show Midas depth heatmap.">
+                                    <input type="checkbox" id="enableDepthViz">
+                                    <span>Depth Visualization</span>
+                                </label>
+                            </div>
                         </div>
-                        <div class="settings-row" style="margin-top: 12px;">
-                            <label class="toggle-label" title="Uses high-frequency guided filtering to snap segmentation masks tightly to physical metal edges like PointRend.">
-                                <input type="checkbox" id="enableEdgeRefinement">
-                                <span>Enable Edge Refinement (Crisp Masks)</span>
-                            </label>
-                        </div>
-                        <div class="settings-row" style="margin-top: 12px;">
-                            <label class="toggle-label" title="Runs MiDaS Small to generate a real-time depth heatmap.">
-                                <input type="checkbox" id="enableDepthViz">
-                                <span>Enable MiDaS Depth Visualization (Heatmap)</span>
-                            </label>
-                        </div>
-                        <div class="settings-actions" style="margin-top: 16px;">
-                            <button id="btnSaveEnhancements" class="btn btn-primary btn-sm">Apply Enhancements</button>
-                            <span id="enhancementsSaved" class="settings-saved" style="display:none;">✓ Applied</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- MindVision Industrial Camera -->
-            <div class="mindvision-section">
-                <div class="panel">
-                    <h3>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" style="vertical-align:middle;margin-right:6px">
-                            <path
-                                d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                            <circle cx="12" cy="13" r="4" />
-                        </svg>
-                        MindVision Industrial Camera (USB)
-                        <span class="badge mv-badge" id="mvStatusBadge">Disconnected</span>
-                    </h3>
-                    <p class="mv-hint">Run <code>python server/mindvision_capture.py --show</code> to connect the camera
-                    </p>
-                    <div class="mv-feed-container">
-                        <div class="mv-feed" id="mvFeedWrapper" style="display:none;">
-                            <div class="video-card primary">
-                                <div class="video-label">MindVision — Live Detection</div>
-                                <img id="mvStream" alt="MindVision Stream">
+                        <div class="divider" style="margin: 15px 0; border-top: 1px solid var(--border-color); opacity: 0.3;"></div>
+                        
+                        <div class="settings-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                            <div class="settings-row">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="drawBoxes" checked>
+                                    <span>Show Boxes</span>
+                                </label>
                             </div>
-                            <div class="video-card primary" id="depthPanel" style="display:none; margin-top: 12px;">
-                                <div class="video-label">MiDaS — Real-time Depth Map</div>
-                                <img id="depthStream" alt="MiDaS Depth Stream">
+                            <div class="settings-row">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="drawMasks" checked>
+                                    <span>Show Masks</span>
+                                </label>
                             </div>
-                            <div class="mv-stats">
-                                <span id="mvModel">Model: —</span>
-                                <span id="mvInference">Inference: —</span>
-                                <span id="mvDetCount">Detections: 0</span>
+                            <div class="settings-row">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="drawLabels" checked>
+                                    <span>Show Labels</span>
+                                </label>
                             </div>
-                            <div class="mv-actions">
-                                <button id="btnMeasureMV" class="btn btn-measure btn-sm">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M2 12h4m4 0h4m4 0h4"/>
-                                        <circle cx="6" cy="12" r="2"/>
-                                        <circle cx="18" cy="12" r="2"/>
-                                    </svg>
-                                    📏 Measure
-                                </button>
-                            </div>
-                            <div id="mvDetections" class="detections-list"></div>
                         </div>
-                        <div class="mv-placeholder" id="mvPlaceholder">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="1.5" opacity="0.3">
-                                <path
-                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                                <circle cx="12" cy="13" r="4" />
-                            </svg>
-                            <p>No MindVision camera connected</p>
-                            <p class="upload-hint">Start the capture script to see live detection here</p>
+
+                        <div class="settings-row" style="margin-top: 15px;">
+                            <label for="confThreshold" style="display:block; margin-bottom: 5px; font-size: 0.85rem; font-weight: 500;">
+                                Confidence Threshold: <span id="confValue">0.05</span>
+                            </label>
+                            <input type="range" id="confThreshold" min="0.01" max="0.95" step="0.01" value="0.05" style="width: 100%;">
+                        </div>
+
+                        <div class="settings-actions" style="margin-top: 16px;">
+                            <button id="btnSaveEnhancements" class="btn btn-primary btn-sm">Apply Post-processing</button>
+                            <span id="enhancementsSaved" class="settings-saved" style="display:none;">✓ Applied</span>
                         </div>
                     </div>
                 </div>

@@ -41,6 +41,12 @@ from av import VideoFrame
 
 from inference import ModelManager
 
+# Add chignon path so we can import chignon.inference
+CHIGNON_DIR = Path(__file__).resolve().parent.parent / "chignon"
+if str(CHIGNON_DIR.parent) not in sys.path:
+    sys.path.insert(0, str(CHIGNON_DIR.parent))
+from chignon.inference import ChignonModelManager
+
 # ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
@@ -62,6 +68,16 @@ CORS(app)
 # Shared state
 # ---------------------------------------------------------------------------
 model_manager = ModelManager()
+chignon_manager = ChignonModelManager()
+
+def _get_manager(domain: str = "stator"):
+    """Return the correct model manager for the given domain."""
+    if domain == "chignon":
+        return chignon_manager
+    # stator / file / default all go to the main manager
+    if domain and domain != "stator":
+        model_manager.set_domain(domain)
+    return model_manager
 peer_connections: dict[str, RTCPeerConnection] = {}
 relay = MediaRelay()
 
@@ -315,10 +331,12 @@ def serve_client_files(filename):
 @app.route("/api/models", methods=["GET"])
 def api_list_models():
     """Return available models and which one is active."""
+    domain = request.args.get("domain", "stator")
+    mgr = _get_manager(domain)
     return jsonify(
         {
-            "models": model_manager.get_models_info(),
-            "current": model_manager.current_model_name,
+            "models": mgr.get_models_info(),
+            "current": mgr.current_model_name,
         }
     )
 
@@ -358,15 +376,17 @@ def api_model_performance(model_name):
 def api_select_model():
     """Switch the active model."""
     data = request.get_json(force=True)
+    domain = data.get("domain", "stator")
+    mgr = _get_manager(domain)
     model_name = data.get("model")
 
     if not model_name:
         return jsonify({"error": "Missing 'model' field"}), 400
 
-    if model_name not in model_manager.available_models:
+    if model_name not in mgr.available_models:
         return jsonify({"error": f"Unknown model: {model_name}"}), 404
 
-    success = model_manager.load_model(model_name)
+    success = mgr.load_model(model_name)
     if success:
         return jsonify({"status": "ok", "model": model_name})
     else:
@@ -377,18 +397,42 @@ def api_select_model():
 
 @app.route("/api/inference-settings", methods=["GET", "POST"])
 def api_inference_settings():
-    """Get or update state-of-the-art inference enhancements."""
+    """Get or update state-of-the-art inference enhancements and post-processing flags."""
     if request.method == "GET":
         return jsonify({
             "enable_tracking": getattr(model_manager, "enable_tracking", False),
-            "enable_edge_refinement": getattr(model_manager, "enable_edge_refinement", False)
+            "enable_edge_refinement": getattr(model_manager, "enable_edge_refinement", False),
+            "enable_postprocessing": getattr(model_manager, "enable_postprocessing", True),
+            "enable_heuristic": getattr(model_manager, "enable_heuristic", True),
+            "enable_top_n": getattr(model_manager, "enable_top_n", True),
+            "draw_boxes": getattr(model_manager, "draw_boxes", True),
+            "draw_masks": getattr(model_manager, "draw_masks", True),
+            "draw_labels": getattr(model_manager, "draw_labels", True),
+            "conf_threshold": getattr(model_manager, "conf_threshold", 0.05),
         })
 
     data = request.get_json(force=True)
-    if "enable_tracking" in data:
-        model_manager.enable_tracking = bool(data["enable_tracking"])
-    if "enable_edge_refinement" in data:
-        model_manager.enable_edge_refinement = bool(data["enable_edge_refinement"])
+    
+    # Apply to both managers
+    for mgr in [model_manager, chignon_manager]:
+        if "enable_tracking" in data:
+            mgr.enable_tracking = bool(data["enable_tracking"])
+        if "enable_edge_refinement" in data:
+            mgr.enable_edge_refinement = bool(data["enable_edge_refinement"])
+        if "enable_postprocessing" in data:
+            mgr.enable_postprocessing = bool(data["enable_postprocessing"])
+        if "enable_heuristic" in data:
+            mgr.enable_heuristic = bool(data["enable_heuristic"])
+        if "enable_top_n" in data:
+            mgr.enable_top_n = bool(data["enable_top_n"])
+        if "draw_boxes" in data:
+            mgr.draw_boxes = bool(data["draw_boxes"])
+        if "draw_masks" in data:
+            mgr.draw_masks = bool(data["draw_masks"])
+        if "draw_labels" in data:
+            mgr.draw_labels = bool(data["draw_labels"])
+        if "conf_threshold" in data:
+            mgr.conf_threshold = float(data["conf_threshold"])
 
     return jsonify({"status": "ok"})
 
@@ -402,6 +446,9 @@ def webrtc_offer():
     and return an SDP answer.
     """
     params = request.get_json(force=True)
+    domain = params.get("domain")
+    if domain:
+        model_manager.set_domain(domain)
 
     if "sdp" not in params or "type" not in params:
         return jsonify({"error": "Missing sdp or type"}), 400
@@ -420,6 +467,9 @@ def api_detect_image():
     Accept an uploaded image, run model inference, and return
     the annotated image (base64 JPEG) plus detection metadata.
     """
+    domain = request.form.get("domain", "stator")
+    mgr = _get_manager(domain)
+
     if "image" not in request.files:
         return jsonify({"error": "No 'image' file in request"}), 400
 
@@ -433,17 +483,17 @@ def api_detect_image():
     img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
     if img is None:
-        metrics_tracker.add_metric(None, is_error=True, model_name=model_manager.current_model_name)
+        metrics_tracker.add_metric(None, is_error=True, model_name=mgr.current_model_name)
         return jsonify({"error": "Could not decode image"}), 400
 
     # Run inference
     t0 = time.time()
     try:
-        annotated, detections = model_manager.predict(img)
+        annotated, detections = mgr.predict(img)
         inference_ms = (time.time() - t0) * 1000
-        metrics_tracker.add_metric(inference_ms, is_error=False, model_name=model_manager.current_model_name)
+        metrics_tracker.add_metric(inference_ms, is_error=False, model_name=mgr.current_model_name)
     except Exception as e:
-        metrics_tracker.add_metric(None, is_error=True, model_name=model_manager.current_model_name)
+        metrics_tracker.add_metric(None, is_error=True, model_name=mgr.current_model_name)
         return jsonify({"error": str(e)}), 500
 
     # Encode annotated image as JPEG → base64
@@ -451,9 +501,9 @@ def api_detect_image():
     b64 = base64.b64encode(buf.tobytes()).decode("utf-8")
 
     depth_b64 = None
-    if model_manager.camera_settings.show_depth_map:
+    if hasattr(mgr, 'camera_settings') and mgr.camera_settings.show_depth_map:
         try:
-            depth_viz = model_manager.predict_depth(img)
+            depth_viz = mgr.predict_depth(img)
             _, d_buf = cv2.imencode(".jpg", depth_viz, [cv2.IMWRITE_JPEG_QUALITY, 80])
             depth_b64 = base64.b64encode(d_buf.tobytes()).decode("utf-8")
         except Exception as e:
@@ -464,7 +514,7 @@ def api_detect_image():
         "depth_image": f"data:image/jpeg;base64,{depth_b64}" if depth_b64 else None,
         "detections": detections,
         "inference_ms": round(inference_ms, 1),
-        "model": model_manager.current_model_name,
+        "model": mgr.current_model_name,
     })
 
 

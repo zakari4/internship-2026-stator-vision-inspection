@@ -43,7 +43,7 @@
       },
       {
         "class_id": 0,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.8902,
         "bbox": [
           320.6,
@@ -56,7 +56,7 @@
       },
       {
         "class_id": 0,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.8819,
         "bbox": [
           456.8,
@@ -69,7 +69,7 @@
       },
       {
         "class_id": 0,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.8767,
         "bbox": [
           284.3,
@@ -82,7 +82,7 @@
       },
       {
         "class_id": 0,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.8563,
         "bbox": [
           180.6,
@@ -139,7 +139,7 @@
       },
       {
         "class_id": 0,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.8702,
         "bbox": [
           285.2,
@@ -152,7 +152,7 @@
       },
       {
         "class_id": 0,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.853,
         "bbox": [
           320.6,
@@ -165,7 +165,7 @@
       },
       {
         "class_id": 0,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.8233,
         "bbox": [
           180.2,
@@ -178,7 +178,7 @@
       },
       {
         "class_id": 0,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.8205,
         "bbox": [
           457.3,
@@ -196,7 +196,7 @@
     "detections": [
       {
         "class_id": 1,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.9785,
         "bbox": [
           285.0,
@@ -209,7 +209,7 @@
       },
       {
         "class_id": 1,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.9614,
         "bbox": [
           180.0,
@@ -222,7 +222,7 @@
       },
       {
         "class_id": 1,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.9851,
         "bbox": [
           458.0,
@@ -235,7 +235,7 @@
       },
       {
         "class_id": 1,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.9688,
         "bbox": [
           320.0,
@@ -292,7 +292,7 @@
     "detections": [
       {
         "class_id": 1,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.7944,
         "bbox": [
           295.0,
@@ -305,7 +305,7 @@
       },
       {
         "class_id": 1,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.7715,
         "bbox": [
           180.0,
@@ -318,7 +318,7 @@
       },
       {
         "class_id": 1,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.8751,
         "bbox": [
           448.0,
@@ -331,7 +331,7 @@
       },
       {
         "class_id": 1,
-        "class_name": "michanical_part",
+        "class_name": "mechanical_part",
         "confidence": 0.7817,
         "bbox": [
           310.0,

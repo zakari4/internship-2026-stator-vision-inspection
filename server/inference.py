@@ -265,7 +265,7 @@ def apply_top_n_filtering(detections: List[Dict]) -> List[Dict]:
         "circle": 1,
         "magnet": 2,
         "mechanical_part": 4,
-        "michanical_part": 4
+        "mechanical_part": 4
     }
     
     # Group by normalized class name
@@ -308,7 +308,7 @@ def apply_spatial_heuristic_correction(detections: List[Dict]) -> List[Dict]:
     
     for det in detections:
         cname = det.get("class_name", "").lower()
-        if cname in ["magnet", "mechanical_part", "michanical_part"]:
+        if cname in ["magnet", "mechanical_part", "mechanical_part"]:
             x1, y1, x2, y2 = det["bbox"]
             det_cx = (x1 + x2) / 2.0
             det_cy = (y1 + y2) / 2.0
@@ -323,8 +323,8 @@ def apply_spatial_heuristic_correction(detections: List[Dict]) -> List[Dict]:
                 det["class_name"] = "magnet"
                 det["class_id"] = 2  # Based on mapping: 2 is magnet 
             else:
-                det["class_name"] = "michanical_part"
-                det["class_id"] = 1  # 1 is michanical_part
+                det["class_name"] = "mechanical_part"
+                det["class_id"] = 1  # 1 is mechanical_part
                 
     return detections
 
@@ -593,7 +593,7 @@ def compute_aligned_same_class_distances(
 
     def normalize_family(name: object) -> Optional[str]:
         n = str(name or "").strip().lower()
-        if n in {"mechanical_part", "michanical_part"}:
+        if n in {"mechanical_part", "mechanical_part"}:
             return "mechanical_part"
         if n == "magnet":
             return "magnet"
@@ -740,11 +740,23 @@ class ModelManager:
         self.current_model = None
         self.current_model_name: Optional[str] = None
         self.available_models: Dict[str, dict] = {}
+        self.current_domain = "stator"
+
+        # Global Post-processing Settings
+        self.enable_postprocessing = True
+        self.enable_heuristic = True  # The "ResNet class fix"
+        self.enable_top_n = True
+        self.draw_boxes = True
+        self.draw_masks = True
+        self.draw_labels = True
+        self.conf_threshold = 0.05  # Lowered from 0.1 to improve detection for older YOLOv8 models
+
         self.camera_settings = CameraSettings()
         
         # SOTA pipeline enhancements
         self.enable_tracking = False
         self.enable_edge_refinement = False
+        self.enable_depth_viz = False
 
         # Inference logging & validation
         self._inference_logger = InferenceLogger()
@@ -754,9 +766,13 @@ class ModelManager:
         self._fps_window_start = time.monotonic()
         
         self._discover_models()
-
-        # Auto-load the best model if available
         self._autoload_best()
+
+    def set_domain(self, domain: str):
+        """Set the active domain (stator or chignon) and potentially refresh models."""
+        if domain != self.current_domain:
+            self.current_domain = domain
+            logger.info(f"Switched ModelManager domain to: {domain}")
 
     # ------------------------------------------------------------------
     # Model Discovery
@@ -802,17 +818,21 @@ class ModelManager:
     def _discover_models(self):
         """Auto-discover trained model weights from the outputs folder only."""
 
-        # 1. Trained YOLO weights  (outputs/results/yolo_training/*/weights/best.onnx or .pt)
+        # 1. Trained YOLO weights (outputs/results/yolo_training/*/weights/best.onnx, .engine or .pt)
         yolo_dir = MODEL_BASE_DIR / "outputs" / "results" / "yolo_training"
         if yolo_dir.exists():
             for model_dir in sorted(yolo_dir.iterdir()):
                 if not model_dir.is_dir():
                     continue
                 best_engine = model_dir / "weights" / "best.engine"
+                best_onnx = model_dir / "weights" / "best.onnx"
                 best_pt = model_dir / "weights" / "best.pt"
                 
+                # Prioritize: Engine > ONNX > PT
                 weight_file = best_engine if best_engine.exists() else (
-                    best_pt if best_pt.exists() else None
+                    best_onnx if best_onnx.exists() else (
+                        best_pt if best_pt.exists() else None
+                    )
                 )
 
                 if weight_file is not None:
@@ -821,8 +841,10 @@ class ModelManager:
                     
                     if weight_file.suffix == ".engine":
                         display += " (TensorRT FP16)"
+                    elif weight_file.suffix == ".onnx":
+                        display += " (ONNX FP16)"
                     else:
-                        display += " (FP16)"
+                        display += " (PT FP16)"
 
                     self.available_models[folder] = {
                         "path": str(weight_file),
@@ -1267,7 +1289,7 @@ class ModelManager:
             use_half = False
 
         yolo_imgsz = 640
-        yolo_conf = 0.1
+        yolo_conf = self.conf_threshold
 
         # 1. ByteTrack Object Tracking
         if getattr(self, "enable_tracking", False) and hasattr(self.current_model, "track"):
@@ -1281,13 +1303,27 @@ class ModelManager:
             )
         else:
             # Use FP16 only on GPU
-            results = self.current_model.predict(
-                frame,
-                imgsz=yolo_imgsz,
-                conf=yolo_conf,
-                verbose=False,
-                half=use_half,
-            )
+            try:
+                results = self.current_model.predict(
+                    frame,
+                    imgsz=yolo_imgsz,
+                    conf=yolo_conf,
+                    verbose=False,
+                    half=use_half,
+                )
+            except RuntimeError as e:
+                # If ONNX device binding fails, fallback to CPU
+                if "binding" in str(e).lower() or "device" in str(e).lower():
+                    logger.warning("YOLO Prediction failed on GPU/ONNX, falling back to CPU: %s", e)
+                    results = self.current_model.predict(
+                        frame,
+                        imgsz=yolo_imgsz,
+                        conf=yolo_conf,
+                        verbose=False,
+                        device="cpu"
+                    )
+                else:
+                    raise e
             
         result = results[0]
         annotated = frame.copy()  # Instead of result.plot(), we draw manually to enforce Top-N limits
@@ -1315,185 +1351,138 @@ class ModelManager:
         # Apply Top N Filtering 
         detections = apply_top_n_filtering(detections)
 
-        # Per-detection mask processing
-        if result.masks is not None:
-            detection_masks: List[Tuple[str, np.ndarray]] = []
-            det_contours: List[Tuple[np.ndarray, str, int]] = []
+        # 4. Rendering & Measurements
+        detection_masks = []
+        det_contours = []
+        all_measurements = []
+        edge_center_entries = []
+        
+        do_edge_refine = getattr(self, "enable_edge_refinement", False)
+        guide_filter = None
+        if do_edge_refine:
+            try:
+                guide_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                guide_filter = cv2.ximgproc.createGuidedFilter(guide_img, radius=8, eps=50)
+            except AttributeError:
+                do_edge_refine = False
+
+        for det_idx, det in enumerate(detections):
+            cls_name = det.get("class_name", "unknown")
+            # Normalize names (legacy model support: mechanical -> mechanical)
+            norm_name = cls_name.lower().replace("mechanical", "mechanical")
             
             CLASS_COLORS_MAP = {
-                "michanical_part": (0, 255, 0),
                 "mechanical_part": (0, 255, 0),
                 "magnet": (255, 0, 255),
                 "circle": (255, 255, 0),
             }
-
-            do_edge_refine = getattr(self, "enable_edge_refinement", False)
-            guide_filter = None
-            if do_edge_refine:
-                try:
-                    guide_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    guide_filter = cv2.ximgproc.createGuidedFilter(guide_img, radius=8, eps=50)
-                except AttributeError:
-                    do_edge_refine = False
-
-            for det_idx, det in enumerate(detections):
-                orig_idx = det["idx"]
-                if not det["has_mask"]:
-                    continue
-                    
-                mask_data = result.masks.data[orig_idx]
-                m = mask_data.cpu().numpy()
-                m_resized = cv2.resize(m, (w, h))
-                
-                if do_edge_refine and guide_filter is not None:
-                    m_refined = guide_filter.filter((m_resized * 255.0).astype(np.uint8))
-                    m_bin = (m_refined > 127).astype(np.uint8) * 255
-                else:
-                    m_bin = (m_resized > 0.5).astype(np.uint8) * 255
-
-                cls_name = det.get("class_name", "unknown")
-                detection_masks.append((cls_name, m_bin))
-
-                cnts, _ = cv2.findContours(
-                    m_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-                )
-                if cnts:
-                    largest = max(cnts, key=cv2.contourArea)
-                    if cv2.contourArea(largest) > 50:
-                        det_contours.append((largest, cls_name, det_idx))
-                        
-                # Draw mask overlay manually
-                color = CLASS_COLORS_MAP.get(cls_name.lower(), (0, 255, 255))
-                color_layer = np.zeros_like(frame)
-                color_layer[m_bin > 127] = color
-                annotated = cv2.addWeighted(annotated, 1.0, color_layer, 0.35, 0)
-                
-                # UI Text & BBox Render
-                x1, y1, x2, y2 = det["bbox"]
+            color = CLASS_COLORS_MAP.get(norm_name, (0, 255, 255))
+            
+            # Draw Box & Label
+            x1, y1, x2, y2 = det["bbox"]
+            if self.draw_boxes:
                 cv2.rectangle(annotated, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
-                label_text = f"{cls_name} {det.get('confidence', 0.0):.2f}"
+            if self.draw_labels:
+                display_name = cls_name.replace("_", " ")
+                label_text = f"{display_name} {det.get('confidence', 0.0):.2f}"
+                if "track_id" in det:
+                    label_text = f"#{det['track_id']} {label_text}"
                 cv2.putText(annotated, label_text, (int(x1), max(15, int(y1) - 5)), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
 
-            # Cleanup internal mapping
-            for det in detections:
-                if "idx" in det:
-                    del det["idx"]
-
-            px_to_mm = self._get_px_to_mm(w, detection_masks, frame)
-
-            if self.camera_settings.enabled:
-                all_measurements = []
-                edge_center_entries = []
-                target_names = {"mechanical_part", "michanical_part", "magnet"}
-
-                for contour, cls_name, det_idx in det_contours:
-                    measurements = compute_single_contour_measurements(
-                        contour, px_to_mm, cls_name
-                    )
-                    if det_idx < len(detections):
-                        detections[det_idx]["measurements"] = measurements
-                    all_measurements.extend(measurements)
-
-                    if cls_name.lower() in target_names:
-                        edge_center_entries.append({
-                            "name": cls_name,
-                            "points": compute_edge_center_points(contour),
-                            "det_idx": det_idx,
-                        })
-
-                for i in range(len(det_contours)):
-                    for j in range(i + 1, len(det_contours)):
-                        cnt_a, name_a, idx_a = det_contours[i]
-                        cnt_b, name_b, idx_b = det_contours[j]
-                        if len(cnt_a) < 2 or len(cnt_b) < 2:
-                            continue
-                        pts_a = cnt_a.reshape(-1, 2).astype(np.float64)
-                        pts_b = cnt_b.reshape(-1, 2).astype(np.float64)
-                        dists = cdist(pts_a, pts_b)
-                        min_dist = float(np.min(dists))
-                        idx = np.unravel_index(np.argmin(dists), dists.shape)
-                        pt_a = pts_a[idx[0]].astype(int).tolist()
-                        pt_b = pts_b[idx[1]].astype(int).tolist()
-                        dist_m = {
-                            "type": "distance",
-                            "label": f"{name_a} \u2194 {name_b}",
-                            "value_px": round(min_dist, 1),
-                            "value_mm": round(min_dist * px_to_mm, 2),
-                            "pt1": pt_a,
-                            "pt2": pt_b,
-                        }
-                        if idx_a < len(detections):
-                            detections[idx_a]["measurements"].append(dist_m)
-                        if idx_b < len(detections):
-                            detections[idx_b]["measurements"].append(dist_m)
-                        all_measurements.append(dist_m)
-
-                if edge_center_entries:
-                    extra_measurements = compute_edge_center_distances(
-                        edge_center_entries,
-                        px_to_mm,
-                        show_edges=self.camera_settings.show_edge_distances,
-                        show_centers=self.camera_settings.show_center_distances,
-                    )
-                    all_measurements.extend(extra_measurements)
-                    if self.camera_settings.show_aligned_pair_distances:
-                        all_measurements.extend(
-                            compute_aligned_same_class_distances(
-                                edge_center_entries,
-                                px_to_mm,
-                            )
-                        )
-
-                if all_measurements:
-                    annotated = draw_measurements_on_image(
-                        annotated, all_measurements, px_to_mm
-                    )
-
-            # Draw contour borders for valid det_contours
-            for contour, _, _ in det_contours:
-                cv2.drawContours(
-                    annotated, [contour], -1, (0, 255, 255), 2, cv2.LINE_AA
-                )
-
-            # --- Depth Map Overlay & Metric Depth Integration ---
-            if self.camera_settings.show_depth_map:
-                try:
-                    depth_viz, raw_disp = self.predict_depth(frame)
-                    # Blend depth visualization (40% opacity) into the annotated results
-                    annotated = cv2.addWeighted(annotated, 1.0, depth_viz, 0.4, 0)
+            # Mask Processing
+            if det.get("has_mask") and result.masks is not None:
+                orig_idx = det.get("idx")
+                if orig_idx is not None:
+                    mask_data = result.masks.data[orig_idx]
+                    m = mask_data.cpu().numpy()
+                    m_resized = cv2.resize(m, (w, h))
                     
-                    # Compute metric depth per object
-                    ref_dist = self.camera_settings.object_distance_mm
-                    global_median = float(np.median(raw_disp))
+                    if do_edge_refine and guide_filter is not None:
+                        m_refined = guide_filter.filter((m_resized * 255.0).astype(np.uint8))
+                        m_bin = (m_refined > 127).astype(np.uint8) * 255
+                    else:
+                        m_bin = (m_resized > 0.5).astype(np.uint8) * 255
                     
-                    if global_median > 0:
-                        for det in detections:
-                            det_idx = det.get("det_idx") # Internal helper check
-                            # Find matching mask in det_contours mapping if available
-                            # Or just use the bounding box to sample if mask not conveniently available
-                            # However, we have det_contours already.
-                            
-                            # For simplicity and robustness across models (YOLO/UNet),
-                            # we compute median disparity within the bounding box
-                            x1, y1, x2, y2 = map(int, det["bbox"])
-                            x1, y1 = max(0, x1), max(0, y1)
-                            x2, y2 = min(w, x2), min(h, y2)
-                            
-                            if x2 > x1 and y2 > y1:
-                                obj_disp = float(np.median(raw_disp[y1:y2, x1:x2]))
-                                if obj_disp > 0:
-                                    # Absolute depth ~ 1/disparity
-                                    # Ratio mapping: depth_obj / depth_global = disp_global / disp_obj
-                                    approx_depth = (global_median / obj_disp) * ref_dist
-                                    det["approx_depth_mm"] = round(approx_depth, 1)
-                                    
-                                    # Draw depth on overlay
-                                    d_text = f"D: {det['approx_depth_mm']}mm"
-                                    cv2.putText(annotated, d_text, (x1, min(h-5, y2 + 15)),
-                                                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
-                except Exception as e:
-                    logger.error("Failed to apply depth metrics: %s", e)
+                    detection_masks.append((cls_name, m_bin))
+                    
+                    if self.draw_masks:
+                        color_layer = np.zeros_like(frame)
+                        color_layer[m_bin > 127] = color
+                        annotated = cv2.addWeighted(annotated, 1.0, color_layer, 0.35, 0)
+
+                    cnts, _ = cv2.findContours(m_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    if cnts:
+                        largest = max(cnts, key=cv2.contourArea)
+                        if cv2.contourArea(largest) > 50:
+                            det_contours.append((largest, cls_name, det_idx))
+
+        # Measurements logic
+        px_to_mm = self._get_px_to_mm(w, detection_masks, frame)
+        if self.camera_settings.enabled and det_contours:
+            target_names = {"mechanical_part"}
+            for contour, cls_name, det_idx in det_contours:
+                measurements = compute_single_contour_measurements(contour, px_to_mm, cls_name)
+                det = detections[det_idx]
+                det["measurements"] = measurements
+                all_measurements.extend(measurements)
+                if cls_name.lower() in target_names:
+                    edge_center_entries.append({
+                        "name": cls_name,
+                        "points": compute_edge_center_points(contour),
+                        "det_idx": det_idx,
+                    })
+
+            # Inter-contour distances
+            for i in range(len(det_contours)):
+                for j in range(i + 1, len(det_contours)):
+                    cnt_a, name_a, idx_a = det_contours[i]
+                    cnt_b, name_b, idx_b = det_contours[j]
+                    pts_a = cnt_a.reshape(-1, 2).astype(np.float64)
+                    pts_b = cnt_b.reshape(-1, 2).astype(np.float64)
+                    dists = cdist(pts_a, pts_b)
+                    min_dist = float(np.min(dists))
+                    idx = np.unravel_index(np.argmin(dists), dists.shape)
+                    pt_a = pts_a[idx[0]].astype(int).tolist()
+                    pt_b = pts_b[idx[1]].astype(int).tolist()
+                    dist_m = {
+                        "type": "distance",
+                        "label": f"{name_a} \u2194 {name_b}",
+                        "value_px": round(min_dist, 1),
+                        "value_mm": round(min_dist * px_to_mm, 2),
+                        "pt1": pt_a, "pt2": pt_b,
+                    }
+                    all_measurements.append(dist_m)
+
+            if all_measurements and self.enable_postprocessing:
+                annotated = draw_measurements_on_image(annotated, all_measurements, px_to_mm)
+
+        # Depth visualization
+        if self.camera_settings.show_depth_map:
+            try:
+                depth_viz, raw_disp = self.predict_depth(frame)
+                annotated = cv2.addWeighted(annotated, 1.0, depth_viz, 0.4, 0)
+                global_median = float(np.median(raw_disp))
+                if global_median > 0:
+                    for det in detections:
+                        x1, y1, x2, y2 = map(int, det["bbox"])
+                        x1, y1 = max(0, x1), max(0, y1)
+                        x2, y2 = min(w, x2), min(h, y2)
+                        if x2 > x1 and y2 > y1:
+                            obj_disp = float(np.median(raw_disp[y1:y2, x1:x2]))
+                            if obj_disp > 0:
+                                ref_dist = self.camera_settings.object_distance_mm
+                                approx_depth = (global_median / obj_disp) * ref_dist
+                                det["approx_depth_mm"] = round(approx_depth, 1)
+                                cv2.putText(annotated, f"D: {det['approx_depth_mm']}mm", (x1, min(h-5, y2 + 15)),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
+            except Exception as e:
+                logger.error("Failed to apply depth metrics: %s", e)
+
+        # Cleanup internal mapping
+        for det in detections:
+            if "idx" in det:
+                del det["idx"]
 
         return annotated, detections
 
@@ -1504,11 +1493,11 @@ class ModelManager:
         """
         import torch
 
-        # Multi-class label names (indices 1,2,3 correspond to foreground classes)
-        CLASS_NAMES = ["background", "michanical_part", "magnet", "circle"]
+        # Multi-class label names
+        CLASS_NAMES = ["background", "mechanical_part", "magnet", "circle"]
         # Distinct colours for each foreground class (BGR)
         CLASS_COLORS = {
-            1: (0, 255, 0),    # michanical_part → green
+            1: (0, 255, 0),    # mechanical_part → green
             2: (255, 0, 255),  # magnet → magenta
             3: (255, 255, 0),  # circle → cyan
         }
@@ -1517,11 +1506,16 @@ class ModelManager:
         if not hasattr(model, "forward") and not hasattr(model, "run"):
             return frame, []
 
-        # Preprocess: resize, BGR→RGB, normalize to [0,1] (matches training)
+        # Preprocess: resize, BGR→RGB, normalize
         h, w = frame.shape[:2]
         img = cv2.resize(frame, (512, 512))
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img_float = img_rgb.astype(np.float32) / 255.0
+        
+        # Standard ImageNet Normalization (required for ResNet backbones)
+        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+        std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+        img_float = (img_float - mean) / std
 
         if hasattr(model, "run"):  # ONNX Runtime InferenceSession
             input_name = model.get_inputs()[0].name
@@ -1530,17 +1524,13 @@ class ModelManager:
             output = torch.from_numpy(output_np)
         else:  # Standard torch.nn.Module
             device = next((p.device for p in model.parameters()), torch.device("cpu"))
+            model_dtype = next((p.dtype for p in model.parameters()), torch.float32)
             tensor = (
                 torch.from_numpy(img_float)
                 .permute(2, 0, 1)
                 .unsqueeze(0)
-                .float()
-                .to(device)
+                .to(device=device, dtype=model_dtype)
             )
-            
-            # Cast to FP16 if model is FP16
-            if next(model.parameters()).dtype == torch.float16:
-                tensor = tensor.half()
 
             with torch.no_grad():
                 output = model(tensor)
@@ -1555,7 +1545,8 @@ class ModelManager:
         # Multi-class path (≥2 output channels)
         # ----------------------------------------------------------
         if num_channels > 1:
-            probs = torch.softmax(output, dim=1).squeeze(0).cpu().numpy()  # (C, H, W)
+            # Ensure we are in float32 before moving to numpy for OpenCV compatibility
+            probs = torch.softmax(output, dim=1).squeeze(0).detach().cpu().to(torch.float32).numpy()  # (C, H, W)
             pred_classes = probs.argmax(axis=0)  # (H, W) values 0..C-1
 
             # Resize predicted class map to original frame size
@@ -1576,7 +1567,9 @@ class ModelManager:
             # --- Pass 1: Extraction & Discovery ---
             detections = []
             for cls_id in range(1, num_channels):  # skip background
-                cls_mask = (pred_resized == cls_id).astype(np.uint8) * 255
+                # Independent thresholding: don't let background argmax hide foregrounds > conf_threshold
+                cls_prob = cv2.resize(probs[cls_id], (w, h))
+                cls_mask = (cls_prob > self.conf_threshold).astype(np.uint8) * 255
                 
                 if do_edge_refine and guide_filter is not None:
                     cls_mask = guide_filter.filter(cls_mask)
@@ -1597,10 +1590,11 @@ class ModelManager:
                     region_probs = cls_prob[cnt_mask_small > 0]
                     conf = float(region_probs.mean()) if len(region_probs) > 0 else 0.5
 
-                    cls_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
+                    # Format class name for display (replace underscores with spaces)
+                    display_name = cls_name.replace("_", " ")
                     detections.append({
                         "class_id": cls_id,
-                        "class_name": cls_name,
+                        "class_name": display_name,
                         "confidence": round(conf, 4),
                         "bbox": [float(x), float(y), float(x + cw), float(y + ch)],
                         "has_mask": True,
@@ -1609,8 +1603,11 @@ class ModelManager:
                     })
 
             # --- Pass 2: Heuristic Overrides & Filtering ---
-            detections = apply_spatial_heuristic_correction(detections)
-            detections = apply_top_n_filtering(detections)
+            if self.enable_heuristic:
+                detections = apply_spatial_heuristic_correction(detections)
+            
+            if self.enable_top_n:
+                detections = apply_top_n_filtering(detections)
 
             # --- Pass 3: Rendering & Measurements ---
             overlay = frame.copy()
@@ -1631,7 +1628,7 @@ class ModelManager:
             
             all_measurements = []
             edge_center_entries = []
-            target_names = {"mechanical_part", "michanical_part", "magnet"}
+            target_names = {"mechanical_part", "mechanical_part", "magnet"}
             
             for det_idx, det in enumerate(detections):
                 cls_name = det["class_name"]
@@ -1639,19 +1636,22 @@ class ModelManager:
                 cnt = det["contour"]
                 color = CLASS_COLORS.get(cls_id, (0, 255, 0))
 
-                # Splash Fill
-                color_layer = np.zeros_like(frame)
-                cv2.drawContours(color_layer, [cnt], -1, color, -1)
-                overlay = cv2.addWeighted(overlay, 1.0, color_layer, 0.35, 0)
-                
-                # Borders
-                cv2.drawContours(overlay, [cnt], -1, color, 2, cv2.LINE_AA)
+                # Splash Fill (Masks)
+                if self.draw_masks:
+                    color_layer = np.zeros_like(frame)
+                    cv2.drawContours(color_layer, [cnt], -1, color, -1)
+                    overlay = cv2.addWeighted(overlay, 1.0, color_layer, 0.35, 0)
+                    # Borders
+                    cv2.drawContours(overlay, [cnt], -1, color, 2, cv2.LINE_AA)
                 
                 # UI Text & Bounding Box
                 x1, y1, x2, y2 = det["bbox"]
-                cv2.rectangle(overlay, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
-                label_text = f"{cls_name} {det['confidence']:.2f}"
-                cv2.putText(overlay, label_text, (int(x1), max(15, int(y1) - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+                if self.draw_boxes:
+                    cv2.rectangle(overlay, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
+                
+                if self.draw_labels:
+                    label_text = f"{cls_name} {det['confidence']:.2f}"
+                    cv2.putText(overlay, label_text, (int(x1), max(15, int(y1) - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
                 
                 # Measurements
                 if self.camera_settings.enabled:
@@ -1934,7 +1934,7 @@ class ModelManager:
                     out = out.get("out", list(out.values())[0])
                 n_ch = out.shape[1]
                 if n_ch >= 4:
-                    return ["michanical_part", "magnet", "circle"]
+                    return ["mechanical_part", "magnet", "circle"]
             except Exception:
                 pass
 

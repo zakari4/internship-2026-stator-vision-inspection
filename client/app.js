@@ -13,6 +13,7 @@ const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
 const videoOverlay = document.getElementById("videoOverlay");
 const statusBadge = document.getElementById("statusBadge");
+const domainSelect = document.getElementById("domainSelect");
 const modelSelect = document.getElementById("modelSelect");
 const btnConnect = document.getElementById("btnConnect");
 const btnDisconnect = document.getElementById("btnDisconnect");
@@ -68,12 +69,21 @@ const btnDownloadResult = document.getElementById("btnDownloadResult");
 const btnSaveUpload = document.getElementById("btnSaveUpload");
 const btnSaveLive = document.getElementById("btnSaveLive");
 
-// SOTA Enhancements
+// SOTA Enhancements & Post-processing
 const enhancementsToggle = document.getElementById("enhancementsToggle");
 const enhancementsBody = document.getElementById("enhancementsBody");
 const enhancementsChevron = document.getElementById("enhancementsChevron");
 const enableTracking = document.getElementById("enableTracking");
 const enableEdgeRefinement = document.getElementById("enableEdgeRefinement");
+const enablePostprocessing = document.getElementById("enablePostprocessing");
+const enableHeuristic = document.getElementById("enableHeuristic");
+const enableTopN = document.getElementById("enableTopN");
+const drawBoxes = document.getElementById("drawBoxes");
+const drawMasks = document.getElementById("drawMasks");
+const drawLabels = document.getElementById("drawLabels");
+const confThreshold = document.getElementById("confThreshold");
+const confValue = document.getElementById("confValue");
+const rowHeuristic = document.getElementById("rowHeuristic");
 const btnSaveEnhancements = document.getElementById("btnSaveEnhancements");
 const enhancementsSaved = document.getElementById("enhancementsSaved");
 
@@ -82,12 +92,17 @@ const enhancementsSaved = document.getElementById("enhancementsSaved");
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener("DOMContentLoaded", () => {
     loadModels();
-    btnConnect.addEventListener("click", connect);
-    btnDisconnect.addEventListener("click", disconnect);
-    btnSnapshot.addEventListener("click", takeSnapshot);
-    btnSaveLive.addEventListener("click", saveLiveDetection);
-    modelSelect.addEventListener("change", onModelChange);
+    if(btnConnect) btnConnect.addEventListener("click", connect);
+    if(btnDisconnect) btnDisconnect.addEventListener("click", disconnect);
+    if(btnSnapshot) btnSnapshot.addEventListener("click", takeSnapshot);
+    if(btnSaveLive) btnSaveLive.addEventListener("click", saveLiveDetection);
+    modelSelect.addEventListener("change", onModelChange);  domainSelect.addEventListener("change", loadModels);
     initUpload();
+    if(confThreshold && confValue) {
+        confThreshold.addEventListener("input", () => {
+            confValue.textContent = confThreshold.value;
+        });
+    }
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -96,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function loadModels() {
     try {
-        const res = await fetch("/api/models");
+        const res = await fetch("/api/models?domain=" + domainSelect.value);
         const data = await res.json();
 
         modelSelect.innerHTML = "";
@@ -133,6 +148,11 @@ async function loadModels() {
         modelSelect.disabled = false;
         statModel.textContent = data.current || "none";
         if (data.current) loadModelPerformance(data.current);
+
+        // Hide stator-specific settings if in chignon domain
+        if (rowHeuristic) {
+            rowHeuristic.style.display = domainSelect.value === "chignon" ? "none" : "block";
+        }
     } catch (err) {
         console.error("Failed to load models:", err);
         modelSelect.innerHTML = '<option value="">Error loading models</option>';
@@ -291,6 +311,7 @@ async function connect() {
             body: JSON.stringify({
                 sdp: pc.localDescription.sdp,
                 type: pc.localDescription.type,
+                domain: domainSelect.value,
             }),
         });
 
@@ -551,6 +572,7 @@ async function handleUpload(file) {
     // Send to server
     const formData = new FormData();
     formData.append("image", file);
+    formData.append("domain", domainSelect.value);
 
     try {
         const res = await fetch("/api/detect", {
@@ -587,7 +609,7 @@ async function handleUpload(file) {
                     const conf = d.confidence ?? 0;
                     const confClass =
                         conf >= 0.75 ? "high" : conf >= 0.5 ? "medium" : "low";
-                    const label = d.class_name ?? `Class ${d.class_id}`;
+                    const label = (d.class_name ?? `Class ${d.class_id}`).replace(/_/g, ' ');
                     return `
                         <div class="detection-item">
                             <span class="detection-class">${label}</span>
@@ -761,6 +783,7 @@ const measurementEnabled = document.getElementById("measurementEnabled");
 const showEdgeDistances = document.getElementById("showEdgeDistances");
 const showCenterDistances = document.getElementById("showCenterDistances");
 const showAlignedPairDistances = document.getElementById("showAlignedPairDistances");
+const showOppositeDistances = document.getElementById("showOppositeDistances");
 const measurementMethod = document.getElementById("measurementMethod");
 const sensorWidth = document.getElementById("sensorWidth");
 const focalLength = document.getElementById("focalLength");
@@ -801,6 +824,7 @@ function syncEnabledState() {
     if (showEdgeDistances) showEdgeDistances.disabled = !on;
     if (showCenterDistances) showCenterDistances.disabled = !on;
     if (showAlignedPairDistances) showAlignedPairDistances.disabled = !on;
+    if (showOppositeDistances) showOppositeDistances.disabled = !on;
 }
 
 measurementMethod.addEventListener("change", syncMethodFields);
@@ -817,7 +841,7 @@ async function loadLabels() {
         (labels || []).forEach(l => {
             const opt = document.createElement("option");
             opt.value = l;
-            opt.textContent = l;
+            opt.textContent = l.replace(/_/g, " ");
             refLabelName.appendChild(opt);
         });
         // Restore previous selection if still available
@@ -837,6 +861,7 @@ async function loadSettings() {
         showEdgeDistances.checked = s.show_edge_distances ?? true;
         showCenterDistances.checked = s.show_center_distances ?? true;
         showAlignedPairDistances.checked = s.show_aligned_pair_distances ?? false;
+        if(showOppositeDistances) showOppositeDistances.checked = s.show_opposite_distances ?? false;
         measurementMethod.value = s.method ?? "camera_intrinsics";
         // Camera intrinsics
         sensorWidth.value = s.sensor_width_mm ?? 6.17;
@@ -868,6 +893,7 @@ async function saveSettings(showToast = true) {
         show_edge_distances: showEdgeDistances.checked,
         show_center_distances: showCenterDistances.checked,
         show_aligned_pair_distances: showAlignedPairDistances.checked,
+        show_opposite_distances: showOppositeDistances ? showOppositeDistances.checked : false,
         method: measurementMethod.value,
         // Camera intrinsics
         sensor_width_mm: parseFloat(sensorWidth.value),
@@ -907,6 +933,9 @@ if (showCenterDistances) {
 if (showAlignedPairDistances) {
     showAlignedPairDistances.addEventListener("change", () => saveSettings(false));
 }
+if (showOppositeDistances) {
+    showOppositeDistances.addEventListener("change", () => saveSettings(false));
+}
 if (enableDepthViz) {
     enableDepthViz.addEventListener("change", () => {
         saveSettings(false);
@@ -943,8 +972,18 @@ async function loadEnhancements() {
         const resp = await fetch(`${API_BASE}/api/inference-settings`);
         if (!resp.ok) return;
         const s = await resp.json();
-        enableTracking.checked = s.enable_tracking ?? false;
-        enableEdgeRefinement.checked = s.enable_edge_refinement ?? false;
+        if (enableTracking) enableTracking.checked = s.enable_tracking ?? false;
+        if (enableEdgeRefinement) enableEdgeRefinement.checked = s.enable_edge_refinement ?? false;
+        if (enablePostprocessing) enablePostprocessing.checked = s.enable_postprocessing ?? true;
+        if (enableHeuristic) enableHeuristic.checked = s.enable_heuristic ?? true;
+        if (enableTopN) enableTopN.checked = s.enable_top_n ?? true;
+        if (drawBoxes) drawBoxes.checked = s.draw_boxes ?? true;
+        if (drawMasks) drawMasks.checked = s.draw_masks ?? true;
+        if (drawLabels) drawLabels.checked = s.draw_labels ?? true;
+        if (confThreshold) {
+            confThreshold.value = s.conf_threshold ?? 0.05;
+            confValue.textContent = confThreshold.value;
+        }
     } catch (e) {
         console.warn("Could not load enhancements settings:", e);
     }
@@ -953,7 +992,14 @@ async function loadEnhancements() {
 btnSaveEnhancements.addEventListener("click", async () => {
     const payload = {
         enable_tracking: enableTracking.checked,
-        enable_edge_refinement: enableEdgeRefinement.checked
+        enable_edge_refinement: enableEdgeRefinement.checked,
+        enable_postprocessing: enablePostprocessing.checked,
+        enable_heuristic: enableHeuristic.checked,
+        enable_top_n: enableTopN.checked,
+        draw_boxes: drawBoxes.checked,
+        draw_masks: drawMasks.checked,
+        draw_labels: drawLabels.checked,
+        conf_threshold: parseFloat(confThreshold.value)
     };
     try {
         const resp = await fetch(`${API_BASE}/api/inference-settings`, {

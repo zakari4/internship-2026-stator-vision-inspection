@@ -22,7 +22,7 @@ from src.config import config, SEED
 # Global registry of all possible labels in the dataset
 LABELS = [
     "background",
-    "michanical_part",
+    "mechanical_part",
     "magnet",
     "circle"
 ]
@@ -86,7 +86,7 @@ def create_mask_from_shapes(
     """
     if class_mapping is None:
         # Multi-class mapping: each label gets its own index
-        # background=0, michanical_part=1, magnet=2, circle=3
+        # background=0, mechanical_part=1, magnet=2, circle=3
         class_mapping = {label: i for i, label in enumerate(LABELS)}
     
     mask = np.zeros((image_height, image_width), dtype=np.uint8)

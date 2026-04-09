@@ -1,0 +1,16 @@
+{
+  "model_name": "unet_resnet18",
+  "best_epoch": 39,
+  "best_val_iou": 0.9815650880336761,
+  "best_val_loss": 0.041136358731559346,
+  "total_train_time_sec": 1708.5440068244934,
+  "peak_gpu_memory_mb": 440.89013671875,
+  "started_at": "2026-04-08T00:59:26.621787",
+  "ended_at": "2026-04-08T01:32:31.172065",
+  "total_epochs": 40,
+  "peak_cpu_percent": 0,
+  "peak_ram_mb": 0,
+  "avg_gpu_utilization": 48.94746192893401,
+  "best_val_accuracy": 0.9981847149985177,
+  "total_val_time_sec": 268.71036982536316
+}

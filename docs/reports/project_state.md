@@ -17,7 +17,7 @@
 
 This project is an **industrial stator case vision inspection system** that uses segmentation and object detection models to identify and measure components on stator assemblies. It combines:
 
-- **Multi-class segmentation** (PyTorch: UNet ResNet18) — `background`, `michanical_part`, `magnet`, `circle`
+- **Multi-class segmentation** (PyTorch: UNet ResNet18) — `background`, `mechanical_part`, `magnet`, `circle`
 - **Instance segmentation** (Ultralytics YOLO: YOLOv8m-seg, YOLOv11m-seg) — 3 object classes + bounding boxes
 - **Measurement pipeline** — Converts pixel-based detections to real-world mm measurements via camera calibration
 - **Web application** — Flask + WebRTC server with real-time detection, model switching, and measurement overlay
@@ -84,7 +84,7 @@ chignon_detection/
 | **Annotation format** | LabelMe JSON (base64-encoded images + polygon shapes) |
 | **Original images** | 346 annotated images (640×480) |
 | **Augmented images** | 3,460 (10× augmentation: 2 geometric × 5 photometric) |
-| **Classes** | `michanical_part` (1), `magnet` (2), `circle` (3), + `background` (0) |
+| **Classes** | `mechanical_part` (1), `magnet` (2), `circle` (3), + `background` (0) |
 | **Typical image** | 7 objects: 1 circle, 2 magnets, 4 mechanical parts |
 | **Input resolution** | 512×512 (resized during training) |
 

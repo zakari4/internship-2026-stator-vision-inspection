@@ -50,7 +50,7 @@ Thumbs.db
 # ---- Logs ----
 *.log
 
-sdkmindvision/
+
 outputs/augmented_data/
 Camera/
 rtdetr-x/
@@ -60,3 +60,6 @@ generate_diagrams.py
 PROJECT_MAP.md
 scripts/generate_latex_report.py
 scripts/md_to_pdf.py
+
+
+CHANGE_CONTEXT.md
