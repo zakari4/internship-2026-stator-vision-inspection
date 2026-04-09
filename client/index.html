@@ -19,10 +19,10 @@
             <div class="header-right">
                 <div class="model-selector">
                     <label for="domainSelect">Target</label>
-                    <select id="domainSelect">
-                        <option value="stator" selected>Stator</option>
-                        <option value="chignon">Chignon</option>
-                        <option value="file">File</option>
+                    <select id="domainSelect" class="setting-select">
+                        <option value="stator">Stator Detection</option>
+                        <option value="chignon">Chignon Detection</option>
+                        <option value="file">File Detection</option>
                     </select>
                 </div>
                 <div class="model-selector">
@@ -224,6 +224,16 @@
                     </h3>
                     
                     <div class="settings-body" id="enhancementsBody">
+                        <!-- Domain Setting Selector -->
+                        <div class="settings-row" style="margin-bottom: 15px;">
+                            <label for="settingsDomainContext" style="font-size:0.85rem;color:#bbb;display:block;margin-bottom:5px;">Configure Domain:</label>
+                            <select id="settingsDomainContext" class="setting-select" style="width:100%;background:rgba(255,255,255,0.05);">
+                                <option value="stator">Stator Post-processing</option>
+                                <option value="chignon">Chignon Post-processing</option>
+                                <option value="file">File Post-processing</option>
+                            </select>
+                            <p style="font-size:0.7rem;color:#888;margin-top:4px;">Settings below apply only to the selected domain above.</p>
+                        </div>
                         <div class="settings-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
                             <div class="settings-row">
                                 <label class="toggle-label" title="Global switch for all annotations and measurements.">
@@ -253,6 +263,12 @@
                                 <label class="toggle-label" title="Crisp masks using Guided Filtering.">
                                     <input type="checkbox" id="enableEdgeRefinement">
                                     <span>Edge Refinement</span>
+                                </label>
+                            </div>
+                            <div class="settings-row" id="rowFileColorValidation" style="display:none;">
+                                <label class="toggle-label" title="File domain only: classify blue/yellow/green and validate left-right file position.">
+                                    <input type="checkbox" id="enableFileColorValidation" checked>
+                                    <span>File Color/Layout Validation</span>
                                 </label>
                             </div>
                             <div class="settings-row">

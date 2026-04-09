@@ -41,11 +41,8 @@ from av import VideoFrame
 
 from inference import ModelManager
 
-# Add chignon path so we can import chignon.inference
-CHIGNON_DIR = Path(__file__).resolve().parent.parent / "chignon"
-if str(CHIGNON_DIR.parent) not in sys.path:
-    sys.path.insert(0, str(CHIGNON_DIR.parent))
 from chignon.inference import ChignonModelManager
+from files.inference import FileModelManager
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -69,12 +66,15 @@ CORS(app)
 # ---------------------------------------------------------------------------
 model_manager = ModelManager()
 chignon_manager = ChignonModelManager()
+file_manager = FileModelManager()
 
 def _get_manager(domain: str = "stator"):
     """Return the correct model manager for the given domain."""
     if domain == "chignon":
         return chignon_manager
-    # stator / file / default all go to the main manager
+    if domain == "file":
+        return file_manager
+    # stator all goes to the main manager
     if domain and domain != "stator":
         model_manager.set_domain(domain)
     return model_manager
@@ -199,6 +199,8 @@ class VideoTransformTrack(MediaStreamTrack):
         super().__init__()
         self.track = track
         self.pc = pc
+        self.domain = getattr(pc, "_domain", "stator")
+        self.mgr = _get_manager(self.domain)
 
         # FPS tracking
         self._frame_count = 0
@@ -226,11 +228,11 @@ class VideoTransformTrack(MediaStreamTrack):
         # Run inference
         t0 = time.monotonic()
         try:
-            annotated, detections = model_manager.predict(img)
+            annotated, detections = self.mgr.predict(img)
             inference_ms = (time.monotonic() - t0) * 1000
-            metrics_tracker.add_metric(inference_ms, is_error=False, model_name=model_manager.current_model_name)
+            metrics_tracker.add_metric(inference_ms, is_error=False, model_name=self.mgr.current_model_name)
         except Exception as e:
-            metrics_tracker.add_metric(None, is_error=True, model_name=model_manager.current_model_name)
+            metrics_tracker.add_metric(None, is_error=True, model_name=self.mgr.current_model_name)
             raise e
 
         # Push results over DataChannel
@@ -240,11 +242,11 @@ class VideoTransformTrack(MediaStreamTrack):
                 "detections": detections,
                 "inference_ms": round(inference_ms, 1),
                 "server_fps": round(self._fps, 1),
-                "model": model_manager.available_models.get(
-                    model_manager.current_model_name, {}
-                ).get("display_name", model_manager.current_model_name) or "none",
+                "model": self.mgr.available_models.get(
+                    self.mgr.current_model_name, {}
+                ).get("display_name", self.mgr.current_model_name) or "none",
                 "timestamp": round(time.time(), 3),
-                "alerts": model_manager.get_latest_alerts(),
+                "alerts": getattr(self.mgr, "get_latest_alerts", lambda: [])(),
             }
             try:
                 dc.send(json.dumps(payload))
@@ -262,10 +264,11 @@ class VideoTransformTrack(MediaStreamTrack):
 # WebRTC Signaling
 # ═══════════════════════════════════════════════════════════════════════════
 
-async def _handle_offer(offer: RTCSessionDescription) -> RTCSessionDescription:
+async def _handle_offer(offer: RTCSessionDescription, domain: str = "stator") -> RTCSessionDescription:
     """Create a peer connection, attach video transform, return SDP answer."""
     pc_id = str(uuid.uuid4())[:8]
     pc = RTCPeerConnection()
+    pc._domain = domain
     peer_connections[pc_id] = pc
 
     logger.info("[%s] New peer connection", pc_id)
@@ -395,46 +398,52 @@ def api_select_model():
 
 # ---------- Pipeline Enhancements ---------- #
 
-@app.route("/api/inference-settings", methods=["GET", "POST"])
-def api_inference_settings():
+@app.route("/api/inference-enhancements", methods=["GET", "POST"])
+def api_inference_enhancements():
     """Get or update state-of-the-art inference enhancements and post-processing flags."""
+    domain = request.args.get("domain", "stator")
+    mgr = _get_manager(domain)
+
     if request.method == "GET":
         return jsonify({
-            "enable_tracking": getattr(model_manager, "enable_tracking", False),
-            "enable_edge_refinement": getattr(model_manager, "enable_edge_refinement", False),
-            "enable_postprocessing": getattr(model_manager, "enable_postprocessing", True),
-            "enable_heuristic": getattr(model_manager, "enable_heuristic", True),
-            "enable_top_n": getattr(model_manager, "enable_top_n", True),
-            "draw_boxes": getattr(model_manager, "draw_boxes", True),
-            "draw_masks": getattr(model_manager, "draw_masks", True),
-            "draw_labels": getattr(model_manager, "draw_labels", True),
-            "conf_threshold": getattr(model_manager, "conf_threshold", 0.05),
+            "enable_tracking": getattr(mgr, "enable_tracking", False),
+            "enable_edge_refinement": getattr(mgr, "enable_edge_refinement", False),
+            "enable_postprocessing": getattr(mgr, "enable_postprocessing", True),
+            "enable_file_color_validation": getattr(mgr, "enable_file_color_validation", True),
+            "enable_heuristic": getattr(mgr, "enable_heuristic", True),
+            "enable_top_n": getattr(mgr, "enable_top_n", True),
+            "draw_boxes": getattr(mgr, "draw_boxes", True),
+            "draw_masks": getattr(mgr, "draw_masks", True),
+            "draw_labels": getattr(mgr, "draw_labels", True),
+            "conf_threshold": getattr(mgr, "conf_threshold", 0.05),
+            "domain": domain
         })
 
     data = request.get_json(force=True)
     
-    # Apply to both managers
-    for mgr in [model_manager, chignon_manager]:
-        if "enable_tracking" in data:
-            mgr.enable_tracking = bool(data["enable_tracking"])
-        if "enable_edge_refinement" in data:
-            mgr.enable_edge_refinement = bool(data["enable_edge_refinement"])
-        if "enable_postprocessing" in data:
-            mgr.enable_postprocessing = bool(data["enable_postprocessing"])
-        if "enable_heuristic" in data:
-            mgr.enable_heuristic = bool(data["enable_heuristic"])
-        if "enable_top_n" in data:
-            mgr.enable_top_n = bool(data["enable_top_n"])
-        if "draw_boxes" in data:
-            mgr.draw_boxes = bool(data["draw_boxes"])
-        if "draw_masks" in data:
-            mgr.draw_masks = bool(data["draw_masks"])
-        if "draw_labels" in data:
-            mgr.draw_labels = bool(data["draw_labels"])
-        if "conf_threshold" in data:
-            mgr.conf_threshold = float(data["conf_threshold"])
+    # Apply to specific manager
+    if "enable_tracking" in data:
+        mgr.enable_tracking = bool(data["enable_tracking"])
+    if "enable_edge_refinement" in data:
+        mgr.enable_edge_refinement = bool(data["enable_edge_refinement"])
+    if "enable_postprocessing" in data:
+        mgr.enable_postprocessing = bool(data["enable_postprocessing"])
+    if "enable_file_color_validation" in data:
+        mgr.enable_file_color_validation = bool(data["enable_file_color_validation"])
+    if "enable_heuristic" in data:
+        mgr.enable_heuristic = bool(data["enable_heuristic"])
+    if "enable_top_n" in data:
+        mgr.enable_top_n = bool(data["enable_top_n"])
+    if "draw_boxes" in data:
+        mgr.draw_boxes = bool(data["draw_boxes"])
+    if "draw_masks" in data:
+        mgr.draw_masks = bool(data["draw_masks"])
+    if "draw_labels" in data:
+        mgr.draw_labels = bool(data["draw_labels"])
+    if "conf_threshold" in data:
+        mgr.conf_threshold = float(data["conf_threshold"])
 
-    return jsonify({"status": "ok"})
+    return jsonify({"status": "ok", "domain": domain})
 
 
 # ---------- WebRTC Signaling ---------- #
@@ -446,15 +455,15 @@ def webrtc_offer():
     and return an SDP answer.
     """
     params = request.get_json(force=True)
-    domain = params.get("domain")
-    if domain:
+    domain = params.get("domain", "stator")
+    if domain and domain != "file":
         model_manager.set_domain(domain)
 
     if "sdp" not in params or "type" not in params:
         return jsonify({"error": "Missing sdp or type"}), 400
 
     offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
-    answer = run_async(_handle_offer(offer))
+    answer = run_async(_handle_offer(offer, domain=domain))
 
     return jsonify({"sdp": answer.sdp, "type": answer.type})
 
@@ -509,10 +518,15 @@ def api_detect_image():
         except Exception as e:
             logger.error("Upload depth viz failed: %s", e)
 
+    alerts = getattr(mgr, "get_latest_alerts", lambda: [])()
+    position_message = getattr(mgr, "get_latest_position_message", lambda: "")()
+
     return jsonify({
         "image": f"data:image/jpeg;base64,{b64}",
         "depth_image": f"data:image/jpeg;base64,{depth_b64}" if depth_b64 else None,
         "detections": detections,
+        "alerts": alerts,
+        "position_message": position_message,
         "inference_ms": round(inference_ms, 1),
         "model": mgr.current_model_name,
     })

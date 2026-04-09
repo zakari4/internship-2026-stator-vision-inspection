@@ -81,11 +81,14 @@ const enableTopN = document.getElementById("enableTopN");
 const drawBoxes = document.getElementById("drawBoxes");
 const drawMasks = document.getElementById("drawMasks");
 const drawLabels = document.getElementById("drawLabels");
+const enableFileColorValidation = document.getElementById("enableFileColorValidation");
 const confThreshold = document.getElementById("confThreshold");
 const confValue = document.getElementById("confValue");
 const rowHeuristic = document.getElementById("rowHeuristic");
+const rowFileColorValidation = document.getElementById("rowFileColorValidation");
 const btnSaveEnhancements = document.getElementById("btnSaveEnhancements");
 const enhancementsSaved = document.getElementById("enhancementsSaved");
+const settingsDomainContext = document.getElementById("settingsDomainContext");
 
 // ═══════════════════════════════════════════════════════════════
 // Initialization
@@ -96,7 +99,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if(btnDisconnect) btnDisconnect.addEventListener("click", disconnect);
     if(btnSnapshot) btnSnapshot.addEventListener("click", takeSnapshot);
     if(btnSaveLive) btnSaveLive.addEventListener("click", saveLiveDetection);
-    modelSelect.addEventListener("change", onModelChange);  domainSelect.addEventListener("change", loadModels);
+    modelSelect.addEventListener("change", onModelChange);
+    domainSelect.addEventListener("change", async () => {
+        await loadModels();
+        // Sync setting selector with active domain
+        if (settingsDomainContext) {
+            settingsDomainContext.value = domainSelect.value;
+            loadEnhancements();
+        }
+    });
+
+    if (settingsDomainContext) {
+        settingsDomainContext.addEventListener("change", loadEnhancements);
+    }
     initUpload();
     if(confThreshold && confValue) {
         confThreshold.addEventListener("input", () => {
@@ -213,7 +228,7 @@ async function onModelChange() {
         const res = await fetch("/api/select-model", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ model }),
+            body: JSON.stringify({ model, domain: domainSelect.value }),
         });
         const data = await res.json();
         if (data.error) {
@@ -603,27 +618,36 @@ async function handleUpload(file) {
         }
 
         // Show detections
+        const uploadAlerts = (data.alerts || []).map(a => a.msg).filter(Boolean);
+        const positionMessage = data.position_message || uploadAlerts[uploadAlerts.length - 1] || "";
+        const positionHtml = positionMessage
+            ? `<div class="detection-item"><span class="detection-class">${positionMessage}</span></div>`
+            : "";
+
         if (data.detections && data.detections.length > 0) {
-            uploadDetections.innerHTML = data.detections
+            uploadDetections.innerHTML = positionHtml + data.detections
                 .map((d) => {
                     const conf = d.confidence ?? 0;
                     const confClass =
                         conf >= 0.75 ? "high" : conf >= 0.5 ? "medium" : "low";
                     const label = (d.class_name ?? `Class ${d.class_id}`).replace(/_/g, ' ');
+                    const colorTag = d.file_color
+                        ? `<span class="measurement-tag">Color: ${d.file_color}</span>`
+                        : "";
                     return `
                         <div class="detection-item">
                             <span class="detection-class">${label}</span>
                             <span class="detection-conf ${confClass}">
                                 ${(conf * 100).toFixed(1)}%
                             </span>
+                            ${colorTag}
                             ${d.approx_depth_mm ? `<span class="measurement-tag depth-tag">Depth: ~${d.approx_depth_mm} mm</span>` : ""}
                             ${renderMeasurementHtml(d.measurements)}
                         </div>`;
                 })
                 .join("");
         } else {
-            uploadDetections.innerHTML =
-                '<p class="placeholder">No objects detected</p>';
+            uploadDetections.innerHTML = positionHtml || '<p class="placeholder">No objects detected</p>';
         }
 
         uploadLoading.style.display = "none";
@@ -968,8 +992,9 @@ enhancementsToggle.addEventListener("click", () => {
 });
 
 async function loadEnhancements() {
+    const domain = settingsDomainContext ? settingsDomainContext.value : "stator";
     try {
-        const resp = await fetch(`${API_BASE}/api/inference-settings`);
+        const resp = await fetch(`${API_BASE}/api/inference-enhancements?domain=${domain}`);
         if (!resp.ok) return;
         const s = await resp.json();
         if (enableTracking) enableTracking.checked = s.enable_tracking ?? false;
@@ -980,16 +1005,29 @@ async function loadEnhancements() {
         if (drawBoxes) drawBoxes.checked = s.draw_boxes ?? true;
         if (drawMasks) drawMasks.checked = s.draw_masks ?? true;
         if (drawLabels) drawLabels.checked = s.draw_labels ?? true;
+        if (enableFileColorValidation) {
+            enableFileColorValidation.checked = s.enable_file_color_validation ?? true;
+        }
+        
+        // Hide/Show heuristic based on domain (Stator only)
+        if (rowHeuristic) {
+            rowHeuristic.style.display = domain === "stator" ? "block" : "none";
+        }
+        if (rowFileColorValidation) {
+            rowFileColorValidation.style.display = domain === "file" ? "block" : "none";
+        }
+
         if (confThreshold) {
             confThreshold.value = s.conf_threshold ?? 0.05;
             confValue.textContent = confThreshold.value;
         }
     } catch (e) {
-        console.warn("Could not load enhancements settings:", e);
+        console.warn(`Could not load enhancements settings for ${domain}:`, e);
     }
 }
 
 btnSaveEnhancements.addEventListener("click", async () => {
+    const domain = settingsDomainContext ? settingsDomainContext.value : "stator";
     const payload = {
         enable_tracking: enableTracking.checked,
         enable_edge_refinement: enableEdgeRefinement.checked,
@@ -999,10 +1037,11 @@ btnSaveEnhancements.addEventListener("click", async () => {
         draw_boxes: drawBoxes.checked,
         draw_masks: drawMasks.checked,
         draw_labels: drawLabels.checked,
+        enable_file_color_validation: enableFileColorValidation ? enableFileColorValidation.checked : true,
         conf_threshold: parseFloat(confThreshold.value)
     };
     try {
-        const resp = await fetch(`${API_BASE}/api/inference-settings`, {
+        const resp = await fetch(`${API_BASE}/api/inference-enhancements?domain=${domain}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -1012,7 +1051,7 @@ btnSaveEnhancements.addEventListener("click", async () => {
             setTimeout(() => (enhancementsSaved.style.display = "none"), 2000);
         }
     } catch (e) {
-        console.error("Failed to apply enhancements:", e);
+        console.error(`Failed to apply enhancements for ${domain}:`, e);
     }
 });
 
