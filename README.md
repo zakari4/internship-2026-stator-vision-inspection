@@ -1,6 +1,15 @@
-# Edge Detection Benchmark for Stator Case 
+# Edge Detection Benchmark for Multi-Domain Industrial Inspection
 
-A comprehensive benchmarking framework for evaluating **30 segmentation and edge detection models** on industrial stator case images. Combines classical computer vision, deep learning architectures, YOLO instance segmentation, transformer-based detection, and state-of-the-art edge detectors — with automated data augmentation, configurable training, inference benchmarking, and rich visualization.
+A comprehensive benchmarking framework for evaluating segmentation and edge-detection models across a unified industrial inspection stack. The platform now supports three runtime domains from one app: **Stator**, **Chignon**, and **File**. It combines classical computer vision, deep learning architectures, YOLO instance segmentation, transformer-based detection, and state-of-the-art edge detectors — with automated data augmentation, configurable training, inference benchmarking, and rich visualization.
+
+## Features
+
+- Unified multi-domain inference (`stator`, `chignon`, `file`) from a single Flask + WebRTC application.
+- Domain-aware model routing and settings in both live stream and upload detection flows.
+- Stator and Chignon domain managers with dedicated post-processing paths.
+- File-domain ResNet pipeline with color/layout post-processing and UI on/off control.
+- Measurement and calibration overlays for stator workflows.
+- End-to-end benchmarking, training logs, visual reporting, and model comparison utilities.
 
 ---
 
@@ -10,6 +19,7 @@ A comprehensive benchmarking framework for evaluating **30 segmentation and edge
   - [Directory Structure](#directory-structure)
   - [Package Overview](#package-overview)
   - [Data Flow](#data-flow)
+- [Unified Inference Pipeline](#unified-inference-pipeline)
 - [Setup](#setup)
   - [Prerequisites](#prerequisites)
   - [Automated Setup](#automated-setup)
@@ -98,6 +108,14 @@ chignon_detection/
 │   ├── run_failed_models.py      # Re-run failed model training
 │   └── generate_viz.py           # Generate standalone visualizations
 │
+├── chignon/                      # Chignon domain manager + results
+│   ├── inference.py
+│   └── results/
+│
+├── files/                        # File domain manager + results
+│   ├── inference.py
+│   └── results/
+│
 ├── data/                         # Raw dataset (LabelMe images + JSON)
 ├── weights/                      # Pretrained model weights (.pt files)
 ├── outputs/                      # All generated outputs
@@ -164,11 +182,56 @@ The training ecosystem is built on a structured **8x8 augmentation matrix** (8 g
 ![Training Pipeline Process](./docs/images/training_pipeline.png)
 
 #### 2. Inference & Detection Data Flow
-Real-time frame capture from MindVision USB cameras feeds into a high-performance inference loop utilizing **ONNX Runtime** for PyTorch and **FP16 Half-Precision** for YOLO to minimize latency.
-- **Post-Processing**: Applies Top-N instance filtering (1 Circle, 2 Magnets, 4 Parts) and spatial geometry correction (ResNet-based cardinal angle overrides).
-- **Metric Mapping**: Dynamic calibration via Pinhole intrinsics or **MiDaS ML Depth** estimation converts pixel offsets to absolute millimeters.
+Real-time frame capture from MindVision USB cameras (or upload inputs) feeds a domain-aware inference loop.
+- **Domain Manager Selection**: The backend routes each request to `StatorModelManager`, `ChignonModelManager`, or `FileModelManager`.
+- **Domain-Specific Post-Processing**: Tracking/edge refinement hooks, stator measurement logic, and file color/layout validation are applied per domain.
+- **Metric Mapping**: Dynamic calibration via pinhole intrinsics or **MiDaS ML depth** (stator workflows) converts pixel offsets to absolute millimeters.
 
 ![Detection Pipeline Process](./docs/images/detection_pipeline.png)
+
+#### 3. Separate Detection Pipelines by Domain
+
+The three domains have separate post-processing pipelines because their industrial objectives differ.
+
+- **Stator pipeline**
+  - Detection -> Top-N filtering -> spatial heuristic correction -> geometry extraction -> measurement calibration.
+  - Mermaid source: `docs/images/stator_detection_pipeline.mmd`
+
+- **Chignon pipeline**
+  - Detection -> domain overlay/rendering -> optional tracking/edge refinement -> output.
+  - Mermaid source: `docs/images/chignon_detection_pipeline.mmd`
+
+- **File pipeline**
+  - ResNet `.pth` detection -> bbox color classification -> left/right validation -> center-line + correctness message.
+  - Mermaid source: `docs/images/file_detection_pipeline.mmd`
+
+Updated Mermaid sources are versioned in:
+
+- `docs/images/training_pipeline.mmd`
+- `docs/images/detection_pipeline.mmd`
+- `docs/images/multi_domain_architecture.mmd`
+- `docs/images/stator_detection_pipeline.mmd`
+- `docs/images/chignon_detection_pipeline.mmd`
+- `docs/images/file_detection_pipeline.mmd`
+
+### Unified Inference Pipeline
+
+Runtime flow:
+
+1. Client selects domain (`stator`, `chignon`, or `file`).
+2. Server routes to the corresponding manager.
+3. Manager loads its domain-specific active model.
+4. Domain post-processing is applied.
+5. Results are returned to UI (WebRTC DataChannel or `/api/detect` response).
+
+Current domain notes:
+
+- **Stator**: Production domain with measurement pipeline.
+- **Chignon**: Integrated domain with dedicated manager.
+- **File**: Integrated infrastructure; current production path uses **UNet-ResNet18 (.pth)**.
+
+> [!IMPORTANT]
+> File-domain YOLO runs under `files/results/yolo_training` are currently non-convergent/failed for deployment quality. Therefore, file-domain inference uses the ResNet checkpoint path (`files/results/checkpoints/unet_resnet18/best_model.pth`) until a new YOLO retraining cycle is validated.
 
 
 **All paths are resolved dynamically** via `PROJECT_ROOT = Path(__file__).resolve().parent.parent` in `src/config.py`, so the project runs correctly from any working directory.

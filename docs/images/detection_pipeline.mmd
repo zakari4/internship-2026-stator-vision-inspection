@@ -1,0 +1,28 @@
+graph TD
+    classDef process fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef io fill:#bbf,stroke:#333,stroke-width:1px;
+
+    subgraph "Capture & Preprocessing"
+        A[Live Camera Feed / Upload Image]:::io --> B[Color Conversion RGB]:::process
+        B --> C[Resizing & Normalization]:::process
+        C --> D[Domain Manager Selection stator/chignon/file]:::process
+    end
+    
+    subgraph "Inference Engine"
+        D --> E[Domain-Specific Model Inference]:::process
+        E --> F[Extract Masks / Bounding Boxes]:::process
+    end
+    
+    subgraph "Domain-Specific Post-Processing"
+        F --> G[Top-N Filtering & Heuristic Correction]:::process
+        G --> H[Tracking + Edge Refinement Optional]:::process
+        H --> I[Contour Extraction + Geometry Fitting]:::process
+        I --> J[Calibration px -> mm + Measurements]:::process
+        I --> K[File Color/Layout Validation Optional]:::process
+    end
+    
+    subgraph "UI & Persistence"
+        J --> L[Web Dashboard HTML5 Canvas Overlay]:::io
+        K --> L
+        L --> M[Interactive Live Chart + Alerts + History]:::io
+    end

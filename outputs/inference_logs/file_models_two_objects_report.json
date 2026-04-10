@@ -1,0 +1,4076 @@
+{
+  "results_dir": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results",
+  "dataset_dir": "/home/youssef/Downloads/images_fil",
+  "num_images": 55,
+  "expected_count": 2,
+  "models": [
+    {
+      "model": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results/checkpoints/unet_resnet18/best_model.pth",
+      "type": "pytorch_pth",
+      "global_class_ids": [
+        1
+      ],
+      "one_class_global": true,
+      "all_images_exact_two_single_class": false,
+      "failed_images": [
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00001.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00002.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00003.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00004.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00005.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00006.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00007.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00008.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00009.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00010.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00011.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00012.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00013.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00014.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00015.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00016.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00017.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00018.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00019.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00020.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00021.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00022.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00023.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00024.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00025.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00026.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00027.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00028.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00029.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00030.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00031.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00032.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00033.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00034.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00035.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00036.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00037.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00038.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00044.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00045.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00046.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00050.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00051.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00052.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00053.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00054.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00055.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        }
+      ],
+      "checks": [
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00001.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00002.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00003.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00004.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00005.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00006.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00007.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00008.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00009.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00010.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00011.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00012.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00013.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00014.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00015.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00016.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00017.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00018.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00019.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00020.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00021.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00022.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00023.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00024.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00025.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00026.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00027.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00028.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00029.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00030.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00031.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00032.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00033.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00034.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00035.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00036.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00037.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00038.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00039.jpg",
+          "count": 2,
+          "class_ids": [
+            1
+          ],
+          "ok": true,
+          "reason": ""
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00040.jpg",
+          "count": 2,
+          "class_ids": [
+            1
+          ],
+          "ok": true,
+          "reason": ""
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00041.jpg",
+          "count": 2,
+          "class_ids": [
+            1
+          ],
+          "ok": true,
+          "reason": ""
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00042.jpg",
+          "count": 2,
+          "class_ids": [
+            1
+          ],
+          "ok": true,
+          "reason": ""
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00043.jpg",
+          "count": 2,
+          "class_ids": [
+            1
+          ],
+          "ok": true,
+          "reason": ""
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00044.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00045.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00046.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00047.jpg",
+          "count": 2,
+          "class_ids": [
+            1
+          ],
+          "ok": true,
+          "reason": ""
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00048.jpg",
+          "count": 2,
+          "class_ids": [
+            1
+          ],
+          "ok": true,
+          "reason": ""
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00049.jpg",
+          "count": 2,
+          "class_ids": [
+            1
+          ],
+          "ok": true,
+          "reason": ""
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00050.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00051.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00052.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00053.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00054.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00055.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        }
+      ],
+      "pass": false,
+      "load_ok": true
+    },
+    {
+      "model": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results/yolo_training/yolov11m_seg/weights/best.pt",
+      "type": "yolo_pt",
+      "global_class_ids": [],
+      "one_class_global": false,
+      "all_images_exact_two_single_class": false,
+      "failed_images": [
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00003.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00004.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00005.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00006.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00007.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00008.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00009.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00010.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00011.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00012.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00013.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00014.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00015.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00016.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00017.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00018.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00019.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00020.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00021.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00022.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00023.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00024.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00025.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00026.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00027.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00028.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00029.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00030.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00031.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00032.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00033.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00034.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00035.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00036.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00037.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00038.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00039.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00040.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00041.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00042.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00043.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00044.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00045.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00046.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00047.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00048.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00049.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00050.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00051.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00052.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00053.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00054.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00055.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "checks": [
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00003.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00004.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00005.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00006.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00007.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00008.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00009.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00010.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00011.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00012.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00013.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00014.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00015.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00016.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00017.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00018.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00019.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00020.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00021.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00022.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00023.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00024.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00025.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00026.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00027.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00028.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00029.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00030.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00031.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00032.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00033.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00034.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00035.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00036.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00037.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00038.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00039.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00040.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00041.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00042.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00043.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00044.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00045.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00046.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00047.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00048.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00049.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00050.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00051.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00052.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00053.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00054.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00055.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "pass": false,
+      "load_ok": true
+    },
+    {
+      "model": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results/yolo_training/yolov11m_seg/weights/last.pt",
+      "type": "yolo_pt",
+      "global_class_ids": [],
+      "one_class_global": false,
+      "all_images_exact_two_single_class": false,
+      "failed_images": [
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00003.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00004.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00005.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00006.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00007.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00008.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00009.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00010.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00011.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00012.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00013.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00014.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00015.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00016.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00017.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00018.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00019.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00020.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00021.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00022.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00023.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00024.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00025.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00026.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00027.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00028.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00029.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00030.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00031.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00032.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00033.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00034.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00035.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00036.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00037.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00038.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00039.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00040.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00041.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00042.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00043.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00044.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00045.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00046.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00047.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00048.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00049.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00050.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00051.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00052.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00053.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00054.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00055.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "checks": [
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00003.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00004.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00005.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00006.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00007.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00008.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00009.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00010.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00011.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00012.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00013.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00014.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00015.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00016.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00017.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00018.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00019.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00020.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00021.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00022.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00023.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00024.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00025.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00026.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00027.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00028.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00029.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00030.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00031.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00032.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00033.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00034.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00035.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00036.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00037.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00038.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00039.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00040.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00041.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00042.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00043.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00044.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00045.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00046.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00047.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00048.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00049.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00050.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00051.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00052.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00053.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00054.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00055.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "pass": false,
+      "load_ok": true
+    },
+    {
+      "model": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results/yolo_training/yolov8m_seg/weights/best.pt",
+      "type": "yolo_pt",
+      "global_class_ids": [],
+      "one_class_global": false,
+      "all_images_exact_two_single_class": false,
+      "failed_images": [
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00003.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00004.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00005.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00006.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00007.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00008.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00009.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00010.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00011.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00012.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00013.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00014.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00015.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00016.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00017.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00018.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00019.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00020.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00021.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00022.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00023.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00024.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00025.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00026.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00027.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00028.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00029.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00030.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00031.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00032.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00033.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00034.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00035.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00036.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00037.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00038.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00039.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00040.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00041.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00042.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00043.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00044.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00045.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00046.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00047.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00048.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00049.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00050.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00051.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00052.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00053.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00054.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00055.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "checks": [
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00003.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00004.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00005.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00006.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00007.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00008.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00009.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00010.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00011.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00012.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00013.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00014.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00015.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00016.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00017.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00018.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00019.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00020.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00021.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00022.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00023.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00024.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00025.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00026.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00027.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00028.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00029.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00030.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00031.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00032.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00033.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00034.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00035.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00036.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00037.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00038.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00039.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00040.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00041.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00042.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00043.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00044.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00045.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00046.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00047.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00048.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00049.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00050.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00051.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00052.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00053.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00054.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00055.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "pass": false,
+      "load_ok": true
+    },
+    {
+      "model": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results/yolo_training/yolov8m_seg/weights/last.pt",
+      "type": "yolo_pt",
+      "global_class_ids": [],
+      "one_class_global": false,
+      "all_images_exact_two_single_class": false,
+      "failed_images": [
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00003.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00004.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00005.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00006.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00007.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00008.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00009.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00010.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00011.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00012.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00013.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00014.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00015.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00016.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00017.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00018.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00019.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00020.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00021.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00022.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00023.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00024.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00025.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00026.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00027.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00028.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00029.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00030.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00031.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00032.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00033.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00034.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00035.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00036.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00037.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00038.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00039.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00040.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00041.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00042.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00043.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00044.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00045.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00046.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00047.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00048.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00049.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00050.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00051.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00052.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00053.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00054.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00055.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "checks": [
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00003.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00004.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00005.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00006.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00007.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00008.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00009.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00010.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00011.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00012.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00013.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00014.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00015.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00016.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00017.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00018.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00019.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00020.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00021.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00022.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00023.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00024.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00025.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00026.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00027.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00028.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00029.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00030.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00031.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00032.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00033.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00034.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00035.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00036.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00037.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00038.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00039.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00040.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00041.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00042.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00043.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00044.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00045.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00046.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00047.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00048.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00049.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00050.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00051.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00052.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00053.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00054.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Downloads/images_fil/run_001_00055.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "pass": false,
+      "load_ok": true
+    }
+  ],
+  "num_models": 5,
+  "num_passed": 0,
+  "all_passed": false
+}

@@ -1,0 +1,226 @@
+{
+  "results_dir": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results",
+  "dataset_dir": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images",
+  "num_images": 2,
+  "expected_count": 2,
+  "models": [
+    {
+      "model": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results/checkpoints/unet_resnet18/best_model.pth",
+      "type": "pytorch_pth",
+      "global_class_ids": [
+        1
+      ],
+      "one_class_global": true,
+      "all_images_exact_two_single_class": false,
+      "failed_images": [
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00001.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00002.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        }
+      ],
+      "checks": [
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00001.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        },
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00002.jpg",
+          "count": 1,
+          "class_ids": [
+            1
+          ],
+          "ok": false,
+          "reason": "expected_2_got_1"
+        }
+      ],
+      "pass": false,
+      "load_ok": true
+    },
+    {
+      "model": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results/yolo_training/yolov11m_seg/weights/best.pt",
+      "type": "yolo_pt",
+      "global_class_ids": [],
+      "one_class_global": false,
+      "all_images_exact_two_single_class": false,
+      "failed_images": [
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "checks": [
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "pass": false,
+      "load_ok": true
+    },
+    {
+      "model": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results/yolo_training/yolov11m_seg/weights/last.pt",
+      "type": "yolo_pt",
+      "global_class_ids": [],
+      "one_class_global": false,
+      "all_images_exact_two_single_class": false,
+      "failed_images": [
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "checks": [
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "pass": false,
+      "load_ok": true
+    },
+    {
+      "model": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results/yolo_training/yolov8m_seg/weights/best.pt",
+      "type": "yolo_pt",
+      "global_class_ids": [],
+      "one_class_global": false,
+      "all_images_exact_two_single_class": false,
+      "failed_images": [
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "checks": [
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "pass": false,
+      "load_ok": true
+    },
+    {
+      "model": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/files/results/yolo_training/yolov8m_seg/weights/last.pt",
+      "type": "yolo_pt",
+      "global_class_ids": [],
+      "one_class_global": false,
+      "all_images_exact_two_single_class": false,
+      "failed_images": [
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "checks": [
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00001.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        },
+        {
+          "image": "/home/youssef/Desktop/internship-2026-stator-vision-inspection/outputs/tmp_two_images/run_001_00002.jpg",
+          "count": 0,
+          "class_ids": [],
+          "ok": false,
+          "reason": "expected_2_got_0"
+        }
+      ],
+      "pass": false,
+      "load_ok": true
+    }
+  ],
+  "num_models": 5,
+  "num_passed": 0,
+  "all_passed": false
+}

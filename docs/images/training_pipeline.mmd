@@ -1,0 +1,23 @@
+graph TD
+    classDef process fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef io fill:#bbf,stroke:#333,stroke-width:1px;
+
+    subgraph "Data Preparation"
+        A[Raw Images & JSON]:::io --> B[Dataset Splitting]:::process
+        B -->|Train/Val/Test| C[Mask Generation np.zeros]:::process
+        C --> D[Data Augmentation 10x]:::process
+        D --> E[YOLO Format Conversion]:::process
+    end
+    
+    subgraph "Model Architecture & Training"
+        C -->|Custom Dataloader| F[PyTorch Models: UNet, SegFormer]:::process
+        E --> G[Ultralytics Models: YOLOv8, YOLOv11]:::process
+        F --> H[Hardware Profiling & Optimizers]:::process
+        G --> H
+    end
+    
+    subgraph "Evaluation & Output"
+        H --> I[Inference Benchmark Testing]:::process
+        I --> J[Logging metrics, IoU, Dice, Latency]:::io
+        I --> K[Save Final Weights .pt/.pth]:::io
+    end

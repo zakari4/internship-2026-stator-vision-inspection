@@ -1,0 +1,10 @@
+graph TD
+    classDef process fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef io fill:#bbf,stroke:#333,stroke-width:1px;
+
+    A[Camera Feed / Upload]:::io --> B[File Manager Inference ResNet pth]:::process
+    B --> C[Foreground File Masks + BBoxes]:::process
+    C --> D[Color Classification in BBoxes blue/yellow/green]:::process
+    D --> E[Left-Right Validation Rule]:::process
+    E --> F[Center Line Rendering + Position Message]:::process
+    F --> G[WebRTC / Upload Response]:::io

@@ -1,0 +1,9 @@
+graph TD
+    classDef process fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef io fill:#bbf,stroke:#333,stroke-width:1px;
+
+    A[Camera Feed / Upload]:::io --> B[Chignon Manager Inference]:::process
+    B --> C[Segmentation + Boxes]:::process
+    C --> D[Domain-Specific Overlay Rendering]:::process
+    D --> E[Optional Tracking / Edge Refinement]:::process
+    E --> F[WebRTC / Upload Response]:::io

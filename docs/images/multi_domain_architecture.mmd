@@ -1,0 +1,23 @@
+graph LR
+    classDef process fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef io fill:#bbf,stroke:#333,stroke-width:1px;
+
+    A[Client Domain Selection]:::io --> B[Server Domain Router]:::process
+
+    subgraph "Domain Managers"
+        C[StatorModelManager]:::process
+        D[ChignonModelManager]:::process
+        E[FileModelManager]:::process
+    end
+
+    B --> C
+    B --> D
+    B --> E
+
+    C --> F[Stator Post-Processing + Measurement]:::process
+    D --> G[Chignon Post-Processing]:::process
+    E --> H[File Post-Processing + Color/Layout Validation]:::process
+
+    F --> I[WebRTC DataChannel + Upload API]:::io
+    G --> I
+    H --> I

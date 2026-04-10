@@ -9,27 +9,27 @@
 \usepackage{hyperref}
 \usepackage{booktabs}
 \usepackage{xcolor}
-\usepackage{titlesec}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{amsmath}
 
 \title{
-    \vspace*{2cm}
+    \vspace*{1.2cm}
     \Huge \textbf{Project State Report} \\
-    \vspace{0.5cm}
-    \LARGE \textit{Benchmarking \& Architecture of the Industrial Stator Vision Inspection Pipeline} \\
-    \vspace{2cm}
+    \vspace{0.4cm}
+    \LARGE \textit{Unified Multi-Domain Industrial Inspection Platform} \\
+    \vspace{0.8cm}
 }
 
 \author{
     \Large \textbf{Done by:} Youssef Mahdi \\
-    \vspace{0.5cm} \\
-    \Large \textbf{Supervised by:} ZAKARIA ABOUHANIFA \& Rime BOUALI \\
-    \vspace{1.5cm} \\
+    \vspace{0.3cm}
+    \Large \textbf{Supervised by:} Zakaria Abouhanifa \& Rime Bouali \\
+    \vspace{0.6cm}
     \Large \textbf{Company:} Nextronic
 }
-\date{\vspace{1cm} \today}
+
+\date{\today}
 
 \begin{document}
 
@@ -38,131 +38,252 @@
     \thispagestyle{empty}
     \vfill
     \begin{center}
-        \large \textit{A comprehensive technical analysis detailing the training workflows, empirical model benchmarking, architectural acceleration, and real-time detection heuristics.}
+        \large \textit{Architecture, post-processing logic, and model-performance analysis for Stator, Chignon, and File domains.}
     \end{center}
 \end{titlepage}
 
-\newpage
 \tableofcontents
 \newpage
 
-\section{Introduction}
-This report details the implementation, benchmarking, and architectural delivery of the Industrial Stator Case Vision Inspection platform at \textbf{Nextronic}. The project acts as an end-to-end framework evaluating 30 segmentation algorithms—spanning classical computer vision to state-of-the-art fully convolutional deep learning networks. The ultimate objective is to deploy highly accurate, latency-optimized models onto edge environments to monitor and evaluate mechanical components securely.
+\section{Executive Summary}
 
-\subsection{Dataset \& Annotation Parameters}
-The target dataset comprises exactly \textbf{136 high-resolution industrial images} of stator housings carefully curated and split: 95 for Training, 20 for Validation, and 21 reserved for Blind Testing. Annotations natively adopt the LabelMe JSON standard, tracking three distinct classes: \textit{circle} (central stator bore), \textit{magnet}, and \textit{mechanical\_part}.
-Images are dynamically resized to $256 \times 256$ for Transformer architectures and $512 \times 512$ for YOLO inference modalities.
-
-\section{System \& Application Architecture}
-To achieve real-time tracking performance on typical industrial edge hardware (e.g., NVIDIA GTX 1650), the system architecture abstracts the deep learning workflows securely behind a modular, highly tailored backend logic layer.
-
-\subsection{Flask \& WebRTC Bridging Structure}
-The system operates via a Flask-based REST API that natively initializes heavy neural networks safely during backend compilation, segregating processing overhead from the UI.
-\begin{enumerate}
-    \item \textbf{WebRTC Data Channels}: High-frequency visual feed updates are synchronized directly mapping C++ OpenCV array manipulation safely over a localized WebRTC peering tunnel. Validations happen asynchronously.
-    \item \textbf{MindVision SDK Handlers}: Capturing lossless industrial imagery is driven directly using the MindVision USB SDK hooked to raw buffer listeners inside the python wrapper.
-\end{enumerate}
-
-\subsection{Inference Hardening \& Hardware Acceleration}
-The backend relies on three core optimization paradigms to guarantee framerates exceed 15 FPS natively:
+The application now runs as a \textbf{unified multi-domain inference system} with independent runtime paths for:
 \begin{itemize}
-    \item \textbf{ONNX Runtime Execution}: PyTorch networks (such as UNet ResNet18) are transparently compiled to `.onnx` and delegated to `onnxruntime-gpu`, accelerating typical inference times up to 300\% (improving $7 \text{ FPS} \rightarrow 22 \text{ FPS}$).
-    \item \textbf{Native Tensor Cores FP16}: Standard YOLO configurations bypass ONNX compilation and natively deploy `model.half()` precision to leverage GPU Tensor cores completely.
+    \item \textbf{Stator} detection,
+    \item \textbf{Chignon} detection,
+    \item \textbf{File} detection.
 \end{itemize}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.9\textwidth]{docs/images/detection_pipeline.png}
-    \caption{The Architecture Diagram for the Real-time WebRTC Inference \& Backend Delivery.}
-\end{figure}
+The infrastructure for all domains is integrated in one Flask + WebRTC application. Model behavior and post-processing are domain-specific.
 
-\section{The Training Pipeline \& Benchmarking}
-Although 30 separate models were tracked, empirical analysis demonstrates three leading modalities that fundamentally balance intersection validation thresholds with processing footprints. Total training took approximately 5.7 hours on a dual-T4 configuration.
+\textbf{Critical model decision (File domain):}
+YOLO file-domain runs are non-convergent in current training outputs (mask mAP metrics collapse to 0.0), so deployment uses \textbf{UNet-ResNet18 (.pth)} for file detection.
 
-\subsection{Pipeline Preparation \& Execution}
-The training algorithm is defined around robust data augmentation loops and rigid loss integrations. The process dynamically inflates the 95 training images via robust geometric alterations (flips, random crops) and photometric adjustments to secure varied exposure angles. Models utilize specific loss functions heavily weighting segmentation purity:
-\begin{enumerate}
-    \item \textbf{Loss Optimizers}: UNet structures employ a combined \textit{Dice Loss + Binary Cross Entropy} to secure high spatial accuracy. YOLO networks intrinsically leverage bounding-box distribution offsets mixed with mask loss vectors.
-    \item \textbf{Hyperparameters}: Training iterations map globally to 30 Epochs utilizing the AdamW optimizer (weight decay $1e-4$) matched with a Cosine Annealing Learning Rate scheduler stabilizing the gradient drop automatically.
-\end{enumerate}
+\section{Application Architecture}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{docs/images/training_pipeline.png}
-    \caption{The Training Execution Pipeline detailing Augmentations, Converters, and Modality Trainers.}
-\end{figure}
+\subsection{Domain-Aware Runtime}
 
-\subsection{Empirical Analysis of Model Types}
+Requests are routed by domain to dedicated managers:
 \begin{itemize}
-    \item \textbf{UNet\_ResNet18}: Achieved the absolute highest qualitative geometry layout rating. Leveraging pre-trained ImageNet encoder weights, it established a Validation Intersection-over-Union (IoU) of \textbf{0.9646}. It consumed minimal Peak VRAM (\approx 473 MB).
-    \item \textbf{YOLOv11m-Seg}: Next-generation instance segmentation yielding incredibly strong boundaries natively. Scored an IoU of \textbf{0.8725} drawing ~4902 MB VRAM at peak.
-    \item \textbf{YOLOv8m-Seg}: The highly stable backbone instance detector. Scored an equivalent IoU of \textbf{0.8719} utilizing marginally less memory (~4296 MB).
+    \item Stator $\rightarrow$ \texttt{ModelManager}
+    \item Chignon $\rightarrow$ \texttt{ChignonModelManager}
+    \item File $\rightarrow$ \texttt{FileModelManager}
 \end{itemize}
 
+This routing is applied consistently to model listing, model switching, enhancement settings, upload detection, and WebRTC live inference.
+
 \begin{figure}[H]
     \centering
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{outputs/results/plots/iou_curves.png}
-        \caption{Validation IoU / mAP Epoch Progression.}
-    \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{outputs/results/plots/loss_curves.png}
-        \caption{Validation Training Loss Epoch Dynamics.}
-    \end{minipage}
+    \includegraphics[width=0.58\textwidth,height=0.30\textheight,keepaspectratio]{docs/images/multi_domain_architecture.png}
+    \caption{Multi-domain architecture: one app, three domain managers, domain-specific post-processing.}
 \end{figure}
 
-\section{Post-Processing \& Mathematical Heuristics}
-Because semantic segmentation can frequently hallucinate duplicate bounding areas from highly reflective stator elements, the pipeline utilizes stringent, post-processing mathematics. These filters are hardcoded inside the tracking loops in `server/inference.py`.
+This architecture shows the core orchestration principle of the application: a single UI and transport layer delegates inference to independent domain managers. Each manager owns model discovery, model loading, prediction, and post-processing semantics for its domain. This separation avoids cross-domain rule leakage (for example, stator geometry rules affecting file logic) while preserving one deployment surface for APIs, WebRTC streaming, and settings.
 
-\subsection{Top-N Confidence Count Restrictions}
-Instead of generating endless bounding masks natively over any pixel exceeding the $>50\%$ sigmoid boundary threshold, we intercept and selectively rank candidates mathematically:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.58\textwidth,height=0.30\textheight,keepaspectratio]{docs/images/detection_pipeline.png}
+    \caption{Unified detection flow with domain manager selection stage.}
+\end{figure}
+
+The unified flow emphasizes that preprocessing remains shared, but decision logic diverges right after domain selection. Input frames are normalized once, then routed to the selected manager where detection outputs are transformed by domain-specific post-processing. This design keeps latency predictable and allows independent evolution of stator measurement, chignon segmentation tuning, and file color-layout validation without changing the transport pipeline.
+
+\subsection{Separate Detection Pipelines}
+
+Each domain has its own processing flow due to different industrial constraints.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.56\textwidth,height=0.23\textheight,keepaspectratio]{docs/images/stator_detection_pipeline.png}
+    \caption{Stator pipeline: top-N filtering, spatial correction, contour geometry, and measurement calibration.}
+\end{figure}
+
+The stator pipeline is measurement-centric. After raw detections, top-N constraints enforce physically valid object counts, then a spatial heuristic corrects class confusion using position relative to the stator center. Contours are converted to geometric primitives, and calibrated scale factors convert pixel distances into millimeter-level outputs for QA metrics such as width, diameter, area, and inter-part spacing.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.56\textwidth,height=0.23\textheight,keepaspectratio]{docs/images/chignon_detection_pipeline.png}
+    \caption{Chignon pipeline: domain-specific segmentation and rendering with optional tracking/edge refinement hooks.}
+\end{figure}
+
+The chignon pipeline prioritizes stable segmentation and visualization fidelity over heavy geometric measurement. Domain-specific rendering logic controls class overlays and confidence presentation, while optional tracking/edge-refinement hooks can be enabled to smooth temporal behavior and contour boundaries. This keeps the path lightweight and suited for real-time monitoring with minimal rule-based overrides.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.56\textwidth,height=0.23\textheight,keepaspectratio]{docs/images/file_detection_pipeline.png}
+    \caption{File pipeline: ResNet inference, color classification, left-right validation, and correctness feedback.}
+\end{figure}
+
+The file pipeline is validation-centric and currently anchored on UNet-ResNet18 outputs. Detected file regions are post-processed by color scoring inside bounding boxes to classify blue/yellow semantics, then a left-right rule checks assembly positioning. The system draws a center line between paired files and emits explicit correctness messages to the UI, enabling operators to interpret not only detection presence but also placement conformity.
+
+\section{Model Results Analysis by Domain}
+
+\subsection{Stator Domain Results}
+
+Training artifacts analyzed from \texttt{outputs/results}.
+
 \begin{table}[H]
     \centering
-    \begin{tabular}{ll}
+    \begin{tabular}{lcccc}
         \toprule
-        \textbf{Component Rule} & \textbf{Rationalization Criteria} \\
+        \textbf{Model} & \textbf{Best Epoch} & \textbf{Primary Metric} & \textbf{Value} & \textbf{Peak GPU (MB)} \\
         \midrule
-        Maximum 1 \texttt{Circle} & Restricts phantom bounding bore holes crossing axis limits. \\
-        Maximum 2 \texttt{Magnets} & Ensures symmetry across axis planes mathematically. \\
-        Maximum 4 \texttt{Mech\_Parts} & Clamps diagonal structural supports. \\
+        UNet-ResNet18 & 30 & Val IoU & 0.9663 & 472.5 \\
+        YOLOv8m-seg & 30 & Mask mAP50-95 & 0.8751 & -- \\
+        YOLOv11m-seg & 30 & Mask mAP50-95 & 0.8682 & -- \\
         \bottomrule
     \end{tabular}
-    \caption{Absolute component threshold limitations mapping.}
+    \caption{Stator model summary (from training logs and YOLO results CSV).}
 \end{table}
 
-\subsection{PyTorch Spatial Geometric Autocorrector}
-ResNet classifiers frequently generate semantic blurring, inaccurately evaluating outer-bracket boundaries as `Magnets`. A customized spatial correction layer applies standard trajectory physics:
-\begin{enumerate}
-    \item Establish structural target vector $\mathbf{T}$ via $C_{\text{Stator}}$.
-    \item Calculate arbitrary bearing $\theta$ relative to predicted component $C_{\text{Object}}$.
-    \item If $ \theta \in [0^{\circ}, 90^{\circ}, 180^{\circ}, 270^{\circ}] \pm 25^{\circ} $, the array rigidly triggers a localized class override back to \textbf{Magnet}.
-    \item Deflected diagonal geometries are pushed successfully back to the \textbf{Mechanical\_Part} structure.
-\end{enumerate}
-
-\subsection{Calibration Engine \& MiDaS Machine Learning Depth}
-Real-time conversion factor constants scaling pixels directly into accurate millimeters involves dynamic methodologies computed per frame:
-\begin{equation}
-    D_{\text{mm/px}} = \frac{Z \cdot W_{\text{sensor}}}{f_c \cdot W_{\text{image}}}
-\end{equation}
-When standard Focal Length Intrinsics or ArUco Reference object metrics fail due to extreme angled surfaces, the system bridges the \textbf{MiDaS} (`intel-isl/MiDaS_small`) Monocular Depth Estimation Neural Network natively. It builds inverted heat maps over the environment in microseconds, extrapolating depth disparity weights against the constant variables dynamically, successfully anchoring metric estimations to object bounds seamlessly.
+Interpretation:
+\begin{itemize}
+    \item UNet-ResNet18 provides strongest pixel-level IoU for stator segmentation.
+    \item YOLO models maintain high precision/recall and strong instance-level mask mAP.
+    \item Stator domain supports both YOLO and PyTorch runtime paths in production.
+\end{itemize}
 
 \begin{figure}[H]
     \centering
-    \begin{minipage}{0.48\textwidth}
+    \begin{subfigure}{0.48\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{docs/images/examples/example_unet_resnet18_measurements.png}
-        \caption{UNet\_ResNet18: Live Measurement mapping bounds and lines.}
-    \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{outputs/results/plots/iou_curves.png}
+        \caption{Stator IoU curves}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{docs/images/examples/example_yolov11m_seg_measurements.png}
-        \caption{YOLOv11m-Seq: Bounding constraints \& Label Rendering outputs.}
-    \end{minipage}
+        \includegraphics[width=\textwidth]{outputs/results/plots/loss_curves.png}
+        \caption{Stator loss curves}
+    \end{subfigure}
+    \caption{Stator training dynamics.}
 \end{figure}
 
+\subsection{Chignon Domain Results}
+
+Training artifacts analyzed from \texttt{chignon/results}.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lcccc}
+        \toprule
+        \textbf{Model} & \textbf{Best Epoch} & \textbf{Primary Metric} & \textbf{Value} & \textbf{Peak GPU (MB)} \\
+        \midrule
+        UNet-ResNet18 & 39 & Val IoU & 0.9816 & 440.9 \\
+        YOLOv8m-seg & 40 & Mask mAP50-95 & 0.9688 & -- \\
+        YOLOv11m-seg & 39 & Mask mAP50-95 & 0.9606 & -- \\
+        \bottomrule
+    \end{tabular}
+    \caption{Chignon model summary (from training logs and YOLO results CSV).}
+\end{table}
+
+Interpretation:
+\begin{itemize}
+    \item Chignon domain converges strongly for both UNet and YOLO variants.
+    \item YOLO recall is saturated at 1.0 in best checkpoints, indicating high object recovery on this dataset.
+    \item Domain is integrated in app routing and remains suitable for YOLO/PyTorch comparison workflows.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{chignon/results/plots/iou_curves.png}
+        \caption{Chignon IoU curves}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{chignon/results/plots/loss_curves.png}
+        \caption{Chignon loss curves}
+    \end{subfigure}
+    \caption{Chignon training dynamics.}
+\end{figure}
+
+\subsection{File Domain Results}
+
+Training artifacts analyzed from \texttt{files/results}.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lcccc}
+        \toprule
+        \textbf{Model} & \textbf{Best Epoch} & \textbf{Primary Metric} & \textbf{Value} & \textbf{Peak GPU (MB)} \\
+        \midrule
+        UNet-ResNet18 & 30 & Val IoU & 0.9197 & 440.9 \\
+        YOLOv8m-seg & 1 & Mask mAP50-95 & 0.0000 & -- \\
+        YOLOv11m-seg & 1 & Mask mAP50-95 & 0.0000 & -- \\
+        \bottomrule
+    \end{tabular}
+    \caption{File model summary (from training logs and YOLO results CSV).}
+\end{table}
+
+Interpretation:
+\begin{itemize}
+    \item File-domain YOLO training failed to produce deployable mask quality (all key mask metrics collapse to zero).
+    \item UNet-ResNet18 remains the only viable model path for file-domain inference in this cycle.
+    \item Deployment therefore prioritizes UNet-ResNet18 plus file-specific post-processing rules.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{files/results/plots/iou_curves.png}
+        \caption{File IoU curves}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{files/results/plots/loss_curves.png}
+        \caption{File loss curves}
+    \end{subfigure}
+    \caption{File-domain training dynamics.}
+\end{figure}
+
+\section{Post-Processing Methods by Domain}
+
+\subsection{Stator Post-Processing}
+\begin{itemize}
+    \item Top-N filtering limits structurally valid object counts.
+    \item Spatial heuristic correction mitigates class confusion based on angular position around stator center.
+    \item Contour extraction + geometry fitting computes dimensions.
+    \item Calibration methods (manual/reference/intrinsics/depth) map px to mm.
+\end{itemize}
+
+\subsection{Chignon Post-Processing}
+\begin{itemize}
+    \item Domain-specific segmentation rendering and object annotation.
+    \item Optional enhancement hooks for tracking and edge refinement.
+    \item Lightweight geometric post steps compared to stator measurement-heavy path.
+\end{itemize}
+
+\subsection{File Post-Processing}
+\begin{itemize}
+    \item Per-bounding-box color analysis (blue/yellow/green scoring).
+    \item Left-right layout rule validation with correctness message.
+    \item Center-line drawing between selected file pair.
+    \item UI toggle to enable/disable file color-layout validation at runtime.
+\end{itemize}
+
+\section{Deployment Decision and Current Status}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lll}
+        \toprule
+        \textbf{Domain} & \textbf{Active Runtime Strategy} & \textbf{State} \\
+        \midrule
+        Stator & YOLO + UNet with measurement pipeline & Stable \\
+        Chignon & YOLO + UNet via dedicated manager & Integrated \\
+        File & UNet-ResNet18 + color/layout validation & Integrated, model lifecycle experimental \\
+        \bottomrule
+    \end{tabular}
+    \caption{Current deployment state by domain.}
+\end{table}
+
 \section{Conclusion}
-This framework succeeds by meticulously weaving state-of-the-art vision models, such as ONNX-compiled UNet layers achieving 0.96+ IoUs natively, with rigidly parameterized Spatial Filtering logics. The integration natively handles edge capabilities effectively resulting in an autonomous system resilient to structural noise and camera instability, successfully delivering robust outputs directly required for real-time factory inspection matrices!
+
+The report confirms the platform has matured into a domain-aware architecture with separate detection pipelines and post-processing methods. Stator and Chignon domains show strong model convergence, while File-domain YOLO training is currently non-viable. As a result, file deployment uses UNet-ResNet18 with dedicated color/layout validation logic until a successful YOLO retraining cycle is achieved.
 
 \end{document}

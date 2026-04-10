@@ -1,0 +1,11 @@
+graph TD
+    classDef process fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef io fill:#bbf,stroke:#333,stroke-width:1px;
+
+    A[Camera Feed / Upload]:::io --> B[Stator Manager Inference]:::process
+    B --> C[Segmentation + Boxes]:::process
+    C --> D[Top-N Filtering 1 Circle, 2 Magnets, 4 Parts]:::process
+    D --> E[Spatial Heuristic Correction]:::process
+    E --> F[Contour + Geometry Extraction]:::process
+    F --> G[Calibration px to mm + Measurements]:::process
+    G --> H[WebRTC / Upload Response]:::io
