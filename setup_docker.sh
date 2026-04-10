@@ -123,6 +123,10 @@ do_server_mode() {
         --name "$COMBINED_CONTAINER" \
         --restart unless-stopped \
         -p "${SERVER_PORT}:5000" \
+        -v "$PROJECT_DIR/outputs/results:/app/outputs/results:ro" \
+        -v "$PROJECT_DIR/chignon/results:/app/chignon/results:ro" \
+        -v "$PROJECT_DIR/files/results:/app/files/results:ro" \
+        -v "$PROJECT_DIR/weights:/app/weights:ro" \
         "$COMBINED_IMAGE" >/dev/null
 
     echo ""

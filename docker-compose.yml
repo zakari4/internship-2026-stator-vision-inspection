@@ -16,7 +16,8 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - MODEL_DIR=/app/models
+      - MODEL_DIR=/app
+      - PROJECT_ROOT=/app
       - CLIENT_DIR=/app/client
       - PYTHONUNBUFFERED=1
     volumes:
