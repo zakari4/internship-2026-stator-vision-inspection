@@ -1,0 +1,37 @@
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 libglib2.0-0 \
+    libsm6 libxext6 libxrender1 \
+    libavdevice61 libavfilter10 \
+    libopus0 libvpx9 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install runtime dependencies for server + inference stack.
+COPY requirements.txt /app/requirements.txt
+COPY server/requirements.txt /app/server/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt -r /app/server/requirements.txt
+
+# Copy application code and model artifacts required by runtime model discovery.
+COPY server /app/server
+COPY client /app/client
+COPY chignon /app/chignon
+COPY files /app/files
+COPY src /app/src
+COPY outputs/results /app/outputs/results
+COPY weights /app/weights
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PROJECT_ROOT=/app \
+    CLIENT_DIR=/app/client
+
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/status')" || exit 1
+
+WORKDIR /app/server
+CMD ["python", "server.py", "--host", "0.0.0.0", "--port", "5000"]

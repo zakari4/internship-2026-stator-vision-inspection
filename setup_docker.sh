@@ -4,6 +4,7 @@
 # ══════════════════════════════════════════════════════════════
 # Usage:
 #   ./setup_docker.sh          Build and start everything
+#   ./setup_docker.sh server   Build and run one combined server+client image
 #   ./setup_docker.sh build    Build images only
 #   ./setup_docker.sh up       Start containers (assumes built)
 #   ./setup_docker.sh down     Stop and remove containers
@@ -17,6 +18,8 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
 SERVER_IMAGE="chignon-server:latest"
+COMBINED_IMAGE="chignon-server-app:latest"
+COMBINED_CONTAINER="chignon-server-app"
 SERVER_PORT=5000
 CLIENT_PORT=8080
 
@@ -104,6 +107,31 @@ do_build() {
     fi
 }
 
+# ── Combined server+client image (single container) ─────────
+do_server_mode() {
+    info "Building combined server+client image..."
+    cd "$PROJECT_DIR"
+    docker build -f Dockerfile.server_app -t "$COMBINED_IMAGE" .
+
+    if docker ps -a --format '{{.Names}}' | grep -qx "$COMBINED_CONTAINER"; then
+        info "Removing existing container: $COMBINED_CONTAINER"
+        docker rm -f "$COMBINED_CONTAINER" >/dev/null 2>&1 || true
+    fi
+
+    info "Starting combined container on port ${SERVER_PORT}..."
+    docker run -d \
+        --name "$COMBINED_CONTAINER" \
+        --restart unless-stopped \
+        -p "${SERVER_PORT}:5000" \
+        "$COMBINED_IMAGE" >/dev/null
+
+    echo ""
+    log "Combined app running:"
+    echo -e "   ${CYAN}Server + Client${NC} → http://localhost:${SERVER_PORT}"
+    info "Use 'docker logs -f ${COMBINED_CONTAINER}' for runtime logs"
+    info "Use 'docker rm -f ${COMBINED_CONTAINER}' to stop this mode"
+}
+
 # ── Up ───────────────────────────────────────────────────────
 do_up() {
     info "Starting containers..."
@@ -155,6 +183,10 @@ main() {
     preflight
 
     case "$cmd" in
+        server)
+            check_weights
+            do_server_mode
+            ;;
         build)
             check_weights
             do_build
@@ -179,7 +211,7 @@ main() {
             ;;
         *)
             err "Unknown command: $cmd"
-            echo "Usage: $(basename "$0") [build|up|down|logs|clean]"
+            echo "Usage: $(basename "$0") [server|build|up|down|logs|clean]"
             exit 1
             ;;
     esac

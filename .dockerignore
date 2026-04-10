@@ -6,9 +6,18 @@
 *
 
 # -- Allow only what we need --
+!requirements.txt
 !server/requirements.txt
 !server/server.py
 !server/inference.py
+!server/**
+!client/**
+!chignon/inference.py
+!chignon/results/**
+!files/inference.py
+!files/results/**
+!src/**
+!outputs/results/**
 
 # Trained model weights (only best.pt)
 !outputs/results/yolo_training/*/weights/best.pt
