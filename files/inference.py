@@ -291,10 +291,18 @@ class FileModelManager:
 
         hsv = cv2.cvtColor(original_frame, cv2.COLOR_BGR2HSV)
 
-        # HSV ranges for file-color discrimination.
-        blue_l, blue_u = np.array([85, 50, 35]), np.array([140, 255, 255])
-        yellow_l, yellow_u = np.array([12, 35, 45]), np.array([45, 255, 255])
-        green_l, green_u = np.array([38, 40, 35]), np.array([92, 255, 255])
+        # User-defined HSV strategy:
+        # - Blue: hue in [100, 130]
+        # - Yellow: hue in [20, 40]
+        # The same bbox may contain both colors; when this happens,
+        # split it into two smaller boxes from color-mask contours.
+        blue_l, blue_u = np.array([100, 50, 50]), np.array([130, 255, 255])
+        yellow_l, yellow_u = np.array([20, 50, 50]), np.array([40, 255, 255])
+
+        color_pixel_ratio_threshold = 0.08
+        min_color_component_area = max(40, int(self.min_component_area * 0.35))
+
+        processed_detections: List[Dict] = []
 
         for det in detections:
             x1, y1, x2, y2 = [int(v) for v in det.get("bbox", [0, 0, 0, 0])]
@@ -303,77 +311,111 @@ class FileModelManager:
             if x2 <= x1 or y2 <= y1:
                 det["file_color"] = "unknown"
                 det["color_ratio"] = 0.0
+                det["color_scores"] = {"blue": 0.0, "yellow": 0.0}
+                processed_detections.append(det)
                 continue
 
             roi_hsv = hsv[y1:y2, x1:x2]
-            roi_bgr = original_frame[y1:y2, x1:x2]
-
-            # Use inner crop to avoid background influence on bbox borders.
-            rh, rw = roi_hsv.shape[:2]
-            mx, my = int(rw * 0.1), int(rh * 0.1)
-            if rw - 2 * mx > 10 and rh - 2 * my > 10:
-                roi_hsv = roi_hsv[my:rh - my, mx:rw - mx]
-                roi_bgr = roi_bgr[my:rh - my, mx:rw - mx]
-
             total = float(roi_hsv.shape[0] * roi_hsv.shape[1])
             if total <= 0:
                 det["file_color"] = "unknown"
                 det["color_ratio"] = 0.0
+                det["color_scores"] = {"blue": 0.0, "yellow": 0.0}
+                processed_detections.append(det)
                 continue
 
-            h_ch, s_ch, v_ch = cv2.split(roi_hsv)
-            valid_mask = ((s_ch > 45) & (v_ch > 40)).astype(np.uint8) * 255
-            valid_total = float(cv2.countNonZero(valid_mask))
-            if valid_total < 50:
-                valid_mask = np.ones_like(valid_mask, dtype=np.uint8) * 255
-                valid_total = total
+            blue_mask = cv2.inRange(roi_hsv, blue_l, blue_u)
+            yellow_mask = cv2.inRange(roi_hsv, yellow_l, yellow_u)
 
-            blue_mask = cv2.bitwise_and(cv2.inRange(roi_hsv, blue_l, blue_u), valid_mask)
-            yellow_mask = cv2.bitwise_and(cv2.inRange(roi_hsv, yellow_l, yellow_u), valid_mask)
-            green_mask = cv2.bitwise_and(cv2.inRange(roi_hsv, green_l, green_u), valid_mask)
+            # Reduce isolated noise before counting/contours.
+            kernel = np.ones((3, 3), np.uint8)
+            blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_OPEN, kernel)
+            yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
 
-            blue_hsv = float(cv2.countNonZero(blue_mask)) / max(valid_total, 1.0)
-            yellow_hsv = float(cv2.countNonZero(yellow_mask)) / max(valid_total, 1.0)
-            green_hsv = float(cv2.countNonZero(green_mask)) / max(valid_total, 1.0)
+            blue_ratio = float(cv2.countNonZero(blue_mask)) / total
+            yellow_ratio = float(cv2.countNonZero(yellow_mask)) / total
 
-            b_ch, g_ch, r_ch = cv2.split(roi_bgr.astype(np.float32))
-            vm = valid_mask > 0
-            blue_dom = ((b_ch > 1.12 * g_ch) & (b_ch > 1.12 * r_ch) & vm)
-            yellow_dom = (
-                (r_ch > 70)
-                & (g_ch > 70)
-                & (np.abs(r_ch - g_ch) < 75)
-                & (b_ch < 0.85 * np.minimum(r_ch, g_ch))
-                & vm
-            )
-            green_dom = ((g_ch > 1.08 * r_ch) & (g_ch > 1.08 * b_ch) & vm)
+            has_blue = blue_ratio >= color_pixel_ratio_threshold
+            has_yellow = yellow_ratio >= color_pixel_ratio_threshold
 
-            blue_bgr = float(np.count_nonzero(blue_dom)) / max(valid_total, 1.0)
-            yellow_bgr = float(np.count_nonzero(yellow_dom)) / max(valid_total, 1.0)
-            green_bgr = float(np.count_nonzero(green_dom)) / max(valid_total, 1.0)
+            # Fusion case: both colors inside one detection box.
+            # Split by finding contours in each color mask and deriving
+            # new smaller boxes in image coordinates.
+            if has_blue and has_yellow:
+                split_added = 0
+                for color_name, color_mask in (("blue", blue_mask), ("yellow", yellow_mask)):
+                    cnts, _ = cv2.findContours(color_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    if not cnts:
+                        continue
 
-            scores = {
-                "blue": 0.65 * blue_hsv + 0.35 * blue_bgr,
-                "yellow": 0.65 * yellow_hsv + 0.35 * yellow_bgr,
-                "green": 0.65 * green_hsv + 0.35 * green_bgr,
-            }
-            color_name, ratio = max(scores.items(), key=lambda kv: kv[1])
-            if ratio < 0.07:
+                    cnt = max(cnts, key=cv2.contourArea)
+                    area = cv2.contourArea(cnt)
+                    if area < min_color_component_area:
+                        continue
+
+                    sx, sy, sw, sh = cv2.boundingRect(cnt)
+                    abs_x1, abs_y1 = x1 + sx, y1 + sy
+                    abs_x2, abs_y2 = abs_x1 + sw, abs_y1 + sh
+
+                    split_det = dict(det)
+                    split_det["bbox"] = [float(abs_x1), float(abs_y1), float(abs_x2), float(abs_y2)]
+                    split_det["file_color"] = color_name
+                    split_det["color_ratio"] = round(
+                        float(blue_ratio if color_name == "blue" else yellow_ratio),
+                        3,
+                    )
+                    split_det["color_scores"] = {
+                        "blue": round(float(blue_ratio), 3),
+                        "yellow": round(float(yellow_ratio), 3),
+                    }
+                    processed_detections.append(split_det)
+                    split_added += 1
+
+                    if self.draw_boxes:
+                        box_color = (255, 0, 0) if color_name == "blue" else (0, 255, 255)
+                        cv2.rectangle(annotated, (abs_x1, abs_y1), (abs_x2, abs_y2), box_color, 2)
+                    if self.draw_labels:
+                        ty = max(15, abs_y1 - 10)
+                        cv2.putText(
+                            annotated,
+                            color_name,
+                            (abs_x1, ty),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            (255, 255, 255),
+                            1,
+                            cv2.LINE_AA,
+                        )
+
+                if split_added > 0:
+                    continue
+
+            if has_blue and not has_yellow:
+                color_name = "blue"
+                ratio = blue_ratio
+            elif has_yellow and not has_blue:
+                color_name = "yellow"
+                ratio = yellow_ratio
+            elif has_blue and has_yellow:
+                color_name = "blue" if blue_ratio >= yellow_ratio else "yellow"
+                ratio = max(blue_ratio, yellow_ratio)
+            else:
                 color_name = "unknown"
+                ratio = max(blue_ratio, yellow_ratio)
 
             det["file_color"] = color_name
             det["color_ratio"] = round(float(ratio), 3)
             det["color_scores"] = {
-                "blue": round(float(scores["blue"]), 3),
-                "yellow": round(float(scores["yellow"]), 3),
-                "green": round(float(scores["green"]), 3),
+                "blue": round(float(blue_ratio), 3),
+                "yellow": round(float(yellow_ratio), 3),
             }
+            processed_detections.append(det)
 
             if self.draw_labels:
                 tx, ty = int(det["bbox"][0]), int(max(15, det["bbox"][1] - 20))
                 cv2.putText(
                     annotated,
-                    f"{color_name}",
+                    color_name,
                     (tx, ty),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5,
@@ -382,21 +424,7 @@ class FileModelManager:
                     cv2.LINE_AA,
                 )
 
-        # Pair-aware disambiguation: if both files are tagged blue but one has
-        # strong yellow evidence, relabel that candidate as yellow.
-        color_dets = [d for d in detections if d.get("file_color") in {"blue", "yellow"}]
-        has_blue = any(d.get("file_color") == "blue" for d in color_dets)
-        has_yellow = any(d.get("file_color") == "yellow" for d in color_dets)
-        if len(color_dets) >= 2 and has_blue and not has_yellow:
-            candidate = max(
-                color_dets,
-                key=lambda d: (d.get("color_scores", {}).get("yellow", 0.0), d.get("color_ratio", 0.0)),
-            )
-            y_score = float(candidate.get("color_scores", {}).get("yellow", 0.0))
-            b_score = float(candidate.get("color_scores", {}).get("blue", 0.0))
-            if y_score >= 0.20 and (b_score - y_score) <= 0.35:
-                candidate["file_color"] = "yellow"
-                candidate["color_ratio"] = round(y_score, 3)
+        detections = processed_detections
 
         colored = [d for d in detections if d.get("file_color") in {"blue", "yellow"}]
         if len(colored) < 2:
