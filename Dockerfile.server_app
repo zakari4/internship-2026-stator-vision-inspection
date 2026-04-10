@@ -20,8 +20,9 @@ COPY client /app/client
 COPY chignon /app/chignon
 COPY files /app/files
 COPY src /app/src
-COPY outputs/results /app/outputs/results
-COPY weights /app/weights
+
+# Optional model artifact folders may be absent on fresh clones.
+RUN mkdir -p /app/outputs/results /app/weights
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
