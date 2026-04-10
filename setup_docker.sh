@@ -7,6 +7,8 @@
 #   ./setup_docker.sh server   Build and run one combined server+client image
 #   ./setup_docker.sh build    Build images only
 #   ./setup_docker.sh up       Start containers (assumes built)
+#   ./setup_docker.sh restart [server]  Full recreate: stop/remove + remove image + rebuild + run
+#   ./setup_docker.sh update [server]   Refresh: stop/remove + rebuild + run
 #   ./setup_docker.sh down     Stop and remove containers
 #   ./setup_docker.sh logs     Tail server logs
 #   ./setup_docker.sh clean    Stop, remove containers + images
@@ -136,6 +138,66 @@ do_server_mode() {
     info "Use 'docker rm -f ${COMBINED_CONTAINER}' to stop this mode"
 }
 
+do_server_down() {
+    if docker ps -a --format '{{.Names}}' | grep -qx "$COMBINED_CONTAINER"; then
+        info "Stopping/removing combined container: $COMBINED_CONTAINER"
+        docker rm -f "$COMBINED_CONTAINER" >/dev/null 2>&1 || true
+        log "Combined container removed"
+    else
+        warn "Combined container not found: $COMBINED_CONTAINER"
+    fi
+}
+
+do_server_remove_image() {
+    if docker image inspect "$COMBINED_IMAGE" >/dev/null 2>&1; then
+        info "Removing combined image: $COMBINED_IMAGE"
+        docker rmi "$COMBINED_IMAGE" >/dev/null 2>&1 || true
+        log "Combined image removed"
+    else
+        warn "Combined image not found: $COMBINED_IMAGE"
+    fi
+}
+
+do_restart() {
+    local mode="${1:-compose}"
+
+    if [[ "$mode" == "server" ]]; then
+        info "Restart mode (server): full recreate"
+        do_server_down
+        do_server_remove_image
+        check_weights
+        do_server_mode
+        return
+    fi
+
+    info "Restart mode (compose): full recreate"
+    do_down
+    info "Removing compose images..."
+    cd "$PROJECT_DIR"
+    $COMPOSE_CMD -f "$COMPOSE_FILE" down --rmi local
+    check_weights
+    do_build
+    do_up
+}
+
+do_update() {
+    local mode="${1:-compose}"
+
+    if [[ "$mode" == "server" ]]; then
+        info "Update mode (server): rebuild and redeploy"
+        do_server_down
+        check_weights
+        do_server_mode
+        return
+    fi
+
+    info "Update mode (compose): rebuild and redeploy"
+    do_down
+    check_weights
+    do_build
+    do_up
+}
+
 # ── Up ───────────────────────────────────────────────────────
 do_up() {
     info "Starting containers..."
@@ -177,6 +239,7 @@ do_clean() {
 # ── Main ─────────────────────────────────────────────────────
 main() {
     local cmd="${1:-}"
+    local mode="${2:-}"
 
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
@@ -198,6 +261,20 @@ main() {
         up)
             do_up
             ;;
+        restart)
+            if [[ -n "$mode" && "$mode" != "server" ]]; then
+                err "Usage: $(basename "$0") restart [server]"
+                exit 1
+            fi
+            do_restart "${mode:-compose}"
+            ;;
+        update)
+            if [[ -n "$mode" && "$mode" != "server" ]]; then
+                err "Usage: $(basename "$0") update [server]"
+                exit 1
+            fi
+            do_update "${mode:-compose}"
+            ;;
         down)
             do_down
             ;;
@@ -215,7 +292,7 @@ main() {
             ;;
         *)
             err "Unknown command: $cmd"
-            echo "Usage: $(basename "$0") [server|build|up|down|logs|clean]"
+            echo "Usage: $(basename "$0") [server|build|up|restart|update|down|logs|clean]"
             exit 1
             ;;
     esac
