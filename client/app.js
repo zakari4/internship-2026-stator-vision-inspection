@@ -854,6 +854,16 @@ function syncEnabledState() {
 measurementMethod.addEventListener("change", syncMethodFields);
 measurementEnabled.addEventListener("change", syncEnabledState);
 
+// Cross-diametric mode is exclusive: it should draw only opposite lines.
+if (showOppositeDistances) {
+    showOppositeDistances.addEventListener("change", () => {
+        if (!showOppositeDistances.checked) return;
+        if (showEdgeDistances) showEdgeDistances.checked = false;
+        if (showCenterDistances) showCenterDistances.checked = false;
+        if (showAlignedPairDistances) showAlignedPairDistances.checked = false;
+    });
+}
+
 /** Populate the reference-label <select> with class names from the current model. */
 async function loadLabels() {
     try {

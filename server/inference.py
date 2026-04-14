@@ -132,6 +132,7 @@ class CameraSettings:
         self.show_edge_distances: bool = True
         self.show_center_distances: bool = True
         self.show_aligned_pair_distances: bool = False
+        self.show_opposite_distances: bool = False
 
         # Camera-intrinsics parameters
         self.sensor_width_mm: float = 6.17
@@ -201,6 +202,7 @@ class CameraSettings:
             "show_edge_distances": self.show_edge_distances,
             "show_center_distances": self.show_center_distances,
             "show_aligned_pair_distances": self.show_aligned_pair_distances,
+            "show_opposite_distances": self.show_opposite_distances,
             # camera intrinsics
             "sensor_width_mm": self.sensor_width_mm,
             "focal_length_mm": self.focal_length_mm,
@@ -226,6 +228,8 @@ class CameraSettings:
             self.show_center_distances = bool(data["show_center_distances"])
         if "show_aligned_pair_distances" in data:
             self.show_aligned_pair_distances = bool(data["show_aligned_pair_distances"])
+        if "show_opposite_distances" in data:
+            self.show_opposite_distances = bool(data["show_opposite_distances"])
         # camera intrinsics
         if "sensor_width_mm" in data:
             self.sensor_width_mm = float(data["sensor_width_mm"])
@@ -583,6 +587,22 @@ def compute_edge_center_distances(
     return measurements
 
 
+def normalize_measurement_family(name: object) -> str:
+    n = str(name or "").strip().lower().replace(" ", "_").replace("-", "_")
+    # Match mechanical_part variants including common OCR/label typos
+    if n in {
+        "mechanical_part", "mechanicalpart", "mechanical",
+        "michanical_part", "michanicalpart", "michanical",
+        "mecanical_part", "mecanicalpart", "mecanical",
+    }:
+        return "mechanical_part"
+    if n == "magnet":
+        return "magnet"
+    if n == "circle":
+        return "circle"
+    return n
+
+
 def compute_aligned_same_class_distances(
     entries: List[Dict[str, object]],
     px_to_mm: float,
@@ -592,11 +612,9 @@ def compute_aligned_same_class_distances(
     measurements: List[dict] = []
 
     def normalize_family(name: object) -> Optional[str]:
-        n = str(name or "").strip().lower()
-        if n in {"mechanical_part", "mechanical_part"}:
-            return "mechanical_part"
-        if n == "magnet":
-            return "magnet"
+        n = normalize_measurement_family(name)
+        if n in {"mechanical_part", "magnet"}:
+            return n
         return None
 
     normalized_entries = []
@@ -685,6 +703,195 @@ def compute_aligned_same_class_distances(
     return measurements
 
 
+def compute_cross_diametric_opposite_distances(
+    entries: List[Dict[str, object]],
+    px_to_mm: float,
+    circle_center: Optional[Tuple[int, int]] = None,
+) -> List[dict]:
+    """Compute cross-diametric same-family distances relative to circle center.
+
+    For both magnets and mechanical parts, two diagonal pairs are measured:
+    - Top-Left <-> Bottom-Right  (diag-desc)
+    - Top-Right <-> Bottom-Left  (diag-asc)
+    """
+    measurements: List[dict] = []
+
+    def normalize_family(name: object) -> Optional[str]:
+        n = normalize_measurement_family(name)
+        if n in {"mechanical_part", "magnet"}:
+            return n
+        return None
+
+    normalized_entries = []
+    uid = 0
+    for e in entries:
+        family = normalize_family(e.get("name"))
+        center = (e.get("points") or {}).get("center")
+        if family is None or not center:
+            continue
+        normalized_entries.append({
+            "uid": uid,
+            "family": family,
+            "center": center,
+            "det_idx": e.get("det_idx"),
+        })
+        uid += 1
+
+    if not normalized_entries:
+        return []
+
+    # Base center reference (preferred: detected circle center).
+    base_cx, base_cy = 0, 0
+    if circle_center:
+        base_cx, base_cy = circle_center
+    else:
+        base_cx = int(sum(e["center"][0] for e in normalized_entries) / len(normalized_entries))
+        base_cy = int(sum(e["center"][1] for e in normalized_entries) / len(normalized_entries))
+
+    families = {
+        "mechanical_part": [e for e in normalized_entries if e["family"] == "mechanical_part"],
+        "magnet": [e for e in normalized_entries if e["family"] == "magnet"],
+    }
+
+    for family, fam_entries in families.items():
+        if len(fam_entries) < 2:
+            continue
+
+        # If circle center is missing, use family-local center to avoid
+        # bias from the other family (e.g., magnets shifting mech quadrants).
+        if circle_center:
+            ccx, ccy = base_cx, base_cy
+        else:
+            ccx = int(sum(e["center"][0] for e in fam_entries) / len(fam_entries))
+            ccy = int(sum(e["center"][1] for e in fam_entries) / len(fam_entries))
+
+        # Quadrant assignments relative to circle center
+        quads = {"tl": [], "tr": [], "bl": [], "br": []}
+        for e in fam_entries:
+            x, y = e["center"]
+            if x <= ccx and y <= ccy:
+                quads["tl"].append(e)
+            elif x > ccx and y <= ccy:
+                quads["tr"].append(e)
+            elif x <= ccx and y > ccy:
+                quads["bl"].append(e)
+            else: # x > ccx and y > ccy
+                quads["br"].append(e)
+
+        def select_rep(candidates: List[Dict[str, object]]) -> Optional[Dict[str, object]]:
+            if not candidates:
+                return None
+            # Keep the representative farthest from center to stabilize pairing.
+            return max(
+                candidates,
+                key=lambda e: (e["center"][0] - ccx) ** 2 + (e["center"][1] - ccy) ** 2,
+            )
+
+        # Pairing Logic (requested behavior):
+        # - mechanical_part: BL↔TR and BR↔TL (both diagonals)
+        # - magnet:          TR↔BL and TL↔BR (both diagonals)
+        candidate_pairs = []
+
+        tl = select_rep(quads["tl"])
+        tr = select_rep(quads["tr"])
+        bl = select_rep(quads["bl"])
+        br = select_rep(quads["br"])
+
+        if family == "mechanical_part":
+            # Deterministic layout pairing:
+            # bottom-left -> top-right, bottom-right -> top-left.
+            if len(fam_entries) >= 4:
+                by_y = sorted(fam_entries, key=lambda e: (e["center"][1], e["center"][0]))
+                top_two = by_y[:2]
+                bottom_two = by_y[-2:]
+
+                top_left = min(top_two, key=lambda e: e["center"][0])
+                top_right = max(top_two, key=lambda e: e["center"][0])
+                bottom_left = min(bottom_two, key=lambda e: e["center"][0])
+                bottom_right = max(bottom_two, key=lambda e: e["center"][0])
+
+                candidate_pairs.append((bottom_left, top_right, "diag-asc (BL-TR)"))
+                candidate_pairs.append((bottom_right, top_left, "diag-desc (BR-TL)"))
+            else:
+                if bl is not None and tr is not None:
+                    candidate_pairs.append((bl, tr, "diag-asc (BL-TR)"))
+                if br is not None and tl is not None:
+                    candidate_pairs.append((br, tl, "diag-desc (BR-TL)"))
+        else:
+            # Both cross diagonals for magnets
+            if tr is not None and bl is not None:
+                candidate_pairs.append((tr, bl, "diag-asc (TR-BL)"))
+            if tl is not None and br is not None:
+                candidate_pairs.append((tl, br, "diag-desc (TL-BR)"))
+
+        # Robust Fallback: If we don't have enough lines, use angular pairing
+        # Target lines: 2 for both families (both diagonals)
+        target_lines = 2
+        
+        if len(candidate_pairs) < target_lines and len(fam_entries) >= 2:
+            # Sort by angle and find best opposite pairs
+            # This is robust to rotation and extra detections
+            sorted_by_angle = []
+            for e in fam_entries:
+                dx, dy = e["center"][0] - ccx, e["center"][1] - ccy
+                angle = math.atan2(dy, dx)
+                sorted_by_angle.append((angle, e))
+            sorted_by_angle.sort(key=lambda x: x[0])
+            
+            # Find pairs closest to 180 degrees apart
+            # We use a simple strategy: pair items that are roughly N/2 apart in the sorted list
+            n = len(fam_entries)
+            temp_pairs = []
+            for i in range(n):
+                for j in range(i + 1, n):
+                    # Measure angular diff
+                    diff = abs(sorted_by_angle[i][0] - sorted_by_angle[j][0])
+                    if diff > math.pi:
+                        diff = 2 * math.pi - diff
+                    # We want diff to be close to PI
+                    score = abs(math.pi - diff)
+                    temp_pairs.append((score, sorted_by_angle[i][1], sorted_by_angle[j][1]))
+            
+            # Sort by score (lower is better, closer to 180 deg)
+            temp_pairs.sort(key=lambda x: x[0])
+            
+            # Use top M unique pairs
+            used_ids = set()
+            new_candidates = []
+            for score, a, b in temp_pairs:
+                if a["uid"] not in used_ids and b["uid"] not in used_ids:
+                    dx, dy = b["center"][0] - a["center"][0], b["center"][1] - a["center"][1]
+                    label = "diag-desc" if dx * dy > 0 else "diag-asc"
+                    new_candidates.append((a, b, label))
+                    used_ids.add(a["uid"])
+                    used_ids.add(b["uid"])
+                if len(new_candidates) >= target_lines:
+                    break
+            
+            # For mechanical parts, keep strict BL↔TR / BR↔TL when available.
+            if family == "mechanical_part" and len(candidate_pairs) >= 1:
+                pass
+            # For magnets, or when strict mechanical pairs are absent, use angular fallback.
+            elif len(new_candidates) >= len(candidate_pairs):
+                candidate_pairs = new_candidates
+
+        for a, b, orientation in candidate_pairs:
+            dx = b["center"][0] - a["center"][0]
+            dy = b["center"][1] - a["center"][1]
+            dist_px = math.hypot(dx, dy)
+            measurements.append({
+                "type": "cross_diametric_opposite_distance",
+                "label": f"Opposite {family} ({orientation})",
+                "value_px": round(dist_px, 1),
+                "value_mm": round(dist_px * px_to_mm, 2),
+                "pt1": a["center"],
+                "pt2": b["center"],
+                "det_indices": [a.get("det_idx"), b.get("det_idx")],
+            })
+
+    return measurements
+
+
 def draw_measurements_on_image(
     image: np.ndarray,
     measurements: List[dict],
@@ -718,14 +925,37 @@ def draw_measurements_on_image(
         pt1 = m.get("pt1")
         pt2 = m.get("pt2")
         if pt1 and pt2:
-            cv2.line(overlay, tuple(pt1), tuple(pt2), color_line, 1, cv2.LINE_AA)
-            cv2.circle(overlay, tuple(pt1), 3, color_line, -1)
-            cv2.circle(overlay, tuple(pt2), 3, color_line, -1)
-            mid_x = (pt1[0] + pt2[0]) // 2
-            mid_y = (pt1[1] + pt2[1]) // 2
+            is_cross = m["type"] == "cross_diametric_opposite_distance"
+            label_str = m.get("label", "")
+
+            if is_cross:
+                # Use distinct colors per family and thicker lines
+                if "magnet" in label_str.lower():
+                    line_color = (0, 255, 180)   # Mint green for magnets
+                else:
+                    line_color = (255, 80, 200)  # Magenta for mechanical parts
+                line_thickness = 2
+                dot_radius = 5
+                font_scale = 0.5
+            else:
+                line_color = color_line
+                line_thickness = 1
+                dot_radius = 3
+                font_scale = 0.4
+
+            pt1t = tuple(int(v) for v in pt1)
+            pt2t = tuple(int(v) for v in pt2)
+            cv2.line(overlay, pt1t, pt2t, line_color, line_thickness, cv2.LINE_AA)
+            cv2.circle(overlay, pt1t, dot_radius, line_color, -1)
+            cv2.circle(overlay, pt2t, dot_radius, line_color, -1)
+            mid_x = (pt1t[0] + pt2t[0]) // 2
+            mid_y = (pt1t[1] + pt2t[1]) // 2
             text = f"{unit_val:.1f}{unit_str}"
-            cv2.putText(overlay, text, (mid_x + 5, mid_y - 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, color_text, 1, cv2.LINE_AA)
+            # Draw text shadow for readability
+            cv2.putText(overlay, text, (mid_x + 6, mid_y - 4),
+                        cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), 3, cv2.LINE_AA)
+            cv2.putText(overlay, text, (mid_x + 6, mid_y - 4),
+                        cv2.FONT_HERSHEY_SIMPLEX, font_scale, line_color, 1, cv2.LINE_AA)
 
     return overlay
 
@@ -1420,13 +1650,17 @@ class ModelManager:
         # Measurements logic
         px_to_mm = self._get_px_to_mm(w, detection_masks, frame)
         if self.camera_settings.enabled and det_contours:
-            target_names = {"mechanical_part"}
+            target_names = {"mechanical_part", "magnet"}
+            cross_only_mode = bool(self.camera_settings.show_opposite_distances)
+            
             for contour, cls_name, det_idx in det_contours:
-                measurements = compute_single_contour_measurements(contour, px_to_mm, cls_name)
-                det = detections[det_idx]
-                det["measurements"] = measurements
-                all_measurements.extend(measurements)
-                if cls_name.lower() in target_names:
+                if not cross_only_mode:
+                    measurements = compute_single_contour_measurements(contour, px_to_mm, cls_name)
+                    det = detections[det_idx]
+                    det["measurements"] = measurements
+                    all_measurements.extend(measurements)
+                
+                if normalize_measurement_family(cls_name) in target_names:
                     edge_center_entries.append({
                         "name": cls_name,
                         "points": compute_edge_center_points(contour),
@@ -1434,25 +1668,42 @@ class ModelManager:
                     })
 
             # Inter-contour distances
-            for i in range(len(det_contours)):
-                for j in range(i + 1, len(det_contours)):
-                    cnt_a, name_a, idx_a = det_contours[i]
-                    cnt_b, name_b, idx_b = det_contours[j]
-                    pts_a = cnt_a.reshape(-1, 2).astype(np.float64)
-                    pts_b = cnt_b.reshape(-1, 2).astype(np.float64)
-                    dists = cdist(pts_a, pts_b)
-                    min_dist = float(np.min(dists))
-                    idx = np.unravel_index(np.argmin(dists), dists.shape)
-                    pt_a = pts_a[idx[0]].astype(int).tolist()
-                    pt_b = pts_b[idx[1]].astype(int).tolist()
-                    dist_m = {
-                        "type": "distance",
-                        "label": f"{name_a} \u2194 {name_b}",
-                        "value_px": round(min_dist, 1),
-                        "value_mm": round(min_dist * px_to_mm, 2),
-                        "pt1": pt_a, "pt2": pt_b,
-                    }
-                    all_measurements.append(dist_m)
+            if cross_only_mode:
+                # Find the circle center
+                circle_center = None
+                for c, name, _ in det_contours:
+                    if name.lower() == "circle":
+                        m = cv2.moments(c)
+                        if abs(m.get("m00", 0.0)) > 1e-6:
+                            circle_center = (int(m["m10"] / m["m00"]), int(m["m01"] / m["m00"]))
+                        break
+                
+                cross_measurements = compute_cross_diametric_opposite_distances(edge_center_entries, px_to_mm, circle_center=circle_center)
+                for m in cross_measurements:
+                    for d_idx in m.get("det_indices", []):
+                        if d_idx is not None and 0 <= d_idx < len(detections):
+                            detections[d_idx]["measurements"].append(m)
+                all_measurements.extend(cross_measurements)
+            else:
+                for i in range(len(det_contours)):
+                    for j in range(i + 1, len(det_contours)):
+                        cnt_a, name_a, idx_a = det_contours[i]
+                        cnt_b, name_b, idx_b = det_contours[j]
+                        pts_a = cnt_a.reshape(-1, 2).astype(np.float64)
+                        pts_b = cnt_b.reshape(-1, 2).astype(np.float64)
+                        dists = cdist(pts_a, pts_b)
+                        min_dist = float(np.min(dists))
+                        idx = np.unravel_index(np.argmin(dists), dists.shape)
+                        pt_a = pts_a[idx[0]].astype(int).tolist()
+                        pt_b = pts_b[idx[1]].astype(int).tolist()
+                        dist_m = {
+                            "type": "distance",
+                            "label": f"{name_a} \u2194 {name_b}",
+                            "value_px": round(min_dist, 1),
+                            "value_mm": round(min_dist * px_to_mm, 2),
+                            "pt1": pt_a, "pt2": pt_b,
+                        }
+                        all_measurements.append(dist_m)
 
             if all_measurements and self.enable_postprocessing:
                 annotated = draw_measurements_on_image(annotated, all_measurements, px_to_mm)
@@ -1591,6 +1842,7 @@ class ModelManager:
                     conf = float(region_probs.mean()) if len(region_probs) > 0 else 0.5
 
                     # Format class name for display (replace underscores with spaces)
+                    cls_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
                     display_name = cls_name.replace("_", " ")
                     detections.append({
                         "class_id": cls_id,
@@ -1628,7 +1880,8 @@ class ModelManager:
             
             all_measurements = []
             edge_center_entries = []
-            target_names = {"mechanical_part", "mechanical_part", "magnet"}
+            target_names = {"mechanical_part", "magnet"}
+            cross_only_mode = bool(self.camera_settings.show_opposite_distances)
             
             for det_idx, det in enumerate(detections):
                 cls_name = det["class_name"]
@@ -1655,11 +1908,12 @@ class ModelManager:
                 
                 # Measurements
                 if self.camera_settings.enabled:
-                    measurements = compute_single_contour_measurements(cnt, px_to_mm, cls_name)
-                    det["measurements"] = measurements
-                    all_measurements.extend(measurements)
+                    if not cross_only_mode:
+                        measurements = compute_single_contour_measurements(cnt, px_to_mm, cls_name)
+                        det["measurements"] = measurements
+                        all_measurements.extend(measurements)
                     
-                    if cls_name.lower() in target_names:
+                    if normalize_measurement_family(cls_name) in target_names:
                         edge_center_entries.append({
                             "name": cls_name,
                             "points": compute_edge_center_points(cnt),
@@ -1668,42 +1922,60 @@ class ModelManager:
 
             # Resolve inter-contour measurements
             if self.camera_settings.enabled:
-                for i in range(len(detections)):
-                    for j in range(i + 1, len(detections)):
-                        cnt_a = detections[i]["contour"]
-                        cnt_b = detections[j]["contour"]
-                        if len(cnt_a) < 2 or len(cnt_b) < 2:
-                            continue
-                        pts_a = cnt_a.reshape(-1, 2).astype(np.float64)
-                        pts_b = cnt_b.reshape(-1, 2).astype(np.float64)
-                        dists = cdist(pts_a, pts_b)
-                        min_dist = float(np.min(dists))
-                        idx = np.unravel_index(np.argmin(dists), dists.shape)
-                        pt_a = pts_a[idx[0]].astype(int).tolist()
-                        pt_b = pts_b[idx[1]].astype(int).tolist()
-                        dist_m = {
-                            "type": "distance",
-                            "label": f"{detections[i]['class_name']} \u2194 {detections[j]['class_name']}",
-                            "value_px": round(min_dist, 1),
-                            "value_mm": round(min_dist * px_to_mm, 2),
-                            "pt1": pt_a,
-                            "pt2": pt_b,
-                        }
-                        detections[i]["measurements"].append(dist_m)
-                        detections[j]["measurements"].append(dist_m)
-                        all_measurements.append(dist_m)
+                if cross_only_mode:
+                    # Find the circle center as a reference for cross-diametric measurements
+                    circle_center = None
+                    for d in detections:
+                        if d["class_name"].lower() == "circle":
+                            # Use contour moments for the most accurate center
+                            m = cv2.moments(d["contour"])
+                            if abs(m.get("m00", 0.0)) > 1e-6:
+                                circle_center = (int(m["m10"] / m["m00"]), int(m["m01"] / m["m00"]))
+                            break
+                    
+                    cross_measurements = compute_cross_diametric_opposite_distances(edge_center_entries, px_to_mm, circle_center=circle_center)
+                    for m in cross_measurements:
+                        for d_idx in m.get("det_indices", []):
+                            if d_idx is not None and 0 <= d_idx < len(detections):
+                                detections[d_idx]["measurements"].append(m)
+                    all_measurements.extend(cross_measurements)
+                else:
+                    for i in range(len(detections)):
+                        for j in range(i + 1, len(detections)):
+                            cnt_a = detections[i]["contour"]
+                            cnt_b = detections[j]["contour"]
+                            if len(cnt_a) < 2 or len(cnt_b) < 2:
+                                continue
+                            pts_a = cnt_a.reshape(-1, 2).astype(np.float64)
+                            pts_b = cnt_b.reshape(-1, 2).astype(np.float64)
+                            dists = cdist(pts_a, pts_b)
+                            min_dist = float(np.min(dists))
+                            idx = np.unravel_index(np.argmin(dists), dists.shape)
+                            pt_a = pts_a[idx[0]].astype(int).tolist()
+                            pt_b = pts_b[idx[1]].astype(int).tolist()
+                            dist_m = {
+                                "type": "distance",
+                                "label": f"{detections[i]['class_name']} ↔ {detections[j]['class_name']}",
+                                "value_px": round(min_dist, 1),
+                                "value_mm": round(min_dist * px_to_mm, 2),
+                                "pt1": pt_a,
+                                "pt2": pt_b,
+                            }
+                            detections[i]["measurements"].append(dist_m)
+                            detections[j]["measurements"].append(dist_m)
+                            all_measurements.append(dist_m)
 
-                if edge_center_entries:
-                    extra_measurements = compute_edge_center_distances(
-                        edge_center_entries, px_to_mm,
-                        show_edges=self.camera_settings.show_edge_distances,
-                        show_centers=self.camera_settings.show_center_distances,
-                    )
-                    all_measurements.extend(extra_measurements)
-                    if self.camera_settings.show_aligned_pair_distances:
-                        all_measurements.extend(
-                            compute_aligned_same_class_distances(edge_center_entries, px_to_mm)
+                    if edge_center_entries:
+                        extra_measurements = compute_edge_center_distances(
+                            edge_center_entries, px_to_mm,
+                            show_edges=self.camera_settings.show_edge_distances,
+                            show_centers=self.camera_settings.show_center_distances,
                         )
+                        all_measurements.extend(extra_measurements)
+                        if self.camera_settings.show_aligned_pair_distances:
+                            all_measurements.extend(
+                                compute_aligned_same_class_distances(edge_center_entries, px_to_mm)
+                            )
 
                 if all_measurements:
                     overlay = draw_measurements_on_image(overlay, all_measurements, px_to_mm)
