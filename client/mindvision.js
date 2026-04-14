@@ -73,6 +73,10 @@
             mvModel.textContent = `Model: ${data.model || "—"}`;
             mvInference.textContent = `Inference: ${data.inference_ms || 0}ms`;
 
+            // Mirror into dashboard KPI cards
+            const kpiInference = document.getElementById("statInference");
+            if (kpiInference) kpiInference.textContent = data.inference_ms != null ? data.inference_ms : "—";
+
             const dets = data.detections || [];
             mvDetCount.textContent = `Detections: ${dets.length}`;
 
@@ -105,6 +109,8 @@
         mvStatusBadge.classList.remove("badge-danger");
         mvFeedWrapper.style.display = "block";
         mvPlaceholder.style.display = "none";
+        const kpiConn = document.getElementById("statConnection");
+        if (kpiConn) kpiConn.textContent = "MindVision";
     }
 
     function setDisconnected() {
@@ -112,6 +118,8 @@
         connected = false;
         mvStatusBadge.textContent = "Disconnected";
         mvStatusBadge.classList.remove("badge-success");
+        const kpiConn = document.getElementById("statConnection");
+        if (kpiConn) kpiConn.textContent = "—";
         mvStatusBadge.classList.add("badge-danger");
         mvFeedWrapper.style.display = "none";
         mvPlaceholder.style.display = "flex";

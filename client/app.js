@@ -212,6 +212,8 @@ async function pollLiveMetrics() {
         if (statAvgThroughput) statAvgThroughput.textContent = data.throughput_fps.toFixed(1);
         if (statErrorRate) statErrorRate.textContent = data.error_rate_percent.toFixed(1);
         if (statTotalRequests) statTotalRequests.textContent = data.total_requests;
+        // Also drive the FPS KPI card from live metrics (works for both MindVision and WebRTC)
+        if (statFPS && data.throughput_fps != null) statFPS.textContent = data.throughput_fps.toFixed(1);
     } catch (err) {
         // silently ignore polling errors to avoid console spam
     }
@@ -575,18 +577,33 @@ async function handleUpload(file) {
         return;
     }
 
+    // Open adjustment modal; detection runs when user clicks "Apply & Detect"
+    const objectURL = URL.createObjectURL(file);
+
+    openImageAdjust(objectURL, async (adjustedBlob) => {
+        URL.revokeObjectURL(objectURL);
+        // Show the adjusted image as "original" panel
+        const previewBlob = adjustedBlob || file;
+        uploadOriginal.src = URL.createObjectURL(previewBlob);
+        await runUploadDetection(previewBlob);
+    }, () => {
+        // Cancelled — clean up object URL and stay on dropzone
+        URL.revokeObjectURL(objectURL);
+    });
+}
+
+async function runUploadDetection(fileOrBlob) {
     // Show loading
     dropzone.style.display = "none";
     uploadPreview.style.display = "none";
     uploadLoading.style.display = "flex";
 
-    // Show original preview
-    const objectURL = URL.createObjectURL(file);
-    uploadOriginal.src = objectURL;
-
     // Send to server
+    const imgFile = fileOrBlob instanceof File
+        ? fileOrBlob
+        : new File([fileOrBlob], "adjusted.jpg", { type: "image/jpeg" });
     const formData = new FormData();
-    formData.append("image", file);
+    formData.append("image", imgFile);
     formData.append("domain", domainSelect.value);
 
     try {
@@ -664,6 +681,8 @@ function resetUpload() {
     uploadLoading.style.display = "none";
     dropzone.style.display = "flex";
     fileInput.value = "";
+    const _fia = document.getElementById("fileInputAdjust");
+    if (_fia) _fia.value = "";
     uploadOriginal.src = "";
     uploadResult.src = "";
     uploadDepth.src = "";
@@ -796,6 +815,18 @@ function saveLiveDetection() {
 }
 
 const API_BASE = "";
+
+// ═══════════════════════════════════════════════════════════════
+// Dark Mode Toggle
+// ═══════════════════════════════════════════════════════════════
+(function initTheme() {
+    const btn = document.getElementById("themeToggle");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+        const isDark = document.documentElement.classList.toggle("dark");
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+    });
+})();
 
 // ═══════════════════════════════════════════════════════════════
 // Camera Settings & Measurement Post-Processing
@@ -1222,3 +1253,499 @@ setInterval(async () => {
         // silently ignore
     }
 }, 3000);
+
+// ═══════════════════════════════════════════════════════════════
+// Dashboard — Page Navigation
+// ═══════════════════════════════════════════════════════════════
+
+(function initNav() {
+    const burgerBtn     = document.getElementById("burgerBtn");
+    const drawer        = document.getElementById("drawer");
+    const drawerOverlay = document.getElementById("drawerOverlay");
+    const drawerClose   = document.getElementById("drawerClose");
+    const navItems      = document.querySelectorAll(".nav-item[data-page]");
+    const pages         = document.querySelectorAll(".page[id^='page-']");
+
+    // ── Drawer open/close ──────────────────────────────────
+    function openDrawer() {
+        drawer.classList.add("open");
+        drawerOverlay.classList.add("open");
+        burgerBtn.classList.add("open");
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeDrawer() {
+        drawer.classList.remove("open");
+        drawerOverlay.classList.remove("open");
+        burgerBtn.classList.remove("open");
+        document.body.style.overflow = "";
+    }
+
+    if (burgerBtn)     burgerBtn.addEventListener("click", openDrawer);
+    if (drawerClose)   drawerClose.addEventListener("click", closeDrawer);
+    if (drawerOverlay) drawerOverlay.addEventListener("click", closeDrawer);
+
+    // Close on Escape
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+
+    // ── Page switching ────────────────────────────────────
+    function showPage(pageId) {
+        pages.forEach(p => {
+            p.classList.toggle("active", p.id === "page-" + pageId);
+            p.classList.toggle("hidden", p.id !== "page-" + pageId);
+        });
+        navItems.forEach(n => {
+            n.classList.toggle("active", n.dataset.page === pageId);
+        });
+        closeDrawer();
+        if (pageId === "dashboard") loadPastSessions();
+    }
+
+    navItems.forEach(btn => btn.addEventListener("click", () => showPage(btn.dataset.page)));
+
+    // ── Status dot mirrors ────────────────────────────────
+    const topDot   = document.getElementById("sidebarDot");   // topbar dot
+    const topMvDot = document.getElementById("mvDot");        // topbar mv dot
+    const drwDot   = document.getElementById("drawerDot");
+    const drwMvDot = document.getElementById("drawerMvDot");
+    const drwRtc   = document.getElementById("drawerRtcStatus");
+    const drwMvSt  = document.getElementById("drawerMvStatus");
+    const mvBadge  = document.getElementById("mvStatusBadge");
+
+    function syncRtcDots(status) {
+        [topDot, drwDot].forEach(d => {
+            if (!d) return;
+            d.className = "status-dot";
+            if (status === "connected")  d.classList.add("connected");
+            if (status === "connecting") d.classList.add("connecting");
+        });
+        if (drwRtc) drwRtc.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        const badge = document.getElementById("statusBadge");
+        if (badge) badge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    }
+
+    // Patch setStatus used by WebRTC code
+    const _origSet = window.setStatus;
+    if (typeof _origSet === "function") {
+        window.setStatus = function(s) { _origSet(s); syncRtcDots(s); };
+    }
+
+    // Watch mvStatusBadge text for camera connection state
+    if (mvBadge) {
+        new MutationObserver(() => {
+            const connected = mvBadge.textContent.toLowerCase().includes("connected");
+            [topMvDot, drwMvDot].forEach(d => {
+                if (!d) return;
+                d.className = "status-dot mv-dot";
+                if (connected) d.classList.add("connected");
+            });
+            if (drwMvSt) drwMvSt.textContent = connected ? "Connected" : "Off";
+        }).observe(mvBadge, { childList: true, characterData: true, subtree: true });
+    }
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// Dashboard — Tab Switching (Live Camera / Upload)
+// ═══════════════════════════════════════════════════════════════
+
+(function initTabs() {
+    const tabBtns  = document.querySelectorAll(".tab-btn[data-tab]");
+    const tabPanes = document.querySelectorAll(".tab-pane[id^='tab-']");
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const target = btn.dataset.tab;
+            tabBtns.forEach(b => b.classList.toggle("active", b.dataset.tab === target));
+            tabPanes.forEach(p => {
+                p.classList.toggle("active", p.id === "tab-" + target);
+                p.classList.toggle("hidden", p.id !== "tab-" + target);
+            });
+        });
+    });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// Dashboard — Domain Switcher
+// ═══════════════════════════════════════════════════════════════
+
+(function initDomainSwitcher() {
+    const switcher = document.getElementById("domainSwitcher");
+    if (!switcher) return;
+
+    const btns = switcher.querySelectorAll(".domain-btn[data-domain]");
+
+    // Sync a pill's active state from the hidden domainSelect value
+    function syncActive(value) {
+        btns.forEach(b => b.classList.toggle("active", b.dataset.domain === value));
+    }
+
+    btns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const domain = btn.dataset.domain;
+            if (!domainSelect) return;
+
+            domainSelect.value = domain;
+            syncActive(domain);
+
+            // Trigger the same logic as the Settings select
+            loadModels();
+            if (settingsDomainContext) {
+                settingsDomainContext.value = domain;
+                loadEnhancements();
+            }
+        });
+    });
+
+    // Keep switcher in sync if Settings domainSelect is changed separately
+    if (domainSelect) {
+        domainSelect.addEventListener("change", () => syncActive(domainSelect.value));
+    }
+
+    // Init active state from current domainSelect value
+    if (domainSelect) syncActive(domainSelect.value);
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// Dashboard — Past Sessions
+// ═══════════════════════════════════════════════════════════════
+
+async function loadPastSessions() {
+    const container = document.getElementById("pastSessionsList");
+    if (!container) return;
+
+    try {
+        const res = await fetch("/api/inference-logs?n=200");
+        if (!res.ok) throw new Error("not ok");
+        const data = await res.json();
+        const entries = data.entries || [];
+
+        if (entries.length === 0) {
+            container.innerHTML = '<p class="placeholder" style="padding:20px 0;">No sessions recorded yet.</p>';
+            return;
+        }
+
+        // Aggregate entries into pseudo-sessions by gaps > 5 min
+        const GAP_S = 300;
+        const sessions = [];
+        let cur = null;
+
+        for (const e of entries) {
+            if (!cur || (e.ts - cur.lastTs) > GAP_S) {
+                if (cur) sessions.push(cur);
+                cur = { startTs: e.ts, lastTs: e.ts, model: e.model, entries: [] };
+            }
+            cur.lastTs = e.ts;
+            cur.entries.push(e);
+        }
+        if (cur) sessions.push(cur);
+        sessions.reverse(); // newest first
+
+        container.innerHTML = sessions.map(s => {
+            const count  = s.entries.length;
+            const avgLat = s.entries.reduce((a, e) => a + (e.latency_ms || 0), 0) / count;
+            const avgDet = s.entries.reduce((a, e) => a + (e.detections || 0), 0) / count;
+            const avgConf = s.entries.reduce((a, e) => a + (e.avg_conf || 0), 0) / count;
+            const start  = new Date(s.startTs * 1000);
+            const durationMin = Math.round((s.lastTs - s.startTs) / 60);
+            const timeStr = start.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+                          + " " + start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+            return `
+                <div class="session-card">
+                    <div class="session-card-header">
+                        <span class="session-model">${s.model || "Unknown model"}</span>
+                        <span class="session-time">${timeStr}</span>
+                    </div>
+                    <div class="session-stats">
+                        <div class="session-stat">
+                            <span class="session-stat-val">${avgLat.toFixed(0)}</span>
+                            <span class="session-stat-lbl">Avg latency ms</span>
+                        </div>
+                        <div class="session-stat">
+                            <span class="session-stat-val">${avgDet.toFixed(1)}</span>
+                            <span class="session-stat-lbl">Avg detections</span>
+                        </div>
+                        <div class="session-stat">
+                            <span class="session-stat-val">${(avgConf * 100).toFixed(1)}%</span>
+                            <span class="session-stat-lbl">Avg confidence</span>
+                        </div>
+                        <div class="session-stat">
+                            <span class="session-stat-val">${count}</span>
+                            <span class="session-stat-lbl">Frames</span>
+                        </div>
+                    </div>
+                    <span class="session-badge">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        ${durationMin < 1 ? "< 1 min" : durationMin + " min"}
+                    </span>
+                </div>`;
+        }).join("");
+
+    } catch (e) {
+        container.innerHTML = '<p class="placeholder" style="padding:20px 0;">Could not load sessions.</p>';
+    }
+}
+
+// Refresh button
+const _btnRefresh = document.getElementById("btnRefreshSessions");
+if (_btnRefresh) _btnRefresh.addEventListener("click", loadPastSessions);
+
+// Load on startup
+document.addEventListener("DOMContentLoaded", loadPastSessions);
+
+// ═══════════════════════════════════════════════════════════════
+// Settings — MindVision Camera Toggle
+// ═══════════════════════════════════════════════════════════════
+
+(function initMvCameraToggle() {
+    const toggle = document.getElementById("mvCameraToggle");
+    const statusEl = document.getElementById("mvCameraStatus");
+    if (!toggle || !statusEl) return;
+
+    function setStatus(running, transitioning) {
+        if (transitioning) {
+            statusEl.textContent = "Starting…";
+            statusEl.className = "mv-camera-status starting";
+        } else if (running) {
+            statusEl.textContent = "Running";
+            statusEl.className = "mv-camera-status running";
+        } else {
+            statusEl.textContent = "Stopped";
+            statusEl.className = "mv-camera-status";
+        }
+    }
+
+    // Poll proc-status once to sync the toggle with server reality
+    async function syncState() {
+        try {
+            const res = await fetch("/api/mindvision/proc-status");
+            if (!res.ok) return;
+            const data = await res.json();
+            toggle.checked = data.running;
+            setStatus(data.running, false);
+        } catch { /* server may not be up yet */ }
+    }
+
+    toggle.addEventListener("change", async () => {
+        const want = toggle.checked;
+        setStatus(false, want);   // show "Starting…" when turning on
+        try {
+            const res = await fetch(want ? "/api/mindvision/start" : "/api/mindvision/stop", {
+                method: "POST",
+            });
+            const data = await res.json();
+            if (!data.ok) {
+                console.warn("MindVision toggle failed:", data.msg);
+                toggle.checked = !want;  // revert
+                setStatus(!want, false);
+                return;
+            }
+            setStatus(data.running, false);
+            toggle.checked = data.running;
+        } catch (err) {
+            console.error("MindVision toggle error:", err);
+            toggle.checked = !want;
+            setStatus(!want, false);
+        }
+    });
+
+    // Sync on page load and keep in sync with the live camera status
+    syncState();
+    // Re-sync every 5s so the toggle reflects process crashes / external stops
+    setInterval(syncState, 5000);
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// Image Adjustment Modal
+// ═══════════════════════════════════════════════════════════════
+
+let _iaOnConfirm = null;
+let _iaOnCancel  = null;
+let _iaSourceImg = new Image();
+
+/**
+ * Open the image adjustment modal.
+ * @param {string}   src        - Image URL (objectURL or data URL)
+ * @param {Function} onConfirm  - Called with (Blob) of the adjusted JPEG
+ * @param {Function} [onCancel] - Called when user dismisses without action
+ */
+function openImageAdjust(src, onConfirm, onCancel) {
+    _iaOnConfirm = onConfirm;
+    _iaOnCancel  = onCancel || null;
+
+    const overlay = document.getElementById("iaOverlay");
+    if (!overlay) return;
+
+    // Reset sliders to neutral
+    ["iaBrightness", "iaContrast", "iaSaturation", "iaSharpness"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = id === "iaSharpness" ? 0 : 100;
+    });
+    _iaUpdateLabels();
+
+    _iaSourceImg = new Image();
+    _iaSourceImg.crossOrigin = "anonymous";
+    _iaSourceImg.onload = () => {
+        _iaRender();
+        overlay.classList.add("open");
+        overlay.setAttribute("aria-hidden", "false");
+    };
+    _iaSourceImg.onerror = () => {
+        // Fallback: just confirm with null so detection runs on the original
+        if (_iaOnConfirm) _iaOnConfirm(null);
+    };
+    _iaSourceImg.src = src;
+}
+
+function _iaClose(confirmed) {
+    const overlay = document.getElementById("iaOverlay");
+    if (overlay) {
+        overlay.classList.remove("open");
+        overlay.setAttribute("aria-hidden", "true");
+    }
+    if (confirmed) {
+        const canvas = document.getElementById("iaCanvas");
+        canvas.toBlob(blob => {
+            if (_iaOnConfirm) _iaOnConfirm(blob);
+        }, "image/jpeg", 0.95);
+    } else {
+        if (_iaOnCancel) _iaOnCancel();
+    }
+}
+
+function _iaRender() {
+    const canvas = document.getElementById("iaCanvas");
+    if (!canvas || !_iaSourceImg.naturalWidth) return;
+    const ctx = canvas.getContext("2d");
+
+    canvas.width  = _iaSourceImg.naturalWidth;
+    canvas.height = _iaSourceImg.naturalHeight;
+
+    const b  = document.getElementById("iaBrightness")?.value  ?? 100;
+    const c  = document.getElementById("iaContrast")?.value    ?? 100;
+    const s  = document.getElementById("iaSaturation")?.value  ?? 100;
+
+    ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
+    ctx.drawImage(_iaSourceImg, 0, 0);
+    ctx.filter = "none";
+
+    // Simple unsharp mask via sharpness slider
+    const sharp = parseFloat(document.getElementById("iaSharpness")?.value ?? 0);
+    if (sharp > 0) {
+        _iaApplyUnsharpMask(ctx, canvas, sharp / 100);
+    }
+}
+
+function _iaApplyUnsharpMask(ctx, canvas, amount) {
+    // Fast unsharp: draw blurred copy then blend
+    const w = canvas.width, h = canvas.height;
+    const offscreen = document.createElement("canvas");
+    offscreen.width = w; offscreen.height = h;
+    const octx = offscreen.getContext("2d");
+    octx.filter = "blur(1.5px)";
+    octx.drawImage(canvas, 0, 0);
+    octx.filter = "none";
+
+    const orig = ctx.getImageData(0, 0, w, h);
+    const blur = octx.getImageData(0, 0, w, h);
+    const out  = ctx.createImageData(w, h);
+    const a    = amount * 1.5;
+    for (let i = 0; i < orig.data.length; i += 4) {
+        out.data[i]   = Math.min(255, Math.max(0, orig.data[i]   + a * (orig.data[i]   - blur.data[i])));
+        out.data[i+1] = Math.min(255, Math.max(0, orig.data[i+1] + a * (orig.data[i+1] - blur.data[i+1])));
+        out.data[i+2] = Math.min(255, Math.max(0, orig.data[i+2] + a * (orig.data[i+2] - blur.data[i+2])));
+        out.data[i+3] = orig.data[i+3];
+    }
+    ctx.putImageData(out, 0, 0);
+}
+
+function _iaUpdateLabels() {
+    const pairs = [
+        ["iaBrightness", "iaBrightnessVal", "%"],
+        ["iaContrast",   "iaContrastVal",   "%"],
+        ["iaSaturation", "iaSaturationVal", "%"],
+        ["iaSharpness",  "iaSharpnessVal",  ""],
+    ];
+    pairs.forEach(([sliderId, labelId, suffix]) => {
+        const s = document.getElementById(sliderId);
+        const l = document.getElementById(labelId);
+        if (s && l) l.textContent = s.value + suffix;
+    });
+}
+
+(function initImageAdjust() {
+    // Wire sliders → re-render
+    ["iaBrightness", "iaContrast", "iaSaturation", "iaSharpness"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("input", () => {
+            _iaUpdateLabels();
+            _iaRender();
+        });
+    });
+
+    document.getElementById("iaReset")?.addEventListener("click", () => {
+        ["iaBrightness", "iaContrast", "iaSaturation"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = 100;
+        });
+        const sharp = document.getElementById("iaSharpness");
+        if (sharp) sharp.value = 0;
+        _iaUpdateLabels();
+        _iaRender();
+    });
+
+    document.getElementById("iaDetect")?.addEventListener("click", () => _iaClose(true));
+    document.getElementById("iaClose")?.addEventListener("click",  () => _iaClose(false));
+    document.getElementById("iaCancel")?.addEventListener("click", () => _iaClose(false));
+
+    // Close on overlay backdrop click
+    document.getElementById("iaOverlay")?.addEventListener("click", (e) => {
+        if (e.target === document.getElementById("iaOverlay")) _iaClose(false);
+    });
+
+    // Escape key
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && document.getElementById("iaOverlay")?.classList.contains("open")) {
+            _iaClose(false);
+        }
+    });
+
+    // "Adjust Before Detect" button in dropzone — opens file picker
+    const btnAdjOpen = document.getElementById("btnAdjustOpen");
+    const fileInputAdjust = document.getElementById("fileInputAdjust");
+    if (btnAdjOpen && fileInputAdjust) {
+        btnAdjOpen.addEventListener("click", (e) => {
+            e.stopPropagation(); // prevent dropzone's own click handler
+            fileInputAdjust.click();
+        });
+        fileInputAdjust.addEventListener("change", () => {
+            if (fileInputAdjust.files.length > 0) {
+                handleUpload(fileInputAdjust.files[0]);
+            }
+        });
+    }
+
+    // "Adjust Frame" button in MindVision meta row
+    document.getElementById("btnAdjustMV")?.addEventListener("click", () => {
+        const mvImg = document.getElementById("mvStream");
+        if (!mvImg || !mvImg.src || mvImg.src === window.location.href) return;
+
+        openImageAdjust(mvImg.src, async (blob) => {
+            if (!blob) return;
+            const formData = new FormData();
+            formData.append("image", new File([blob], "mv_frame.jpg", { type: "image/jpeg" }));
+            formData.append("domain", domainSelect ? domainSelect.value : "stator");
+            try {
+                const res = await fetch("/api/detect", { method: "POST", body: formData });
+                const data = await res.json();
+                if (data.image) {
+                    // Show result in a temporary overlay on the stream
+                    mvImg.src = data.image;
+                }
+            } catch (err) {
+                console.error("MV adjust detect failed:", err);
+            }
+        });
+    });
+})();

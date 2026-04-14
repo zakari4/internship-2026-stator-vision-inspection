@@ -1,162 +1,591 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stator Motor Segmentation - Dashboard</title>
+    <title>Stator Vision — Dashboard</title>
     <link rel="stylesheet" href="/client/style.css">
 </head>
-
 <body>
-    <div class="app">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-left">
-                <h1>Stator Motor Segmentation</h1>
-                <span class="badge" id="statusBadge">Disconnected</span>
-            </div>
-            <div class="header-right">
-                <div class="model-selector">
-                    <label for="domainSelect">Target</label>
-                    <select id="domainSelect" class="setting-select">
-                        <option value="stator">Stator Detection</option>
-                        <option value="chignon">Chignon Detection</option>
-                        <option value="file">File Detection</option>
-                    </select>
-                </div>
-                <div class="model-selector">
-                    <label for="modelSelect">Model</label>
-                    <select id="modelSelect" disabled>
-                        <option value="">Loading…</option>
-                    </select>
-                </div>
-            </div>
-        </header>
+<div class="app">
 
-        <!-- Main content -->
-        <main class="main">
+    <!-- ═══════════════════ TOP NAVBAR ═══════════════════ -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <button class="burger-btn" id="burgerBtn" aria-label="Open menu">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="topbar-brand">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="4"/>
+                    <line x1="12" y1="2" x2="12" y2="8"/>
+                    <line x1="12" y1="16" x2="12" y2="22"/>
+                    <line x1="2" y1="12" x2="8" y2="12"/>
+                    <line x1="16" y1="12" x2="22" y2="12"/>
+                </svg>
+                <span>Stator Vision</span>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <div class="topbar-status">
+                <span class="status-dot" id="sidebarDot"></span>
+                <span id="statusBadge" class="topbar-status-text">Offline</span>
+            </div>
+            <div class="topbar-status">
+                <span class="status-dot mv-dot" id="mvDot"></span>
+                <span id="mvStatusBadge" class="topbar-status-text">Camera: Off</span>
+            </div>
+            <div class="active-model-pill" id="activemodelPill">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                <span id="statModel">—</span>
+            </div>
+            <button class="theme-btn" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+                <!-- Moon: shown in light mode -->
+                <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+                <!-- Sun: shown in dark mode -->
+                <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+            </button>
+        </div>
+    </header>
 
-            <!-- MindVision Industrial Camera -->
-            <div class="mindvision-section">
-                <div class="panel">
-                    <h3>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" style="vertical-align:middle;margin-right:6px">
-                            <path
-                                d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                            <circle cx="12" cy="13" r="4" />
-                        </svg>
-                        MindVision Industrial Camera (USB)
-                        <span class="badge mv-badge" id="mvStatusBadge">Disconnected</span>
-                    </h3>
-                    <p class="mv-hint">Run <code>python server/mindvision_capture.py --show</code> to connect the camera
-                    </p>
-                    <div class="mv-feed-container">
-                        <div class="mv-feed" id="mvFeedWrapper" style="display:none;">
-                            <div class="video-card primary">
-                                <div class="video-label">MindVision — Live Detection</div>
-                                <img id="mvStream" alt="MindVision Stream">
-                            </div>
-                            <div class="video-card primary" id="depthPanel" style="display:none; margin-top: 12px;">
-                                <div class="video-label">MiDaS — Real-time Depth Map</div>
-                                <img id="depthStream" alt="MiDaS Depth Stream">
-                            </div>
-                            <div class="mv-stats">
-                                <span id="mvModel">Model: —</span>
-                                <span id="mvInference">Inference: —</span>
-                                <span id="mvDetCount">Detections: 0</span>
-                            </div>
-                            <div class="mv-actions">
-                                <button id="btnMeasureMV" class="btn btn-measure btn-sm">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M2 12h4m4 0h4m4 0h4"/>
-                                        <circle cx="6" cy="12" r="2"/>
-                                        <circle cx="18" cy="12" r="2"/>
-                                    </svg>
-                                    📏 Measure
-                                </button>
-                            </div>
-                            <div id="mvDetections" class="detections-list"></div>
-                        </div>
-                        <div class="mv-placeholder" id="mvPlaceholder">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="1.5" opacity="0.3">
-                                <path
-                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                                <circle cx="12" cy="13" r="4" />
-                            </svg>
-                            <p>No MindVision camera connected</p>
-                            <p class="upload-hint">Start the capture script to see live detection here</p>
-                        </div>
+    <!-- ═══════════════════ DRAWER OVERLAY ═══════════════════ -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+
+    <!-- ═══════════════════ DRAWER ═══════════════════ -->
+    <nav class="drawer" id="drawer">
+        <div class="drawer-header">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="4"/>
+                <line x1="12" y1="2" x2="12" y2="8"/>
+                <line x1="12" y1="16" x2="12" y2="22"/>
+                <line x1="2" y1="12" x2="8" y2="12"/>
+                <line x1="16" y1="12" x2="22" y2="12"/>
+            </svg>
+            <span>Stator Vision</span>
+            <button class="drawer-close" id="drawerClose" aria-label="Close menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <div class="drawer-nav">
+            <button class="nav-item active" data-page="dashboard">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+                Dashboard
+            </button>
+            <button class="nav-item" data-page="settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15 1.65 1.65 0 0 0 3.13 14H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.13V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9 1.65 1.65 0 0 0 20.87 10H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                Settings
+            </button>
+        </div>
+
+        <div class="drawer-status">
+            <div class="drawer-status-row">
+                <span class="status-dot" id="drawerDot"></span>
+                <span class="drawer-status-text">WebRTC: <span id="drawerRtcStatus">Offline</span></span>
+            </div>
+            <div class="drawer-status-row">
+                <span class="status-dot mv-dot" id="drawerMvDot"></span>
+                <span class="drawer-status-text">Camera: <span id="drawerMvStatus">Off</span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ═══════════════════ MAIN AREA ═══════════════════ -->
+    <div class="main-wrap">
+
+        <!-- ─────────────── DASHBOARD PAGE ─────────────── -->
+        <div id="page-dashboard" class="page active">
+
+            <!-- Page header -->
+            <header class="page-header">
+                <div class="page-header-left">
+                    <h1 class="page-title">Dashboard</h1>
+                    <span class="page-subtitle">Real-time stator inspection</span>
+                </div>
+                <div class="page-header-right">
+                    <div class="domain-switcher" id="domainSwitcher" role="group" aria-label="Detection domain">
+                        <button class="domain-btn active" data-domain="stator">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="2" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="22" y2="12"/></svg>
+                            Stator
+                        </button>
+                        <button class="domain-btn" data-domain="chignon">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12c0-2.21 1.79-4 4-4s4 1.79 4 4-1.79 4-4 4-4-1.79-4-4z"/></svg>
+                            Chignon
+                        </button>
+                        <button class="domain-btn" data-domain="file">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                            File
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- KPI row -->
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-icon kpi-icon--blue">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <div class="kpi-body">
+                        <span class="kpi-value" id="statInference">—</span>
+                        <span class="kpi-label">Inference (ms)</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon kpi-icon--purple">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <div class="kpi-body">
+                        <span class="kpi-value" id="statFPS">—</span>
+                        <span class="kpi-label">Server FPS</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon kpi-icon--green">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    </div>
+                    <div class="kpi-body">
+                        <span class="kpi-value" id="statAvgLatency">—</span>
+                        <span class="kpi-label">Avg Latency (ms)</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon kpi-icon--orange">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                    </div>
+                    <div class="kpi-body">
+                        <span class="kpi-value" id="statConnection">—</span>
+                        <span class="kpi-label">Connection</span>
                     </div>
                 </div>
             </div>
 
+            <!-- Detection grid -->
+            <div class="detection-grid">
 
-            <!-- Camera Settings & Measurement Post-Processing -->
-            <div class="settings-section">
-                <div class="panel">
-                    <h3 class="settings-header" id="settingsToggle">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" style="vertical-align:middle;margin-right:6px">
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33
-                                     1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06
-                                     a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15 1.65 1.65 0 0 0 3.13 14H3a2 2 0 0 1 0-4h.09
-                                     A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68
-                                     1.65 1.65 0 0 0 10 3.13V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06
-                                     a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9 1.65 1.65 0 0 0 20.87 10H21a2 2 0 0 1 0 4h-.09
-                                     a1.65 1.65 0 0 0-1.51 1z" />
-                        </svg>
-                        Camera Settings &amp; Measurements
-                        <span class="settings-chevron" id="settingsChevron">▸</span>
-                    </h3>
-                    <div class="settings-body" id="settingsBody" style="display:none;">
-                        <div class="settings-row">
+                <!-- LEFT: tabbed detection area -->
+                <div class="detection-main">
+
+                    <!-- Tab bar -->
+                    <div class="tab-bar">
+                        <button class="tab-btn active" data-tab="mindvision">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            Live Camera
+                        </button>
+                        <button class="tab-btn" data-tab="upload">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Upload Image
+                        </button>
+                    </div>
+
+                    <!-- Tab: MindVision -->
+                    <div id="tab-mindvision" class="tab-pane active">
+                        <div class="mv-feed-container">
+                            <div id="mvFeedWrapper" style="display:none;">
+                                <div class="video-card primary">
+                                    <div class="video-label">MindVision — Live Detection</div>
+                                    <img id="mvStream" alt="MindVision Stream" style="width:100%;display:block;border-radius:8px;">
+                                </div>
+                                <div class="video-card primary" id="depthPanel" style="display:none;margin-top:12px;">
+                                    <div class="video-label">MiDaS — Depth Map</div>
+                                    <img id="depthStream" alt="Depth Stream" style="width:100%;display:block;border-radius:8px;">
+                                </div>
+                                <div class="mv-meta-row">
+                                    <span class="meta-chip" id="mvModel">Model: —</span>
+                                    <span class="meta-chip" id="mvInference">Inference: —</span>
+                                    <span class="meta-chip" id="mvDetCount">Detections: 0</span>
+                                    <button id="btnMeasureMV" class="btn btn-measure btn-sm">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4m4 0h4m4 0h4"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="12" r="2"/></svg>
+                                        Measure
+                                    </button>
+                                    <button id="btnAdjustMV" class="btn btn-adjust btn-sm" title="Adjust brightness / contrast and re-run detection on this frame">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                        Adjust Frame
+                                    </button>
+                                </div>
+                                <div id="mvDetections" class="detections-list" style="margin-top:10px;"></div>
+                            </div>
+                            <div class="mv-placeholder" id="mvPlaceholder">
+                                <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+                                </svg>
+                                <p class="mv-placeholder-title">No camera connected</p>
+                                <p class="mv-placeholder-hint">Enable the camera in <strong>Settings → Camera &amp; Measurements</strong></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Upload -->
+                    <div id="tab-upload" class="tab-pane hidden">
+                        <div class="upload-area" id="uploadArea">
+                            <input type="file" id="fileInput" accept="image/*" hidden>
+                            <div class="upload-dropzone" id="dropzone">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                                <p>Drag &amp; drop an image or <span class="upload-link">browse</span></p>
+                                <p class="upload-hint">Supports JPG, PNG, BMP</p>
+                                <button id="btnAdjustOpen" class="btn btn-adjust-open" title="Pick an image and adjust brightness / contrast before detection">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15 1.65 1.65 0 0 0 3.13 14H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.13V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9 1.65 1.65 0 0 0 20.87 10H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                    Adjust Before Detect
+                                </button>
+                                <input type="file" id="fileInputAdjust" accept="image/*" hidden>
+                            </div>
+                            <div class="upload-preview" id="uploadPreview" style="display:none;">
+                                <div class="upload-images">
+                                    <div class="upload-img-wrap">
+                                        <div class="video-label">Original</div>
+                                        <img id="uploadOriginal" alt="Original">
+                                    </div>
+                                    <div class="upload-img-wrap">
+                                        <div class="video-label">Detection Result</div>
+                                        <img id="uploadResult" alt="Detection Result">
+                                    </div>
+                                    <div class="upload-img-wrap" id="uploadDepthWrap" style="display:none;">
+                                        <div class="video-label">Depth (MiDaS)</div>
+                                        <img id="uploadDepth" alt="Depth Heatmap">
+                                    </div>
+                                </div>
+                                <div class="upload-meta-row">
+                                    <span class="meta-chip" id="uploadInference"></span>
+                                    <span class="meta-chip" id="uploadModel"></span>
+                                </div>
+                                <div id="uploadDetections" class="detections-list"></div>
+                                <div class="upload-actions">
+                                    <button id="btnUploadAnother" class="btn btn-secondary btn-sm">Upload Another</button>
+                                    <button id="btnDownloadResult" class="btn btn-primary btn-sm">Download Result</button>
+                                    <button id="btnSaveUpload" class="btn btn-save btn-sm">Save Image + JSON</button>
+                                    <button id="btnMeasureUpload" class="btn btn-measure btn-sm">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4m4 0h4m4 0h4"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="12" r="2"/></svg>
+                                        Measure
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="upload-loading" id="uploadLoading" style="display:none;">
+                                <div class="spinner"></div>
+                                <p>Running detection…</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Past Detection Sessions -->
+                    <section class="past-section">
+                        <div class="past-section-header">
+                            <h2 class="section-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                Past Detection Sessions
+                            </h2>
+                            <button class="btn btn-secondary btn-sm" id="btnRefreshSessions">Refresh</button>
+                        </div>
+                        <div id="pastSessionsList" class="past-sessions-grid">
+                            <p class="placeholder" style="padding:20px 0;">Loading sessions…</p>
+                        </div>
+                    </section>
+                </div>
+                <!-- /detection-main -->
+
+                <!-- RIGHT: detections + health -->
+                <div class="detection-info">
+                    <div class="panel">
+                        <h3 class="panel-title">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            Detections
+                        </h3>
+                        <div id="detectionsList" class="detections-list">
+                            <p class="placeholder">No detections yet</p>
+                        </div>
+                    </div>
+
+                    <div class="panel inference-health-panel">
+                        <h3 class="panel-title">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            Inference Health
+                        </h3>
+                        <div class="health-stats">
+                            <div class="stat">
+                                <span class="stat-value" id="healthMinLatency">—</span>
+                                <span class="stat-label">Min</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="healthMaxLatency">—</span>
+                                <span class="stat-label">Max</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="healthP95Latency">—</span>
+                                <span class="stat-label">P95</span>
+                            </div>
+                        </div>
+                        <div class="sparkline-container">
+                            <span class="sparkline-label">Latency (ms) — last 60 frames</span>
+                            <canvas id="latencySparkline"></canvas>
+                        </div>
+                        <div class="alert-feed-title">Recent Alerts</div>
+                        <div class="alert-feed" id="alertFeed"></div>
+                    </div>
+
+                    <!-- Live aggregates -->
+                    <div class="panel">
+                        <h3 class="panel-title">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                            Live Aggregates
+                        </h3>
+                        <div class="stats-grid-2">
+                            <div class="stat">
+                                <span class="stat-value" id="statAvgThroughput">—</span>
+                                <span class="stat-label">Avg FPS</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="statErrorRate">—</span>
+                                <span class="stat-label">Error %</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="statTotalRequests">—</span>
+                                <span class="stat-label">Total Requests</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /detection-info -->
+            </div>
+            <!-- /detection-grid -->
+        </div>
+        <!-- /page-dashboard -->
+
+
+        <!-- ─────────────── SETTINGS PAGE ─────────────── -->
+        <div id="page-settings" class="page hidden">
+
+            <header class="page-header">
+                <div class="page-header-left">
+                    <h1 class="page-title">Settings</h1>
+                    <span class="page-subtitle">Configure model, post-processing and calibration</span>
+                </div>
+            </header>
+
+            <div class="settings-layout">
+
+                <!-- ── Detection Model ── -->
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                        Detection Model
+                    </div>
+                    <div class="settings-card-body">
+                        <div class="settings-row-inline">
+                            <div class="setting-field">
+                                <label for="domainSelect">Detection Target</label>
+                                <select id="domainSelect" class="setting-select">
+                                    <option value="stator">Stator Detection</option>
+                                    <option value="chignon">Chignon Detection</option>
+                                    <option value="file">File Detection</option>
+                                </select>
+                            </div>
+                            <div class="setting-field">
+                                <label for="modelSelect">Active Model</label>
+                                <select id="modelSelect" class="setting-select" disabled>
+                                    <option value="">Loading…</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Benchmark stats -->
+                        <div class="bench-row">
+                            <div class="bench-stat">
+                                <span class="bench-value" id="benchIoU">—</span>
+                                <span class="bench-label">Best val IoU</span>
+                            </div>
+                            <div class="bench-stat">
+                                <span class="bench-value" id="benchDice">—</span>
+                                <span class="bench-label">Best val Dice</span>
+                            </div>
+                            <div class="bench-stat">
+                                <span class="bench-value" id="benchTime">—</span>
+                                <span class="bench-label">Train Time</span>
+                            </div>
+                            <div class="bench-stat">
+                                <span class="bench-value" id="benchGPU">—</span>
+                                <span class="bench-label">Peak GPU</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Post-processing ── -->
+                <div class="settings-card">
+                    <div class="settings-card-header settings-card-toggle" id="enhancementsToggle">
+                        <span style="display:flex;align-items:center;gap:8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            Post-processing &amp; Enhancements
+                        </span>
+                        <span class="card-chevron" id="enhancementsChevron">▾</span>
+                    </div>
+                    <div class="settings-card-body" id="enhancementsBody">
+
+                        <div class="settings-sub-label">Configure Domain</div>
+                        <select id="settingsDomainContext" class="setting-select" style="margin-bottom:16px;">
+                            <option value="stator">Stator Post-processing</option>
+                            <option value="chignon">Chignon Post-processing</option>
+                            <option value="file">File Post-processing</option>
+                        </select>
+
+                        <div class="toggles-grid">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="enablePostprocessing" checked>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Global Post-processing</span>
+                            </label>
+                            <label class="toggle-label" id="rowHeuristic">
+                                <input type="checkbox" id="enableHeuristic" checked>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Spatial Heuristic (ResNet Fix)</span>
+                            </label>
+                            <label class="toggle-label">
+                                <input type="checkbox" id="enableTopN" checked>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Top-N Filtering</span>
+                            </label>
+                            <label class="toggle-label">
+                                <input type="checkbox" id="enableTracking">
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Object Tracking (ByteTrack)</span>
+                            </label>
+                            <label class="toggle-label">
+                                <input type="checkbox" id="enableEdgeRefinement">
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Edge Refinement</span>
+                            </label>
+                            <label class="toggle-label" id="rowFileColorValidation" style="display:none;">
+                                <input type="checkbox" id="enableFileColorValidation" checked>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">File Color/Layout Validation</span>
+                            </label>
+                            <label class="toggle-label">
+                                <input type="checkbox" id="enableDepthViz">
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Depth Visualization (MiDaS)</span>
+                            </label>
+                        </div>
+
+                        <div class="settings-divider"></div>
+
+                        <div class="settings-sub-label">Annotation Visibility</div>
+                        <div class="toggles-grid toggles-grid--3">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="drawBoxes" checked>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Boxes</span>
+                            </label>
+                            <label class="toggle-label">
+                                <input type="checkbox" id="drawMasks" checked>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Masks</span>
+                            </label>
+                            <label class="toggle-label">
+                                <input type="checkbox" id="drawLabels" checked>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Labels</span>
+                            </label>
+                        </div>
+
+                        <div class="settings-divider"></div>
+
+                        <div class="settings-sub-label">
+                            Confidence Threshold: <span id="confValue">0.05</span>
+                        </div>
+                        <input type="range" id="confThreshold" min="0.01" max="0.95" step="0.01" value="0.05" class="range-input">
+
+                        <div class="settings-actions">
+                            <button id="btnSaveEnhancements" class="btn btn-primary btn-sm">Apply Settings</button>
+                            <span id="enhancementsSaved" class="saved-indicator" style="display:none;">✓ Saved</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Camera & Measurements ── -->
+                <div class="settings-card">
+                    <div class="settings-card-header settings-card-toggle" id="settingsToggle">
+                        <span style="display:flex;align-items:center;gap:8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            Camera &amp; Measurements
+                        </span>
+                        <span class="card-chevron" id="settingsChevron">▾</span>
+                    </div>
+                    <div class="settings-card-body" id="settingsBody">
+
+                        <!-- MindVision Camera toggle -->
+                        <div class="settings-sub-label">MindVision Camera</div>
+                        <div class="mv-camera-row">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="mvCameraToggle">
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Enable Camera Feed</span>
+                            </label>
+                            <span class="mv-camera-status" id="mvCameraStatus">Stopped</span>
+                        </div>
+
+                        <div class="toggles-grid toggles-grid--2" style="margin-bottom:16px;margin-top:20px;">
                             <label class="toggle-label">
                                 <input type="checkbox" id="measurementEnabled">
-                                <span>Enable measurement post-processing</span>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Enable Measurement Post-processing</span>
                             </label>
                         </div>
 
-                        <div class="settings-row" style="margin-top: 6px;">
+                        <div class="settings-sub-label">Distance Overlays</div>
+                        <div class="toggles-grid" style="margin-bottom:16px;">
                             <label class="toggle-label">
                                 <input type="checkbox" id="showEdgeDistances">
-                                <span>Show edge distances</span>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Edge Distances</span>
                             </label>
-                        </div>
-                        <div class="settings-row" style="margin-top: 6px;">
                             <label class="toggle-label">
                                 <input type="checkbox" id="showCenterDistances">
-                                <span>Show center distances</span>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Center Distances</span>
                             </label>
-                        </div>
-                        <div class="settings-row" style="margin-top: 6px;">
                             <label class="toggle-label">
                                 <input type="checkbox" id="showAlignedPairDistances">
-                                <span>Show aligned magnet/mechanical part distances</span>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Aligned Pair Distances</span>
                             </label>
-                        </div>
-                        <div class="settings-row" style="margin-top: 6px;">
-                            <label class="toggle-label" title="Measures cross-diagonal distances: magnet TR↔BL &amp; TL↔BR, mechanical part BL↔TR &amp; BR↔TL. Disables other distance overlays.">
+                            <label class="toggle-label" title="Measures cross-diagonal distances: magnet TR↔BL &amp; TL↔BR, mechanical part BL↔TR &amp; BR↔TL.">
                                 <input type="checkbox" id="showOppositeDistances">
-                                <span>Show Cross-Diameter Distances (TR↔BL &amp; TL↔BR)</span>
+                                <span class="toggle-track"></span>
+                                <span class="toggle-text">Cross-Diameter Distances (TR↔BL &amp; TL↔BR)</span>
                             </label>
                         </div>
 
-                        <!-- Measurement method selector -->
-                        <div class="settings-row" style="margin-top:8px;">
-                            <label for="measurementMethod" style="font-size:0.85rem;color:#bbb;">Calibration
-                                Method</label>
-                            <select id="measurementMethod" class="setting-select">
-                                <option value="camera_intrinsics">Camera Intrinsics</option>
-                                <option value="reference_label">Reference Label</option>
-                                <option value="manual">Manual (px→mm)</option>
-                            </select>
-                        </div>
+                        <div class="settings-sub-label">Calibration Method</div>
+                        <select id="measurementMethod" class="setting-select" style="margin-bottom:16px;">
+                            <option value="camera_intrinsics">Camera Intrinsics</option>
+                            <option value="reference_label">Reference Label</option>
+                            <option value="manual">Manual (px → mm)</option>
+                        </select>
 
-                        <!-- Camera-intrinsics fields -->
+                        <!-- Camera intrinsics -->
                         <div class="settings-grid" id="fieldsIntrinsics">
                             <div class="setting-field">
                                 <label for="sensorWidth">Sensor Width (mm)</label>
@@ -172,12 +601,12 @@
                             </div>
                         </div>
 
-                        <!-- Reference-label fields -->
+                        <!-- Reference label -->
                         <div class="settings-grid" id="fieldsReference" style="display:none;">
                             <div class="setting-field">
                                 <label for="refLabelName">Reference Label</label>
                                 <select id="refLabelName" class="setting-select">
-                                    <option value="">-- select label --</option>
+                                    <option value="">— select label —</option>
                                 </select>
                             </div>
                             <div class="setting-field">
@@ -194,7 +623,7 @@
                             </div>
                         </div>
 
-                        <!-- Manual px→mm field -->
+                        <!-- Manual -->
                         <div class="settings-grid" id="fieldsManual" style="display:none;">
                             <div class="setting-field">
                                 <label for="manualPxToMm">mm per pixel</label>
@@ -204,303 +633,112 @@
 
                         <div class="settings-actions">
                             <button id="btnSaveSettings" class="btn btn-primary btn-sm">Save Settings</button>
-                            <span id="settingsSaved" class="settings-saved" style="display:none;">✓ Saved</span>
+                            <span id="settingsSaved" class="saved-indicator" style="display:none;">✓ Saved</span>
                         </div>
                     </div>
                 </div>
+
             </div>
+            <!-- /settings-layout -->
+        </div>
+        <!-- /page-settings -->
 
-            <!-- Post-processing & Enhancements Section -->
-            <div class="enhancements-section" style="margin-bottom: 20px;">
-                <div class="panel">
-                    <h3 class="settings-header" id="enhancementsToggle">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            style="vertical-align:middle;margin-right:6px">
-                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                        </svg>
-                        Post-processing Control Panel
-                        <span class="settings-chevron" id="enhancementsChevron">▾</span>
-                    </h3>
-                    
-                    <div class="settings-body" id="enhancementsBody">
-                        <!-- Domain Setting Selector -->
-                        <div class="settings-row" style="margin-bottom: 15px;">
-                            <label for="settingsDomainContext" style="font-size:0.85rem;color:#bbb;display:block;margin-bottom:5px;">Configure Domain:</label>
-                            <select id="settingsDomainContext" class="setting-select" style="width:100%;background:rgba(255,255,255,0.05);">
-                                <option value="stator">Stator Post-processing</option>
-                                <option value="chignon">Chignon Post-processing</option>
-                                <option value="file">File Post-processing</option>
-                            </select>
-                            <p style="font-size:0.7rem;color:#888;margin-top:4px;">Settings below apply only to the selected domain above.</p>
-                        </div>
-                        <div class="settings-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <div class="settings-row">
-                                <label class="toggle-label" title="Global switch for all annotations and measurements.">
-                                    <input type="checkbox" id="enablePostprocessing" checked>
-                                    <span>Global Post-processing</span>
-                                </label>
-                            </div>
-                            <div class="settings-row" id="rowHeuristic">
-                                <label class="toggle-label" title="Uses spatial logic to fix ResNet misclassifications (Stator only).">
-                                    <input type="checkbox" id="enableHeuristic" checked>
-                                    <span>Spatial Heuristic (ResNet Fix)</span>
-                                </label>
-                            </div>
-                            <div class="settings-row">
-                                <label class="toggle-label" title="Limits detections to the strongest N objects.">
-                                    <input type="checkbox" id="enableTopN" checked>
-                                    <span>Top-N Filtering</span>
-                                </label>
-                            </div>
-                            <div class="settings-row" id="rowTracking">
-                                <label class="toggle-label" title="Uses ByteTrack to persist object IDs.">
-                                    <input type="checkbox" id="enableTracking">
-                                    <span>Object Tracking (ByteTrack)</span>
-                                </label>
-                            </div>
-                            <div class="settings-row">
-                                <label class="toggle-label" title="Crisp masks using Guided Filtering.">
-                                    <input type="checkbox" id="enableEdgeRefinement">
-                                    <span>Edge Refinement</span>
-                                </label>
-                            </div>
-                            <div class="settings-row" id="rowFileColorValidation" style="display:none;">
-                                <label class="toggle-label" title="File domain only: classify blue/yellow/green and validate left-right file position.">
-                                    <input type="checkbox" id="enableFileColorValidation" checked>
-                                    <span>File Color/Layout Validation</span>
-                                </label>
-                            </div>
-                            <div class="settings-row">
-                                <label class="toggle-label" title="Show Midas depth heatmap.">
-                                    <input type="checkbox" id="enableDepthViz">
-                                    <span>Depth Visualization</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="divider" style="margin: 15px 0; border-top: 1px solid var(--border-color); opacity: 0.3;"></div>
-                        
-                        <div class="settings-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                            <div class="settings-row">
-                                <label class="toggle-label">
-                                    <input type="checkbox" id="drawBoxes" checked>
-                                    <span>Show Boxes</span>
-                                </label>
-                            </div>
-                            <div class="settings-row">
-                                <label class="toggle-label">
-                                    <input type="checkbox" id="drawMasks" checked>
-                                    <span>Show Masks</span>
-                                </label>
-                            </div>
-                            <div class="settings-row">
-                                <label class="toggle-label">
-                                    <input type="checkbox" id="drawLabels" checked>
-                                    <span>Show Labels</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="settings-row" style="margin-top: 15px;">
-                            <label for="confThreshold" style="display:block; margin-bottom: 5px; font-size: 0.85rem; font-weight: 500;">
-                                Confidence Threshold: <span id="confValue">0.05</span>
-                            </label>
-                            <input type="range" id="confThreshold" min="0.01" max="0.95" step="0.01" value="0.05" style="width: 100%;">
-                        </div>
-
-                        <div class="settings-actions" style="margin-top: 16px;">
-                            <button id="btnSaveEnhancements" class="btn btn-primary btn-sm">Apply Post-processing</button>
-                            <span id="enhancementsSaved" class="settings-saved" style="display:none;">✓ Applied</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Image Upload Section -->
-            <div class="upload-section">
-                <div class="panel">
-                    <h3>Upload Image for Detection</h3>
-                    <div class="upload-area" id="uploadArea">
-                        <input type="file" id="fileInput" accept="image/*" hidden>
-                        <div class="upload-dropzone" id="dropzone">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="1.5">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="17 8 12 3 7 8" />
-                                <line x1="12" y1="3" x2="12" y2="15" />
-                            </svg>
-                            <p>Drag & drop an image or <span class="upload-link">browse</span></p>
-                            <p class="upload-hint">Supports JPG, PNG, BMP</p>
-                        </div>
-                        <div class="upload-preview" id="uploadPreview" style="display:none;">
-                            <div class="upload-images">
-                                <div class="upload-img-wrap">
-                                    <div class="video-label">Original</div>
-                                    <img id="uploadOriginal" alt="Original">
-                                </div>
-                                <div class="upload-img-wrap">
-                                    <div class="video-label">Detection</div>
-                                    <img id="uploadResult" alt="Detection Result">
-                                </div>
-                                <div class="upload-img-wrap" id="uploadDepthWrap" style="display:none;">
-                                    <div class="video-label">Depth Heatmap (MiDaS)</div>
-                                    <img id="uploadDepth" alt="Depth Heatmap">
-                                </div>
-                            </div>
-                            <div class="upload-info">
-                                <span id="uploadInference"></span>
-                                <span id="uploadModel"></span>
-                            </div>
-                            <div id="uploadDetections" class="detections-list"></div>
-                            <div class="upload-actions">
-                                <button id="btnUploadAnother" class="btn btn-secondary">Upload Another</button>
-                                <button id="btnDownloadResult" class="btn btn-primary">Download Result</button>
-                                <button id="btnSaveUpload" class="btn btn-save">Save Image + JSON</button>
-                                <button id="btnMeasureUpload" class="btn btn-measure">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M2 12h4m4 0h4m4 0h4"/>
-                                        <circle cx="6" cy="12" r="2"/>
-                                        <circle cx="18" cy="12" r="2"/>
-                                    </svg>
-                                    📏 Measure
-                                </button>
-                            </div>
-                        </div>
-                        <div class="upload-loading" id="uploadLoading" style="display:none;">
-                            <div class="spinner"></div>
-                            <p>Running detection…</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Stats & Detections -->
-            <div class="info-grid">
-                <div class="info-col">
-                    <!-- Stats Panel -->
-                    <div class="panel">
-                        <h3>Live Performance</h3>
-                        <div class="stats-grid">
-                            <div class="stat">
-                                <span class="stat-value" id="statInference">—</span>
-                                <span class="stat-label">Inference (ms)</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value" id="statFPS">—</span>
-                                <span class="stat-label">Server FPS</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value" id="statModel">—</span>
-                                <span class="stat-label">Active Model</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value" id="statConnection">—</span>
-                                <span class="stat-label">Connection</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Live Monitoring Panel -->
-                    <div class="panel" id="liveMonitoringPanel" style="margin-top: 20px;">
-                        <h3>Live Monitoring Aggregates</h3>
-                        <div class="stats-grid">
-                            <div class="stat">
-                                <span class="stat-value" id="statAvgLatency">—</span>
-                                <span class="stat-label">Avg Latency (ms)</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value" id="statAvgThroughput">—</span>
-                                <span class="stat-label">Avg Throughput (fps)</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value" id="statErrorRate">—</span>
-                                <span class="stat-label">Error Rate (%)</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value" id="statTotalRequests">—</span>
-                                <span class="stat-label">Total Requests</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Benchmark Performance Panel -->
-                    <div class="panel" id="benchmarkPanel" style="margin-top: 20px;">
-                        <h3>Benchmark Performance</h3>
-                        <div class="stats-grid">
-                            <div class="stat">
-                                <span class="stat-value" id="benchIoU">—</span>
-                                <span class="stat-label">Best val IoU</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value" id="benchDice">—</span>
-                                <span class="stat-label">Best val Dice</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value" id="benchTime">—</span>
-                                <span class="stat-label">Train Time</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value" id="benchGPU">—</span>
-                                <span class="stat-label">Peak GPU Mem</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Inference Health Panel -->
-                    <div class="panel inference-health-panel" id="inferenceHealthPanel" style="margin-top: 20px;">
-                        <h3>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" style="vertical-align:middle;margin-right:4px">
-                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                            </svg>
-                            Inference Health
-                        </h3>
-                        <div class="health-stats">
-                            <div class="stat">
-                                <span class="stat-value" id="healthMinLatency">—</span>
-                                <span class="stat-label">Min Latency</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value" id="healthMaxLatency">—</span>
-                                <span class="stat-label">Max Latency</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value" id="healthP95Latency">—</span>
-                                <span class="stat-label">P95 Latency</span>
-                            </div>
-                        </div>
-                        <div class="sparkline-container">
-                            <span class="sparkline-label">Latency (ms) — last 60 frames</span>
-                            <canvas id="latencySparkline"></canvas>
-                        </div>
-                        <div class="alert-feed-title">Recent Alerts</div>
-                        <div class="alert-feed" id="alertFeed"></div>
-                    </div>
-                </div>
-
-                <!-- Detections Panel -->
-                <div class="panel">
-                    <h3>Detections</h3>
-                    <div id="detectionsList" class="detections-list">
-                        <p class="placeholder">No detections yet</p>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <span>Industrial Stator Detection Benchmark</span>
-        </footer>
     </div>
+    <!-- /main-wrap -->
+</div>
+<!-- /app -->
 
-    <!-- Hidden canvas for snapshots -->
-    <canvas id="snapshotCanvas" style="display:none;"></canvas>
+<!-- ═══════════════ IMAGE ADJUST MODAL ═══════════════ -->
+<div class="ia-overlay" id="iaOverlay" aria-hidden="true">
+    <div class="ia-panel" role="dialog" aria-labelledby="iaTitle">
 
-    <script src="/client/measure.js"></script>
-    <script src="/client/app.js"></script>
-    <script src="/client/mindvision.js"></script>
+        <div class="ia-header">
+            <h3 class="ia-title" id="iaTitle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15 1.65 1.65 0 0 0 3.13 14H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.13V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9 1.65 1.65 0 0 0 20.87 10H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Image Adjustments
+            </h3>
+            <button class="ia-close" id="iaClose" aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <div class="ia-body">
+            <!-- Canvas preview -->
+            <div class="ia-preview-wrap">
+                <canvas id="iaCanvas"></canvas>
+            </div>
+
+            <!-- Sliders -->
+            <div class="ia-controls">
+                <div class="ia-slider-row">
+                    <label class="ia-slider-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        Brightness
+                    </label>
+                    <input type="range" class="ia-range" id="iaBrightness" min="0" max="300" value="100">
+                    <span class="ia-range-val" id="iaBrightnessVal">100%</span>
+                </div>
+                <div class="ia-slider-row">
+                    <label class="ia-slider-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>
+                        Contrast
+                    </label>
+                    <input type="range" class="ia-range" id="iaContrast" min="0" max="300" value="100">
+                    <span class="ia-range-val" id="iaContrastVal">100%</span>
+                </div>
+                <div class="ia-slider-row">
+                    <label class="ia-slider-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                        Saturation
+                    </label>
+                    <input type="range" class="ia-range" id="iaSaturation" min="0" max="300" value="100">
+                    <span class="ia-range-val" id="iaSaturationVal">100%</span>
+                </div>
+                <div class="ia-slider-row">
+                    <label class="ia-slider-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        Sharpness
+                    </label>
+                    <input type="range" class="ia-range" id="iaSharpness" min="0" max="100" value="0">
+                    <span class="ia-range-val" id="iaSharpnessVal">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="ia-footer">
+            <button class="btn btn-secondary btn-sm" id="iaReset">Reset</button>
+            <button class="btn btn-secondary btn-sm" id="iaCancel">Cancel</button>
+            <button class="btn btn-primary" id="iaDetect">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Apply &amp; Detect
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<canvas id="snapshotCanvas" style="display:none;"></canvas>
+<!-- Legacy WebRTC elements (referenced in app.js, kept hidden) -->
+<video id="localVideo" style="display:none;" autoplay muted playsinline></video>
+<video id="remoteVideo" style="display:none;" autoplay playsinline></video>
+<div id="videoOverlay" style="display:none;"></div>
+<button id="btnConnect" style="display:none;"></button>
+<button id="btnDisconnect" style="display:none;" disabled></button>
+<button id="btnSnapshot" style="display:none;" disabled></button>
+<button id="btnSaveLive" style="display:none;" disabled></button>
+
+<!-- Apply saved theme before first paint to avoid flash -->
+<script>
+    (function() {
+        const saved = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (saved === "dark" || (!saved && prefersDark)) {
+            document.documentElement.classList.add("dark");
+        }
+    })();
+</script>
+<script src="/client/measure.js"></script>
+<script src="/client/app.js"></script>
+<script src="/client/mindvision.js"></script>
 </body>
-
 </html>

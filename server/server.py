@@ -613,6 +613,7 @@ def api_update_settings():
 # The mindvision_capture.py script pushes frames here; the web client
 # can view them via MJPEG stream or poll for the latest annotated frame.
 
+import subprocess as _mv_subprocess
 import threading as _mv_threading
 
 _mv_latest_frame: bytes | None = None          # Latest raw JPEG from camera
@@ -622,6 +623,69 @@ _mv_latest_detections: list = []               # Latest detection metadata
 _mv_latest_model: str | None = None
 _mv_latest_inference_ms: float = 0
 _mv_frame_lock = _mv_threading.Lock()
+
+# Subprocess handle for mindvision_capture.py when launched from the UI
+_mv_proc: "_mv_subprocess.Popen | None" = None
+_mv_proc_lock = _mv_threading.Lock()
+
+
+@app.route("/api/mindvision/start", methods=["POST"])
+def mv_start():
+    """Launch mindvision_capture.py as a managed subprocess."""
+    global _mv_proc
+    with _mv_proc_lock:
+        if _mv_proc is not None and _mv_proc.poll() is None:
+            return jsonify({"ok": True, "running": True, "msg": "already running"})
+
+        script = os.path.join(os.path.dirname(__file__), "mindvision_capture.py")
+        if not os.path.exists(script):
+            return jsonify({"ok": False, "msg": "mindvision_capture.py not found"}), 404
+
+        try:
+            _mv_proc = _mv_subprocess.Popen(
+                [sys.executable, script],
+                stdout=_mv_subprocess.DEVNULL,
+                stderr=_mv_subprocess.DEVNULL,
+            )
+            return jsonify({"ok": True, "running": True, "pid": _mv_proc.pid})
+        except Exception as exc:
+            return jsonify({"ok": False, "msg": str(exc)}), 500
+
+
+@app.route("/api/mindvision/stop", methods=["POST"])
+def mv_stop():
+    """Terminate the managed mindvision_capture.py subprocess."""
+    global _mv_proc, _mv_latest_frame, _mv_latest_annotated
+    with _mv_proc_lock:
+        if _mv_proc is None or _mv_proc.poll() is not None:
+            _mv_proc = None
+            # Clear stale frame so status shows disconnected
+            with _mv_frame_lock:
+                _mv_latest_frame = None
+                _mv_latest_annotated = None
+            return jsonify({"ok": True, "running": False, "msg": "not running"})
+
+        try:
+            _mv_proc.terminate()
+            try:
+                _mv_proc.wait(timeout=4)
+            except _mv_subprocess.TimeoutExpired:
+                _mv_proc.kill()
+            _mv_proc = None
+            with _mv_frame_lock:
+                _mv_latest_frame = None
+                _mv_latest_annotated = None
+            return jsonify({"ok": True, "running": False})
+        except Exception as exc:
+            return jsonify({"ok": False, "msg": str(exc)}), 500
+
+
+@app.route("/api/mindvision/proc-status")
+def mv_proc_status():
+    """Return whether the managed capture subprocess is currently running."""
+    with _mv_proc_lock:
+        running = _mv_proc is not None and _mv_proc.poll() is None
+    return jsonify({"running": running})
 
 
 @app.route("/api/mindvision/frame", methods=["POST"])
