@@ -224,8 +224,28 @@
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                                         Adjust Frame
                                     </button>
+                                    <button id="btnRunInspection" class="btn btn-measure btn-sm" title="Run a 12-second automated inspection: stator → chignon → file">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                        Run Inspection
+                                    </button>
                                 </div>
                                 <div id="mvDetections" class="detections-list" style="margin-top:10px;"></div>
+                                <div id="inspectionPanel" class="inspection-panel" style="display:none;">
+                                    <div class="inspection-header">
+                                        <strong id="inspectionTitle">Automated inspection</strong>
+                                        <button id="btnCancelInspection" class="btn btn-sm">Cancel</button>
+                                    </div>
+                                    <div class="inspection-progress">
+                                        <div class="inspection-stages">
+                                            <span class="stage-chip" data-stage="stator">1. Stator · 5s</span>
+                                            <span class="stage-chip" data-stage="chignon">2. Chignon · 5s</span>
+                                            <span class="stage-chip" data-stage="file">3. File · 2s</span>
+                                        </div>
+                                        <div class="inspection-bar"><div class="inspection-bar-fill" id="inspectionBarFill"></div></div>
+                                        <div class="inspection-status" id="inspectionStatusText">Idle</div>
+                                    </div>
+                                    <div id="inspectionResult" class="inspection-result" style="display:none;"></div>
+                                </div>
                             </div>
                             <div class="mv-placeholder" id="mvPlaceholder">
                                 <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25">
@@ -638,6 +658,63 @@
                     </div>
                 </div>
 
+                <!-- ── Inspection Thresholds ── -->
+                <div class="settings-card">
+                    <div class="settings-card-header settings-card-toggle" id="thresholdsToggle">
+                        <span style="display:flex;align-items:center;gap:8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            Inspection Thresholds (optional)
+                        </span>
+                        <span class="card-chevron" id="thresholdsChevron">▾</span>
+                    </div>
+                    <div class="settings-card-body" id="thresholdsBody">
+                        <p class="settings-hint">Set min / max bounds for each measurement. Values outside the range during an inspection are flagged as <strong>non valid</strong>. Leave blank to skip validation for a measurement.</p>
+
+                        <div class="settings-sub-label">Chignon surface area (mm²)</div>
+                        <div class="threshold-grid">
+                            <div class="threshold-row">
+                                <label>Left chignon</label>
+                                <input type="number" step="0.1" placeholder="min" data-thr-key="chignon.left_area_mm" data-thr-field="min">
+                                <input type="number" step="0.1" placeholder="max" data-thr-key="chignon.left_area_mm" data-thr-field="max">
+                            </div>
+                            <div class="threshold-row">
+                                <label>Right chignon</label>
+                                <input type="number" step="0.1" placeholder="min" data-thr-key="chignon.right_area_mm" data-thr-field="min">
+                                <input type="number" step="0.1" placeholder="max" data-thr-key="chignon.right_area_mm" data-thr-field="max">
+                            </div>
+                        </div>
+
+                        <div class="settings-sub-label">Cross-diameter distances (mm)</div>
+                        <div class="threshold-grid">
+                            <div class="threshold-row">
+                                <label>Magnet TR ↔ BL</label>
+                                <input type="number" step="0.1" placeholder="min" data-thr-key="stator.magnet.diag-asc" data-thr-field="min">
+                                <input type="number" step="0.1" placeholder="max" data-thr-key="stator.magnet.diag-asc" data-thr-field="max">
+                            </div>
+                            <div class="threshold-row">
+                                <label>Magnet TL ↔ BR</label>
+                                <input type="number" step="0.1" placeholder="min" data-thr-key="stator.magnet.diag-desc" data-thr-field="min">
+                                <input type="number" step="0.1" placeholder="max" data-thr-key="stator.magnet.diag-desc" data-thr-field="max">
+                            </div>
+                            <div class="threshold-row">
+                                <label>Mechanical part BL ↔ TR</label>
+                                <input type="number" step="0.1" placeholder="min" data-thr-key="stator.mechanical_part.diag-asc" data-thr-field="min">
+                                <input type="number" step="0.1" placeholder="max" data-thr-key="stator.mechanical_part.diag-asc" data-thr-field="max">
+                            </div>
+                            <div class="threshold-row">
+                                <label>Mechanical part BR ↔ TL</label>
+                                <input type="number" step="0.1" placeholder="min" data-thr-key="stator.mechanical_part.diag-desc" data-thr-field="min">
+                                <input type="number" step="0.1" placeholder="max" data-thr-key="stator.mechanical_part.diag-desc" data-thr-field="max">
+                            </div>
+                        </div>
+
+                        <div class="settings-actions">
+                            <button id="btnSaveThresholds" class="btn btn-primary btn-sm">Save Thresholds</button>
+                            <span id="thresholdsSaved" class="saved-indicator" style="display:none;">✓ Saved</span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
             <!-- /settings-layout -->
         </div>
@@ -740,5 +817,6 @@
 <script src="/client/measure.js"></script>
 <script src="/client/app.js"></script>
 <script src="/client/mindvision.js"></script>
+<script src="/client/inspection.js"></script>
 </body>
 </html>

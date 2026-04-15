@@ -111,7 +111,7 @@ A comprehensive benchmarking framework for evaluating segmentation and edge-dete
 
 - Docker Compose currently includes:
   - `server` (Flask + inference)
-  - `mlflow` (tracking server on port `5001`)
+  - `mlflow` (tracking server on port `5002`)
   - `client` (Nginx static frontend)
 - Server now exposes `GET /api/mlflow-url` to provide a browser-reachable MLflow URL and health state.
 
@@ -137,7 +137,7 @@ A comprehensive benchmarking framework for evaluating segmentation and edge-dete
 docker compose up -d
 ```
 
-Default MLflow UI: `http://localhost:5001`
+Default MLflow UI: `http://localhost:5002`
 
 ---
 

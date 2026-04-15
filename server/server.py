@@ -330,6 +330,394 @@ def serve_client_files(filename):
     return send_from_directory(CLIENT_DIR, filename)
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# API Documentation (Swagger UI + OpenAPI spec)
+# ═══════════════════════════════════════════════════════════════════════════
+
+_SWAGGER_HTML = """<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"UTF-8\">
+  <title>Stator Vision — API Docs</title>
+  <link rel=\"stylesheet\" href=\"https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css\">
+  <style>
+    html, body { margin: 0; padding: 0; background: #0e1117; }
+    #swagger-ui { max-width: 1200px; margin: 0 auto; }
+    .topbar { display: none; }
+  </style>
+</head>
+<body>
+  <div id=\"swagger-ui\"></div>
+  <script src=\"https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js\"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: '/api/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [SwaggerUIBundle.presets.apis],
+        layout: 'BaseLayout',
+      });
+    };
+  </script>
+</body>
+</html>
+"""
+
+
+def _build_openapi_spec() -> dict:
+    """OpenAPI 3.0 spec describing all public REST endpoints."""
+    return {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Stator Vision Inspection API",
+            "version": "1.0.0",
+            "description": (
+                "REST API for the Stator / Chignon / File vision inspection server. "
+                "Covers model management, live detection, MindVision camera streaming, "
+                "automated inspection sessions, MLflow integration and metrics."
+            ),
+        },
+        "servers": [{"url": "/", "description": "Current host"}],
+        "tags": [
+            {"name": "Models", "description": "Discover & switch detection models"},
+            {"name": "Detection", "description": "Run detection on images & WebRTC streams"},
+            {"name": "MindVision", "description": "Industrial camera streaming & capture control"},
+            {"name": "Inspection", "description": "Automated stator→chignon→file inspection sessions"},
+            {"name": "Metrics", "description": "Live metrics, inference logs and alerts"},
+            {"name": "Settings", "description": "Camera & measurement configuration"},
+            {"name": "MLflow", "description": "MLflow tracking UI availability"},
+        ],
+        "components": {
+            "schemas": {
+                "Error": {
+                    "type": "object",
+                    "properties": {"error": {"type": "string"}},
+                },
+                "Ok": {
+                    "type": "object",
+                    "properties": {"ok": {"type": "boolean"}},
+                },
+                "ModelInfo": {
+                    "type": "object",
+                    "properties": {
+                        "models": {
+                            "type": "array",
+                            "items": {"type": "object", "additionalProperties": True},
+                        },
+                        "current": {"type": "string", "nullable": True},
+                    },
+                },
+                "Measurement": {
+                    "type": "object",
+                    "properties": {
+                        "type": {"type": "string"},
+                        "label": {"type": "string"},
+                        "value_px": {"type": "number"},
+                        "value_mm": {"type": "number"},
+                    },
+                },
+                "Detection": {
+                    "type": "object",
+                    "properties": {
+                        "class_id": {"type": "integer"},
+                        "class_name": {"type": "string"},
+                        "confidence": {"type": "number"},
+                        "bbox": {"type": "array", "items": {"type": "number"}},
+                        "has_mask": {"type": "boolean"},
+                        "measurements": {
+                            "type": "array",
+                            "items": {"$ref": "#/components/schemas/Measurement"},
+                        },
+                    },
+                },
+                "DetectResponse": {
+                    "type": "object",
+                    "properties": {
+                        "image": {"type": "string", "description": "Annotated JPEG (data URL)"},
+                        "depth_image": {"type": "string", "nullable": True},
+                        "detections": {
+                            "type": "array",
+                            "items": {"$ref": "#/components/schemas/Detection"},
+                        },
+                        "alerts": {"type": "array", "items": {"type": "object"}},
+                        "position_message": {"type": "string"},
+                        "inference_ms": {"type": "number"},
+                        "model": {"type": "string"},
+                    },
+                },
+                "InspectionStatus": {
+                    "type": "object",
+                    "properties": {
+                        "active": {"type": "boolean"},
+                        "stage": {
+                            "type": "string",
+                            "nullable": True,
+                            "enum": ["stator", "chignon", "file", None],
+                        },
+                        "stage_elapsed": {"type": "number"},
+                        "stage_total": {"type": "number"},
+                        "stage_remaining": {"type": "number"},
+                        "total_elapsed": {"type": "number"},
+                        "frame_count": {"type": "integer"},
+                        "result": {"type": "object", "nullable": True},
+                    },
+                },
+                "InspectionResult": {
+                    "type": "object",
+                    "properties": {
+                        "cancelled": {"type": "boolean"},
+                        "duration_s": {"type": "number"},
+                        "stator": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "key": {"type": "string"},
+                                    "label": {"type": "string"},
+                                    "unit": {"type": "string"},
+                                    "count": {"type": "integer"},
+                                    "mean": {"type": "number", "nullable": True},
+                                    "variance": {"type": "number", "nullable": True},
+                                    "std": {"type": "number", "nullable": True},
+                                    "validation": {"type": "object", "nullable": True},
+                                },
+                            },
+                        },
+                        "chignon": {"type": "array", "items": {"type": "object"}},
+                        "file": {
+                            "type": "object",
+                            "properties": {
+                                "decision": {"type": "string", "enum": ["OK", "NOT OK", "UNKNOWN"]},
+                                "ok_ratio": {"type": "number", "nullable": True},
+                                "samples": {"type": "integer"},
+                            },
+                        },
+                    },
+                },
+                "Thresholds": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                            "min": {"type": "number"},
+                            "max": {"type": "number"},
+                        },
+                    },
+                    "example": {
+                        "chignon.left_area_mm": {"min": 120.0, "max": 260.0},
+                        "stator.magnet.diag-asc": {"min": 40.0, "max": 60.0},
+                    },
+                },
+            }
+        },
+        "paths": {
+            "/api/models": {
+                "get": {
+                    "tags": ["Models"],
+                    "summary": "List available models for a domain",
+                    "parameters": [{
+                        "name": "domain", "in": "query", "required": False,
+                        "schema": {"type": "string", "enum": ["stator", "chignon", "file"], "default": "stator"},
+                    }],
+                    "responses": {"200": {
+                        "description": "Model list",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ModelInfo"}}},
+                    }},
+                }
+            },
+            "/api/performance/{model_name}": {
+                "get": {
+                    "tags": ["Models"],
+                    "summary": "Return benchmark/training metrics for a specific model",
+                    "parameters": [{
+                        "name": "model_name", "in": "path", "required": True,
+                        "schema": {"type": "string"},
+                    }],
+                    "responses": {"200": {"description": "Metrics payload"}},
+                }
+            },
+            "/api/select-model": {
+                "post": {
+                    "tags": ["Models"],
+                    "summary": "Switch the active model",
+                    "requestBody": {"required": True, "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "properties": {
+                            "model_name": {"type": "string"},
+                            "domain": {"type": "string", "enum": ["stator", "chignon", "file"]},
+                        },
+                        "required": ["model_name"],
+                    }}}},
+                    "responses": {
+                        "200": {"description": "Model loaded"},
+                        "400": {"description": "Invalid request", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                    },
+                }
+            },
+            "/api/inference-enhancements": {
+                "get": {
+                    "tags": ["Settings"],
+                    "summary": "Get current inference enhancement flags (tracking, edge refine, etc.)",
+                    "responses": {"200": {"description": "Current flags"}},
+                },
+                "post": {
+                    "tags": ["Settings"],
+                    "summary": "Update inference enhancement flags",
+                    "requestBody": {"required": True, "content": {"application/json": {"schema": {"type": "object"}}}},
+                    "responses": {"200": {"description": "Updated flags"}},
+                },
+            },
+            "/offer": {
+                "post": {
+                    "tags": ["Detection"],
+                    "summary": "WebRTC SDP offer/answer exchange",
+                    "requestBody": {"required": True, "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "properties": {
+                            "sdp": {"type": "string"},
+                            "type": {"type": "string"},
+                            "domain": {"type": "string", "enum": ["stator", "chignon", "file"]},
+                        },
+                    }}}},
+                    "responses": {"200": {"description": "SDP answer"}},
+                }
+            },
+            "/api/detect": {
+                "post": {
+                    "tags": ["Detection"],
+                    "summary": "Run detection on an uploaded image",
+                    "requestBody": {"required": True, "content": {"multipart/form-data": {"schema": {
+                        "type": "object",
+                        "properties": {
+                            "image": {"type": "string", "format": "binary"},
+                            "domain": {"type": "string", "enum": ["stator", "chignon", "file"]},
+                        },
+                        "required": ["image"],
+                    }}}},
+                    "responses": {
+                        "200": {"description": "Annotated image + detections", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DetectResponse"}}}},
+                        "400": {"description": "Bad request", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                    },
+                }
+            },
+            "/api/status": {
+                "get": {"tags": ["Metrics"], "summary": "Server status + health", "responses": {"200": {"description": "Status"}}}
+            },
+            "/api/live-metrics": {
+                "get": {"tags": ["Metrics"], "summary": "Live aggregated detection metrics", "responses": {"200": {"description": "Metrics"}}}
+            },
+            "/api/inference-logs": {
+                "get": {
+                    "tags": ["Metrics"],
+                    "summary": "Last N entries of the current JSONL inference session log",
+                    "parameters": [{
+                        "name": "n", "in": "query", "required": False,
+                        "schema": {"type": "integer", "default": 100, "maximum": 500},
+                    }],
+                    "responses": {"200": {"description": "Log entries"}},
+                }
+            },
+            "/api/inference-alerts": {
+                "get": {"tags": ["Metrics"], "summary": "Recent inference validation alerts", "responses": {"200": {"description": "Alert list"}}}
+            },
+            "/api/mlflow-url": {
+                "get": {"tags": ["MLflow"], "summary": "MLflow UI URL and reachability", "responses": {"200": {"description": "MLflow status"}}}
+            },
+            "/api/settings": {
+                "get": {"tags": ["Settings"], "summary": "Get camera + measurement settings", "responses": {"200": {"description": "Settings"}}},
+                "post": {
+                    "tags": ["Settings"],
+                    "summary": "Update camera + measurement settings",
+                    "requestBody": {"required": True, "content": {"application/json": {"schema": {"type": "object"}}}},
+                    "responses": {"200": {"description": "Updated"}},
+                },
+            },
+            "/api/labels": {
+                "get": {"tags": ["Settings"], "summary": "List labels usable as measurement reference", "responses": {"200": {"description": "Labels"}}}
+            },
+            "/api/mindvision/start": {
+                "post": {"tags": ["MindVision"], "summary": "Launch mindvision_capture.py subprocess", "responses": {"200": {"description": "Process started or already running"}}}
+            },
+            "/api/mindvision/stop": {
+                "post": {"tags": ["MindVision"], "summary": "Terminate mindvision_capture.py subprocess", "responses": {"200": {"description": "Process stopped"}}}
+            },
+            "/api/mindvision/proc-status": {
+                "get": {"tags": ["MindVision"], "summary": "Return running state of the MindVision subprocess", "responses": {"200": {"description": "Subprocess state"}}}
+            },
+            "/api/mindvision/frame": {
+                "post": {
+                    "tags": ["MindVision"],
+                    "summary": "Ingest a raw camera frame (called by mindvision_capture.py)",
+                    "requestBody": {"required": True, "content": {"multipart/form-data": {"schema": {
+                        "type": "object",
+                        "properties": {"frame": {"type": "string", "format": "binary"}},
+                        "required": ["frame"],
+                    }}}},
+                    "responses": {
+                        "200": {"description": "Frame accepted"},
+                        "400": {"description": "Decode error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                    },
+                }
+            },
+            "/api/mindvision/stream": {
+                "get": {
+                    "tags": ["MindVision"],
+                    "summary": "MJPEG stream of annotated camera frames",
+                    "responses": {"200": {"description": "multipart/x-mixed-replace MJPEG stream", "content": {"multipart/x-mixed-replace": {}}}},
+                }
+            },
+            "/api/mindvision/depth-stream": {
+                "get": {"tags": ["MindVision"], "summary": "MJPEG stream of MiDaS depth maps", "responses": {"200": {"description": "MJPEG stream"}}}
+            },
+            "/api/mindvision/status": {
+                "get": {"tags": ["MindVision"], "summary": "MindVision camera connection state", "responses": {"200": {"description": "Camera status"}}}
+            },
+            "/api/inspection/start": {
+                "post": {
+                    "tags": ["Inspection"],
+                    "summary": "Start a three-stage automated inspection (stator 5s → chignon 5s → file 2s)",
+                    "responses": {
+                        "200": {"description": "Started", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InspectionStatus"}}}},
+                        "400": {"description": "Camera not streaming", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                        "409": {"description": "Inspection already running", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                    },
+                }
+            },
+            "/api/inspection/cancel": {
+                "post": {"tags": ["Inspection"], "summary": "Cancel the current inspection run", "responses": {"200": {"description": "Cancelled", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Ok"}}}}}}
+            },
+            "/api/inspection/status": {
+                "get": {"tags": ["Inspection"], "summary": "Current inspection progress", "responses": {"200": {"description": "Status", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InspectionStatus"}}}}}}
+            },
+            "/api/inspection/result": {
+                "get": {"tags": ["Inspection"], "summary": "Latest inspection result (mean/variance/validation)", "responses": {"200": {"description": "Result", "content": {"application/json": {"schema": {"type": "object", "properties": {"active": {"type": "boolean"}, "result": {"$ref": "#/components/schemas/InspectionResult"}}}}}}}}
+            },
+            "/api/inspection/thresholds": {
+                "get": {"tags": ["Inspection"], "summary": "Get inspection validation thresholds", "responses": {"200": {"description": "Thresholds", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Thresholds"}}}}}},
+                "post": {
+                    "tags": ["Inspection"],
+                    "summary": "Replace inspection validation thresholds",
+                    "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Thresholds"}}}},
+                    "responses": {"200": {"description": "Saved"}},
+                },
+            },
+        },
+    }
+
+
+@app.route("/api/docs")
+def api_docs_ui():
+    """Serve the Swagger UI page for the API."""
+    return Response(_SWAGGER_HTML, mimetype="text/html")
+
+
+@app.route("/api/openapi.json")
+def api_openapi_spec():
+    """Serve the OpenAPI 3.0 JSON spec consumed by Swagger UI."""
+    return jsonify(_build_openapi_spec())
+
+
 # ---------- REST API ---------- #
 
 @app.route("/api/models", methods=["GET"])
@@ -582,8 +970,8 @@ def api_inference_alerts():
 def api_mlflow_url():
     """Return the MLflow tracking UI URL and whether the server is reachable.
 
-    The internal Docker URI (e.g. http://mlflow:5001) is rewritten so that
-    the browser can reach the dashboard (e.g. http://localhost:5001).
+    The internal Docker URI (e.g. http://mlflow:5002) is rewritten so that
+    the browser can reach the dashboard (e.g. http://localhost:5002).
     """
     internal_uri = os.environ.get("MLFLOW_TRACKING_URI", "")
 
@@ -596,7 +984,7 @@ def api_mlflow_url():
     parsed = urllib.parse.urlparse(internal_uri)
     # If the hostname is not already localhost / 127.0.0.1, swap it out
     browser_host = os.environ.get("MLFLOW_EXTERNAL_HOST", "localhost")
-    browser_url = f"{parsed.scheme}://{browser_host}:{parsed.port or 5001}"
+    browser_url = f"{parsed.scheme}://{browser_host}:{parsed.port or 5002}"
 
     # Quick reachability probe against the *internal* URI (server-side)
     reachable = False
@@ -727,6 +1115,33 @@ def mv_proc_status():
     return jsonify({"running": running})
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# MLflow Integration
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.route("/api/mlflow-url")
+def mlflow_url():
+    """Return the MLflow UI URL and reachability status."""
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "")
+    if not tracking_uri:
+        return jsonify({"available": False, "url": None})
+
+    # Probe the MLflow health endpoint
+    try:
+        import urllib.request
+        urllib.request.urlopen(tracking_uri + "/health", timeout=2)
+        reachable = True
+    except Exception:
+        reachable = False
+
+    # Build a browser-accessible URL:
+    # Inside Docker the URI is http://mlflow:5002 (container hostname).
+    # Replace with the host-facing address for the browser link.
+    browser_url = tracking_uri.replace("http://mlflow:", "http://localhost:")
+
+    return jsonify({"available": reachable, "url": browser_url})
+
+
 @app.route("/api/mindvision/frame", methods=["POST"])
 def mv_receive_frame():
     """
@@ -752,22 +1167,31 @@ def mv_receive_frame():
         metrics_tracker.add_metric(None, is_error=True, model_name=model_manager.current_model_name)
         return jsonify({"error": "Could not decode frame"}), 400
 
+    # If an inspection is running, route the frame through the stage-appropriate
+    # model manager (stator / chignon / file) so measurements match each stage.
+    insp_stage = _inspection_session.stage if _inspection_session.active else None
+    active_mgr = _inspection_manager_for(insp_stage) if insp_stage else model_manager
+
     t0 = time.time()
     try:
-        annotated, detections = model_manager.predict(img)
+        annotated, detections = active_mgr.predict(img)
         inference_ms = (time.time() - t0) * 1000
-        metrics_tracker.add_metric(inference_ms, is_error=False, model_name=model_manager.current_model_name)
+        metrics_tracker.add_metric(inference_ms, is_error=False, model_name=active_mgr.current_model_name)
     except Exception as e:
-        metrics_tracker.add_metric(None, is_error=True, model_name=model_manager.current_model_name)
+        metrics_tracker.add_metric(None, is_error=True, model_name=active_mgr.current_model_name)
         return jsonify({"error": str(e)}), 500
+
+    if insp_stage:
+        pos_msg = getattr(active_mgr, "get_latest_position_message", lambda: "")()
+        _inspection_session.ingest(insp_stage, detections, pos_msg)
 
     # Encode annotated frame
     _, buf = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
     
     depth_buf = None
-    if model_manager.camera_settings.show_depth_map:
+    if hasattr(active_mgr, "camera_settings") and active_mgr.camera_settings.show_depth_map:
         try:
-            depth_viz = model_manager.predict_depth(img)
+            depth_viz = active_mgr.predict_depth(img)
             _, d_buf = cv2.imencode(".jpg", depth_viz, [cv2.IMWRITE_JPEG_QUALITY, 80])
             depth_buf = d_buf.tobytes()
         except Exception as e:
@@ -777,7 +1201,7 @@ def mv_receive_frame():
         _mv_latest_annotated = buf.tobytes()
         _mv_latest_depth = depth_buf
         _mv_latest_detections = detections
-        _mv_latest_model = model_manager.current_model_name
+        _mv_latest_model = active_mgr.current_model_name
         _mv_latest_inference_ms = round(inference_ms, 1)
 
     return jsonify({"ok": True, "inference_ms": round(inference_ms, 1)})
@@ -848,6 +1272,383 @@ def mv_status():
         "model": _mv_latest_model,
         "inference_ms": _mv_latest_inference_ms,
     })
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Automated Inspection Session
+# ═══════════════════════════════════════════════════════════════════════════
+# Runs three sequential stages on live MindVision frames:
+#   1. stator  (5 s) — collect cross-diameter distances (magnet, mechanical_part)
+#   2. chignon (5 s) — collect left/right chignon surface areas
+#   3. file    (2 s) — determine OK / NOT OK position (binary)
+# Results per measurement group are reported as mean ± variance, optionally
+# compared against user-defined min/max thresholds.
+
+import math as _math
+from statistics import mean as _stat_mean, pvariance as _stat_pvariance
+
+_STAGE_DURATIONS = {"stator": 5.0, "chignon": 5.0, "file": 2.0}
+_STAGE_ORDER = ["stator", "chignon", "file"]
+
+# Optional user-defined validation thresholds (persisted in memory only).
+# Keys:
+#   chignon.left_area_mm, chignon.right_area_mm     -> {"min": x, "max": y}
+#   stator.<family>.<orientation>_mm                -> {"min": x, "max": y}
+#     family      : "magnet" | "mechanical_part"
+#     orientation : "diag-asc" | "diag-desc"
+_inspection_thresholds: dict = {}
+_inspection_thresholds_lock = _mv_threading.Lock()
+
+
+def _xdiam_key(label: str) -> str | None:
+    """Map a cross-diameter label like 'Opposite magnet (diag-asc (TR-BL))'
+    to a canonical threshold key 'stator.magnet.diag-asc'."""
+    if not label:
+        return None
+    low = label.lower()
+    if "magnet" in low:
+        family = "magnet"
+    elif "mechanical" in low:
+        family = "mechanical_part"
+    else:
+        return None
+    if "diag-asc" in low:
+        orient = "diag-asc"
+    elif "diag-desc" in low:
+        orient = "diag-desc"
+    else:
+        return None
+    return f"stator.{family}.{orient}"
+
+
+class InspectionSession:
+    """State machine for an automated three-stage inspection run."""
+
+    def __init__(self) -> None:
+        self.lock = _mv_threading.Lock()
+        self.active: bool = False
+        self.stage: str | None = None          # "stator" | "chignon" | "file" | None
+        self.started_at: float = 0.0
+        self.stage_started_at: float = 0.0
+        self._thread: _mv_threading.Thread | None = None
+        self._cancel = _mv_threading.Event()
+
+        # Per-stage raw buffers
+        self._stator_samples: dict[str, list[float]] = {}   # key -> list of mm values
+        self._chignon_samples: dict[str, list[float]] = {}  # "left"/"right" -> list of mm² values
+        self._file_samples: list[bool] = []                 # True = correct position
+
+        self.result: dict | None = None
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def start(self) -> tuple[bool, str]:
+        with self.lock:
+            if self.active:
+                return False, "inspection already running"
+            self.active = True
+            self.stage = _STAGE_ORDER[0]
+            self.started_at = time.time()
+            self.stage_started_at = self.started_at
+            self._stator_samples = {}
+            self._chignon_samples = {}
+            self._file_samples = []
+            self.result = None
+            self._cancel.clear()
+        self._thread = _mv_threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+        return True, "started"
+
+    def cancel(self) -> None:
+        with self.lock:
+            if not self.active:
+                return
+            self._cancel.set()
+
+    def status(self) -> dict:
+        with self.lock:
+            if not self.active:
+                return {
+                    "active": False,
+                    "stage": None,
+                    "result": self.result,
+                }
+            now = time.time()
+            stage_elapsed = now - self.stage_started_at
+            stage_total = _STAGE_DURATIONS.get(self.stage or "", 0.0)
+            stage_remaining = max(0.0, stage_total - stage_elapsed)
+            # Frame counts
+            if self.stage == "stator":
+                frame_count = max((len(v) for v in self._stator_samples.values()), default=0)
+            elif self.stage == "chignon":
+                frame_count = max((len(v) for v in self._chignon_samples.values()), default=0)
+            elif self.stage == "file":
+                frame_count = len(self._file_samples)
+            else:
+                frame_count = 0
+            return {
+                "active": True,
+                "stage": self.stage,
+                "stage_elapsed": round(stage_elapsed, 2),
+                "stage_total": stage_total,
+                "stage_remaining": round(stage_remaining, 2),
+                "total_elapsed": round(now - self.started_at, 2),
+                "frame_count": frame_count,
+                "result": None,
+            }
+
+    # ------------------------------------------------------------------
+    # Frame ingestion (called from mv_receive_frame)
+    # ------------------------------------------------------------------
+
+    def ingest(self, stage: str, detections: list, position_message: str = "") -> None:
+        """Append measurements from the latest detection into the current stage buffer."""
+        with self.lock:
+            if not self.active or self.stage != stage:
+                return
+            if stage == "stator":
+                # Aggregate one sample per cross-diameter key per frame
+                frame_vals: dict[str, float] = {}
+                for det in detections or []:
+                    for m in det.get("measurements", []) or []:
+                        if m.get("type") != "cross_diametric_opposite_distance":
+                            continue
+                        key = _xdiam_key(m.get("label", ""))
+                        if key is None:
+                            continue
+                        val = m.get("value_mm")
+                        if val is None:
+                            continue
+                        # Each cross-diameter appears twice (once per detection);
+                        # dedupe per frame by key.
+                        frame_vals[key] = float(val)
+                for key, val in frame_vals.items():
+                    self._stator_samples.setdefault(key, []).append(val)
+
+            elif stage == "chignon":
+                # Chignon detections expose area measurements. Sort by x-center
+                # to label left vs right. Collect one area per chignon per frame.
+                areas: list[tuple[float, float]] = []  # (x_center, area_mm2)
+                for det in detections or []:
+                    if "chignon" not in str(det.get("class_name", "")).lower():
+                        continue
+                    area_mm = None
+                    for m in det.get("measurements", []) or []:
+                        if m.get("type") == "area":
+                            area_mm = m.get("value_mm")
+                            break
+                    if area_mm is None:
+                        continue
+                    bbox = det.get("bbox") or [0, 0, 0, 0]
+                    x_center = (bbox[0] + bbox[2]) / 2.0
+                    areas.append((x_center, float(area_mm)))
+                areas.sort(key=lambda t: t[0])
+                if len(areas) >= 1:
+                    self._chignon_samples.setdefault("left", []).append(areas[0][1])
+                if len(areas) >= 2:
+                    self._chignon_samples.setdefault("right", []).append(areas[-1][1])
+
+            elif stage == "file":
+                # Binary decision from position message
+                msg = (position_message or "").lower()
+                if "correct position" in msg:
+                    self._file_samples.append(True)
+                elif "incorrect position" in msg:
+                    self._file_samples.append(False)
+                # No message → skip
+
+    # ------------------------------------------------------------------
+    # Stage transitions (background thread)
+    # ------------------------------------------------------------------
+
+    def _run(self) -> None:
+        try:
+            for stage in _STAGE_ORDER:
+                if self._cancel.is_set():
+                    break
+                self._enter_stage(stage)
+                end = time.time() + _STAGE_DURATIONS[stage]
+                while time.time() < end:
+                    if self._cancel.is_set():
+                        break
+                    time.sleep(0.05)
+            if not self._cancel.is_set():
+                result = self._aggregate()
+            else:
+                result = {"cancelled": True}
+        except Exception as exc:
+            logger.exception("Inspection run failed")
+            result = {"error": str(exc)}
+        finally:
+            with self.lock:
+                self.result = result
+                self.active = False
+                self.stage = None
+
+    def _enter_stage(self, stage: str) -> None:
+        with self.lock:
+            self.stage = stage
+            self.stage_started_at = time.time()
+        logger.info("[Inspection] Entering stage: %s", stage)
+
+    # ------------------------------------------------------------------
+    # Aggregation + validation
+    # ------------------------------------------------------------------
+
+    def _aggregate(self) -> dict:
+        with _inspection_thresholds_lock:
+            thr = dict(_inspection_thresholds)
+
+        def _summary(values: list[float]) -> dict:
+            n = len(values)
+            if n == 0:
+                return {"count": 0, "mean": None, "variance": None, "std": None}
+            mu = _stat_mean(values)
+            var = _stat_pvariance(values) if n > 1 else 0.0
+            return {
+                "count": n,
+                "mean": round(mu, 3),
+                "variance": round(var, 4),
+                "std": round(_math.sqrt(var), 3),
+            }
+
+        def _validate(key: str, mu: float | None) -> dict | None:
+            if mu is None:
+                return None
+            bounds = thr.get(key)
+            if not bounds:
+                return None
+            lo = bounds.get("min")
+            hi = bounds.get("max")
+            ok = True
+            reason = None
+            if lo is not None and mu < float(lo):
+                ok = False
+                reason = f"below min {lo}"
+            elif hi is not None and mu > float(hi):
+                ok = False
+                reason = f"above max {hi}"
+            return {"valid": ok, "reason": reason, "min": lo, "max": hi}
+
+        # --- Stator ---
+        stator_results = []
+        for key, values in sorted(self._stator_samples.items()):
+            summ = _summary(values)
+            stator_results.append({
+                "key": key,
+                "label": key.replace("stator.", "").replace(".", " "),
+                "unit": "mm",
+                **summ,
+                "validation": _validate(key, summ["mean"]),
+            })
+
+        # --- Chignon ---
+        chignon_results = []
+        for side in ("left", "right"):
+            values = self._chignon_samples.get(side, [])
+            summ = _summary(values)
+            key = f"chignon.{side}_area_mm"
+            chignon_results.append({
+                "key": key,
+                "label": f"{side.capitalize()} chignon area",
+                "unit": "mm²",
+                **summ,
+                "validation": _validate(key, summ["mean"]),
+            })
+
+        # --- File ---
+        total = len(self._file_samples)
+        ok_count = sum(1 for v in self._file_samples if v)
+        if total == 0:
+            file_decision = {"decision": "UNKNOWN", "ok_ratio": None, "samples": 0}
+        else:
+            ratio = ok_count / total
+            file_decision = {
+                "decision": "OK" if ratio >= 0.5 else "NOT OK",
+                "ok_ratio": round(ratio, 3),
+                "samples": total,
+            }
+
+        return {
+            "cancelled": False,
+            "duration_s": round(time.time() - self.started_at, 2),
+            "stator": stator_results,
+            "chignon": chignon_results,
+            "file": file_decision,
+        }
+
+
+_inspection_session = InspectionSession()
+
+
+def _inspection_manager_for(stage: str | None):
+    """Return the model manager used during a given inspection stage."""
+    if stage == "chignon":
+        return chignon_manager
+    if stage == "file":
+        return file_manager
+    return model_manager
+
+
+@app.route("/api/inspection/start", methods=["POST"])
+def inspection_start():
+    if _mv_latest_frame is None:
+        return jsonify({"ok": False, "error": "MindVision camera not streaming"}), 400
+    ok, msg = _inspection_session.start()
+    if not ok:
+        return jsonify({"ok": False, "error": msg}), 409
+    return jsonify({"ok": True, "status": _inspection_session.status()})
+
+
+@app.route("/api/inspection/cancel", methods=["POST"])
+def inspection_cancel():
+    _inspection_session.cancel()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/inspection/status")
+def inspection_status():
+    return jsonify(_inspection_session.status())
+
+
+@app.route("/api/inspection/result")
+def inspection_result():
+    with _inspection_session.lock:
+        return jsonify({"result": _inspection_session.result, "active": _inspection_session.active})
+
+
+@app.route("/api/inspection/thresholds", methods=["GET", "POST"])
+def inspection_thresholds():
+    global _inspection_thresholds
+    if request.method == "GET":
+        with _inspection_thresholds_lock:
+            return jsonify(_inspection_thresholds)
+    # POST: replace with a new mapping of { key: {min, max} }
+    payload = request.get_json(silent=True) or {}
+    cleaned: dict = {}
+    for key, bounds in payload.items():
+        if not isinstance(bounds, dict):
+            continue
+        lo = bounds.get("min")
+        hi = bounds.get("max")
+        entry: dict = {}
+        if lo not in (None, ""):
+            try:
+                entry["min"] = float(lo)
+            except (TypeError, ValueError):
+                pass
+        if hi not in (None, ""):
+            try:
+                entry["max"] = float(hi)
+            except (TypeError, ValueError):
+                pass
+        if entry:
+            cleaned[str(key)] = entry
+    with _inspection_thresholds_lock:
+        _inspection_thresholds = cleaned
+    return jsonify({"ok": True, "thresholds": cleaned})
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -21,6 +21,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVER_DIR="$SCRIPT_DIR/server"
 CLIENT_DIR="$SCRIPT_DIR/client"
 DEFAULT_PORT=5001
+# MLflow UI (from docker-compose) is published on host port 5002
+MLFLOW_UI_PORT="${MLFLOW_UI_PORT:-5002}"
 MINDVISION_MODE=false
 MINDVISION_SHOW=false
 CAPTURE_INTERVAL=5
@@ -136,9 +138,11 @@ wait_for_server() {
 # ── Start ────────────────────────────────────────────────────
 echo ""
 echo -e "${CYAN}───────────────────────────────────────────────────${NC}"
-info "Server (backend) : http://localhost:${PORT}"
-info "Frontend (client): http://localhost:${PORT}"
+info "App (frontend)   : http://localhost:${PORT}        (port ${PORT})"
+info "API (backend)    : http://localhost:${PORT}/api    (port ${PORT})"
+info "API docs         : http://localhost:${PORT}/api/docs"
 info "API status       : http://localhost:${PORT}/api/status"
+info "MLflow UI        : http://localhost:${MLFLOW_UI_PORT}  (port ${MLFLOW_UI_PORT}, via docker-compose)"
 echo -e "${CYAN}───────────────────────────────────────────────────${NC}"
 info "Press Ctrl+C to stop."
 echo ""
