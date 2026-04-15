@@ -15,6 +15,7 @@ A comprehensive benchmarking framework for evaluating segmentation and edge-dete
 
 ## Table of Contents
 
+- [Current Status (April 2026)](#current-status-april-2026)
 - [Project Architecture](#project-architecture)
   - [Directory Structure](#directory-structure)
   - [Package Overview](#package-overview)
@@ -68,6 +69,75 @@ A comprehensive benchmarking framework for evaluating segmentation and edge-dete
   - [Model Discovery](#model-discovery)
   - [Measurement & Calibration Settings](#measurement--calibration-settings)
   - [Client Features](#client-features)
+
+---
+
+## Current Status (April 2026)
+
+### Implemented and Active
+
+- Unified runtime for three domains (`stator`, `chignon`, `file`) in one Flask + WebRTC application.
+- Domain-aware routing is active in both live stream (`/offer`) and upload inference (`/api/detect`).
+- Dedicated managers are integrated and selectable end-to-end:
+  - `ModelManager` for stator
+  - `ChignonModelManager` for chignon
+  - `FileModelManager` for file
+- Inference enhancement controls are implemented in API/UI:
+  - tracking, edge refinement, post-processing, top-N, heuristic filtering
+  - draw toggles (boxes, masks, labels)
+  - confidence threshold updates at runtime
+- Measurement and calibration pipeline is active with methods:
+  - camera intrinsics
+  - reference label
+  - manual px->mm factor
+  - ML depth (MiDaS option)
+
+### Training and Observability
+
+- Comprehensive training telemetry is implemented in `src/training/trainer.py`:
+  - batch and epoch timing (forward/backward/data/optimizer)
+  - CPU/RAM/GPU usage tracking
+  - IoU, Dice, F1, precision, recall, accuracy metrics
+- MLflow integration is implemented for training:
+  - run start with hyperparameters
+  - per-epoch train/val metrics logging
+  - summary metrics + artifacts (best checkpoint, training history)
+- Inference session logging is active:
+  - JSONL logs under `outputs/inference_logs/`
+  - per-frame entries (latency, fps, detections, confidence)
+- MLflow integration is also implemented for inference session summaries (best-effort, non-blocking).
+
+### Deployment Status
+
+- Docker Compose currently includes:
+  - `server` (Flask + inference)
+  - `mlflow` (tracking server on port `5001`)
+  - `client` (Nginx static frontend)
+- Server now exposes `GET /api/mlflow-url` to provide a browser-reachable MLflow URL and health state.
+
+### Current Limitations / Notes
+
+- File-domain production path currently relies on checkpoint-based `.pth` inference; YOLO for this domain is not the active production path.
+- MLflow logging is designed as best-effort: training/inference continue even when MLflow is unavailable.
+- Inference logs in `outputs/inference_logs/` are runtime artifacts and can grow quickly.
+
+### Practical Commands (Current)
+
+```bash
+# Full local setup
+./setup.sh
+
+# Quick local run
+./run.sh
+
+# Default training launcher
+./train.sh
+
+# Docker stack (server + mlflow + client)
+docker compose up -d
+```
+
+Default MLflow UI: `http://localhost:5001`
 
 ---
 
