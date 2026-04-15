@@ -21,6 +21,14 @@ import cv2
 import numpy as np
 from scipy.spatial.distance import cdist
 
+try:
+    import mlflow
+    _MLFLOW_AVAILABLE = True
+except ImportError:
+    _MLFLOW_AVAILABLE = False
+
+_MLFLOW_URI = os.environ.get("MLFLOW_TRACKING_URI", "")
+
 # Resolve project root — can be overridden via environment variable
 PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", Path(__file__).resolve().parent.parent))
 if str(PROJECT_ROOT) not in sys.path:
@@ -53,6 +61,7 @@ class InferenceLogger:
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self._session_file = self._new_session_path()
         self._bytes_written = 0
+        self._mlflow_stats = self._fresh_mlflow_stats()
 
     # -- public API -------------------------------------------------------
 
@@ -82,6 +91,16 @@ class InferenceLogger:
         except OSError:
             pass  # non-critical; silently skip
 
+        # Accumulate for MLflow session summary
+        s = self._mlflow_stats
+        s["frames"] += 1
+        s["total_latency_ms"] += latency_ms
+        s["total_fps"] += fps
+        s["total_detections"] += num_detections
+        s["total_confidence"] += avg_confidence
+        if s["model"] is None:
+            s["model"] = model_name
+
     def get_current_session_file(self) -> Path:
         return self._session_file
 
@@ -102,8 +121,51 @@ class InferenceLogger:
         return self.log_dir / f"session_{ts}.jsonl"
 
     def _rotate(self) -> None:
+        self._flush_mlflow_session()   # summarise before rotating
         self._session_file = self._new_session_path()
         self._bytes_written = 0
+        self._mlflow_stats = self._fresh_mlflow_stats()
+
+    # -- MLflow helpers ---------------------------------------------------
+
+    @staticmethod
+    def _fresh_mlflow_stats() -> dict:
+        return {
+            "frames": 0,
+            "total_latency_ms": 0.0,
+            "total_fps": 0.0,
+            "total_detections": 0,
+            "total_confidence": 0.0,
+            "model": None,
+            "start_ts": time.time(),
+        }
+
+    def _flush_mlflow_session(self) -> None:
+        """Log an inference session summary run to MLflow (non-blocking, best-effort)."""
+        if not (_MLFLOW_AVAILABLE and _MLFLOW_URI):
+            return
+        s = self._mlflow_stats
+        n = s["frames"]
+        if n == 0:
+            return
+        try:
+            mlflow.set_tracking_uri(_MLFLOW_URI)
+            mlflow.set_experiment("stator-vision/inference")
+            run_name = f"inference-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            with mlflow.start_run(run_name=run_name):
+                mlflow.log_params({"model": s["model"] or "unknown"})
+                mlflow.log_metrics({
+                    "avg_latency_ms":    s["total_latency_ms"]  / n,
+                    "avg_fps":           s["total_fps"]          / n,
+                    "avg_detections":    s["total_detections"]   / n,
+                    "avg_confidence":    s["total_confidence"]   / n,
+                    "total_frames":      float(n),
+                    "session_duration_s": time.time() - s["start_ts"],
+                })
+                if self._session_file.exists():
+                    mlflow.log_artifact(str(self._session_file), artifact_path="inference_logs")
+        except Exception:
+            pass  # non-critical — never crash inference over MLflow
 
 
 # ═══════════════════════════════════════════════════════════════════════════

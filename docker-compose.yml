@@ -20,6 +20,10 @@ services:
       - PROJECT_ROOT=/app
       - CLIENT_DIR=/app/client
       - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=http://mlflow:5001
+    depends_on:
+      mlflow:
+        condition: service_healthy
     volumes:
       - ./client:/app/client:ro
     restart: unless-stopped
@@ -36,6 +40,28 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [ gpu ]
+
+  # ── MLflow Tracking Server ──────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: stator-mlflow
+    ports:
+      - "5001:5001"
+    command: >
+      mlflow server
+        --host 0.0.0.0
+        --port 5001
+        --backend-store-uri sqlite:////mlflow/mlflow.db
+        --default-artifact-root /mlflow/artifacts
+    volumes:
+      - ./mlflow:/mlflow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
 
   # ── Client (Nginx static file server) ──────────────────────
   client:

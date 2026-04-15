@@ -41,6 +41,9 @@ natsort>=8.0.0
 # System monitoring
 psutil>=5.9.0
 
+# Experiment tracking
+mlflow>=2.13.0
+
 # SAM 2 + LoRA fine-tuning (optional — uncomment when needed)
 # segment-anything-2
 # peft>=0.6.0

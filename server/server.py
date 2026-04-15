@@ -15,6 +15,7 @@ GET  /                  → Client UI
 GET  /api/models        → List available models
 POST /api/select-model  → Switch the active model
 POST /offer             → WebRTC SDP signaling
+GET  /api/mlflow-url    → MLflow tracking UI URL & health
 """
 
 import asyncio
@@ -573,6 +574,44 @@ def api_inference_logs():
 def api_inference_alerts():
     """Return the latest inference validation alerts."""
     return jsonify({"alerts": model_manager.get_latest_alerts()})
+
+
+# ---------- MLflow ---------- #
+
+@app.route("/api/mlflow-url", methods=["GET"])
+def api_mlflow_url():
+    """Return the MLflow tracking UI URL and whether the server is reachable.
+
+    The internal Docker URI (e.g. http://mlflow:5001) is rewritten so that
+    the browser can reach the dashboard (e.g. http://localhost:5001).
+    """
+    internal_uri = os.environ.get("MLFLOW_TRACKING_URI", "")
+
+    if not internal_uri:
+        return jsonify({"configured": False, "url": None, "reachable": False})
+
+    # Build a browser-accessible URL: replace Docker-internal hostnames
+    # (like "mlflow") with the host the browser can reach.
+    import urllib.parse
+    parsed = urllib.parse.urlparse(internal_uri)
+    # If the hostname is not already localhost / 127.0.0.1, swap it out
+    browser_host = os.environ.get("MLFLOW_EXTERNAL_HOST", "localhost")
+    browser_url = f"{parsed.scheme}://{browser_host}:{parsed.port or 5001}"
+
+    # Quick reachability probe against the *internal* URI (server-side)
+    reachable = False
+    try:
+        import urllib.request
+        urllib.request.urlopen(f"{internal_uri}/health", timeout=2)
+        reachable = True
+    except Exception:
+        pass
+
+    return jsonify({
+        "configured": True,
+        "url": browser_url,
+        "reachable": reachable,
+    })
 
 
 # ═══════════════════════════════════════════════════════════════════════════

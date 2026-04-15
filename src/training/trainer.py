@@ -29,6 +29,15 @@ try:
 except:
     PYNVML_AVAILABLE = False
 
+try:
+    import mlflow
+    import mlflow.pytorch
+    _MLFLOW_AVAILABLE = True
+except ImportError:
+    _MLFLOW_AVAILABLE = False
+
+_MLFLOW_URI = os.environ.get("MLFLOW_TRACKING_URI", "")
+
 from src.config import config
 
 
@@ -650,7 +659,10 @@ class ComprehensiveTrainer:
         # Early stopping tracking
         self.best_val_loss = float('inf')
         self.epochs_without_improvement = 0
-    
+
+        # MLflow — active run handle (set in train())
+        self._mlflow_run = None
+
     def _get_nn_model(self):
         """Get the underlying nn.Module from wrapper models."""
         if isinstance(self.model, nn.Module):
@@ -1263,11 +1275,38 @@ class ComprehensiveTrainer:
         print(f"Output: {self.logs_dir}")
         print()
         
+        # ── MLflow: start run and log hyperparameters ─────────────
+        if _MLFLOW_AVAILABLE and _MLFLOW_URI:
+            try:
+                mlflow.set_tracking_uri(_MLFLOW_URI)
+                domain = self.model_name.split("_")[0] if "_" in self.model_name else self.model_name
+                mlflow.set_experiment(f"stator-vision/{domain}")
+                run_tag = f"{self.model_name}-{datetime.now().strftime('%Y%m%d_%H%M')}"
+                self._mlflow_run = mlflow.start_run(run_name=run_tag)
+                mlflow.log_params({
+                    "model_name":               self.model_name,
+                    "num_epochs":               self.num_epochs,
+                    "learning_rate":            self.learning_rate,
+                    "weight_decay":             self.weight_decay,
+                    "optimizer":                self.optimizer_name,
+                    "scheduler":                self.scheduler_name,
+                    "loss_mode":                self.loss_mode,
+                    "use_amp":                  self.use_amp,
+                    "device":                   self.device,
+                    "early_stopping_patience":  self.early_stopping_patience,
+                    "train_samples":            len(self.train_loader.dataset),
+                    "val_samples":              len(self.val_loader.dataset),
+                    "num_classes":              self.num_classes,
+                })
+            except Exception as _mlflow_err:
+                print(f"  [MLflow] Could not start run: {_mlflow_err}")
+                self._mlflow_run = None
+
         # Start hardware monitor
         self.hardware_monitor.start()
-        
+
         training_start = time.time()
-        
+
         try:
             for epoch in range(1, self.num_epochs + 1):
                 print(f"\nEpoch {epoch}/{self.num_epochs}")
@@ -1300,7 +1339,38 @@ class ComprehensiveTrainer:
                 print(f"  Latency - Forward: {train_metrics.avg_forward_time_ms:.1f}ms, "
                       f"Backward: {train_metrics.avg_backward_time_ms:.1f}ms, "
                       f"Throughput: {train_metrics.throughput_samples_per_sec:.1f} samples/s")
-                
+
+                # ── MLflow: log per-epoch metrics ─────────────────────
+                if _MLFLOW_AVAILABLE and self._mlflow_run:
+                    try:
+                        mlflow.log_metrics({
+                            "train/loss":        train_metrics.loss_mean,
+                            "train/iou":         train_metrics.iou_mean,
+                            "train/dice":        train_metrics.dice_mean,
+                            "train/f1":          train_metrics.f1_mean,
+                            "train/accuracy":    train_metrics.accuracy_mean,
+                            "train/precision":   train_metrics.precision_mean,
+                            "train/recall":      train_metrics.recall_mean,
+                            "train/throughput":  train_metrics.throughput_samples_per_sec,
+                            "train/forward_ms":  train_metrics.avg_forward_time_ms,
+                            "train/backward_ms": train_metrics.avg_backward_time_ms,
+                            "train/gpu_mem_mb":  train_metrics.gpu_memory_mb_max,
+                            "train/gpu_util":    train_metrics.gpu_utilization_mean,
+                            "train/cpu_pct":     train_metrics.cpu_percent_mean,
+                            "train/lr":          train_metrics.learning_rate,
+                            "val/loss":          val_metrics.loss_mean,
+                            "val/iou":           val_metrics.iou_mean,
+                            "val/dice":          val_metrics.dice_mean,
+                            "val/f1":            val_metrics.f1_mean,
+                            "val/accuracy":      val_metrics.accuracy_mean,
+                            "val/precision":     val_metrics.precision_mean,
+                            "val/recall":        val_metrics.recall_mean,
+                            "val/throughput":    val_metrics.throughput_samples_per_sec,
+                            "val/gpu_mem_mb":    val_metrics.gpu_memory_mb_max,
+                        }, step=epoch)
+                    except Exception:
+                        pass  # non-critical
+
                 # Update best metrics
                 if val_metrics.loss_mean < self.best_val_loss:
                     self.best_val_loss = val_metrics.loss_mean
@@ -1355,7 +1425,35 @@ class ComprehensiveTrainer:
             
             # Save final history
             self._save_training_history()
-        
+
+            # ── MLflow: log summary metrics, best model, and end run ──
+            if _MLFLOW_AVAILABLE and self._mlflow_run:
+                try:
+                    mlflow.log_metrics({
+                        "summary/best_val_loss":       self.history.best_val_loss,
+                        "summary/best_val_iou":        self.history.best_val_iou,
+                        "summary/best_val_accuracy":   self.history.best_val_accuracy,
+                        "summary/best_epoch":          float(self.history.best_epoch),
+                        "summary/total_train_time_s":  self.history.total_train_time_sec,
+                        "summary/peak_gpu_mem_mb":     self.history.peak_gpu_memory_mb,
+                        "summary/peak_cpu_pct":        self.history.peak_cpu_percent,
+                        "summary/peak_ram_mb":         self.history.peak_ram_mb,
+                        "summary/avg_gpu_util":        self.history.avg_gpu_utilization,
+                    })
+                    # Log best checkpoint as artifact
+                    best_ckpt = os.path.join(self.checkpoints_dir, "best_model.pth")
+                    if os.path.exists(best_ckpt):
+                        mlflow.log_artifact(best_ckpt, artifact_path="checkpoints")
+                    # Log training history JSON
+                    history_json = os.path.join(self.logs_dir, "training_history.json")
+                    if os.path.exists(history_json):
+                        mlflow.log_artifact(history_json, artifact_path="logs")
+                except Exception as _mlflow_err:
+                    print(f"  [MLflow] Could not finalize run: {_mlflow_err}")
+                finally:
+                    mlflow.end_run()
+                    self._mlflow_run = None
+
         print(f"\n{'='*60}")
         print("Training Complete!")
         print(f"{'='*60}")
