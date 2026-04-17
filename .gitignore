@@ -24,6 +24,9 @@ env/
 
 # ---- Model Weights ----
 weights/
+*.pt
+*.pth
+*.onnx
 
 
 # ---- Generated Outputs ----
