@@ -1424,6 +1424,39 @@ setInterval(async () => {
 })();
 
 // ═══════════════════════════════════════════════════════════════
+// Dashboard — Mode Switcher (Normal vs Inspection)
+// ═══════════════════════════════════════════════════════════════
+
+(function initModeSwitcher() {
+    const switcher = document.getElementById("modeSwitcher");
+    if (!switcher) return;
+
+    const btns = switcher.querySelectorAll(".domain-btn[data-mode]");
+    const domainSwitcher = document.getElementById("domainSwitcher");
+    const btnRunInspection = document.getElementById("btnRunInspection");
+    const inspectionPanel = document.getElementById("inspectionPanel");
+
+    function applyMode(mode) {
+        btns.forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+
+        const isInspection = mode === "inspection";
+        if (domainSwitcher) domainSwitcher.classList.toggle("disabled", isInspection);
+        if (btnRunInspection) btnRunInspection.style.display = isInspection ? "" : "none";
+        if (!isInspection && inspectionPanel) inspectionPanel.style.display = "none";
+    }
+
+    btns.forEach(btn => {
+        btn.addEventListener("click", () => applyMode(btn.dataset.mode));
+    });
+
+    // Default to Normal
+    applyMode("normal");
+
+    // Expose so inspection.js can re-enable domain switcher when a run finishes
+    window.setDetectionMode = applyMode;
+})();
+
+// ═══════════════════════════════════════════════════════════════
 // Dashboard — Past Sessions
 // ═══════════════════════════════════════════════════════════════
 

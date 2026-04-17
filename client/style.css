@@ -363,7 +363,9 @@ html.dark .theme-btn .icon-sun  { display: block; }
 }
 
 .page-header-left { display: flex; flex-direction: column; gap: 2px; }
-.page-header-right { display: flex; align-items: center; }
+.page-header-right { display: flex; align-items: center; gap: 10px; }
+
+.domain-switcher.disabled { opacity: 0.45; pointer-events: none; }
 
 /* ── Domain Switcher ───────────────────────────────────────── */
 .domain-switcher {

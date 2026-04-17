@@ -219,6 +219,58 @@
         } catch (_) {}
     }
 
+    // ── Stage duration configuration ─────────────────────────────────────
+    const DURATION_KEYS = ["stator", "chignon", "file"];
+
+    async function loadDurations() {
+        try {
+            const res = await fetch("/api/inspection/durations");
+            const data = await res.json();
+            for (const key of DURATION_KEYS) {
+                const input = document.querySelector(`[data-dur-key="${key}"]`);
+                if (input && data[key] != null) input.value = data[key];
+            }
+        } catch (_) {}
+    }
+
+    async function saveDurations() {
+        const payload = {};
+        for (const key of DURATION_KEYS) {
+            const input = document.querySelector(`[data-dur-key="${key}"]`);
+            if (input && input.value !== "") {
+                const v = parseFloat(input.value);
+                if (!isNaN(v)) payload[key] = v;
+            }
+        }
+        const errEl = $("durationsError");
+        if (errEl) { errEl.style.display = "none"; errEl.textContent = ""; }
+        try {
+            const res = await fetch("/api/inspection/durations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.ok) {
+                if (errEl) {
+                    errEl.textContent = data.error || "Could not save durations";
+                    errEl.style.display = "inline";
+                }
+                return;
+            }
+            const saved = $("durationsSaved");
+            if (saved) {
+                saved.style.display = "inline";
+                setTimeout(() => { saved.style.display = "none"; }, 1600);
+            }
+        } catch (e) {
+            if (errEl) {
+                errEl.textContent = e.message;
+                errEl.style.display = "inline";
+            }
+        }
+    }
+
     // ── Init ─────────────────────────────────────────────────────────────
     document.addEventListener("DOMContentLoaded", () => {
         const runBtn = $("btnRunInspection");
@@ -241,6 +293,21 @@
             });
         }
 
+        const durSaveBtn = $("btnSaveDurations");
+        if (durSaveBtn) durSaveBtn.addEventListener("click", saveDurations);
+
+        const durToggle = $("durationsToggle");
+        const durBody = $("durationsBody");
+        const durChevron = $("durationsChevron");
+        if (durToggle && durBody) {
+            durToggle.addEventListener("click", () => {
+                const isHidden = durBody.style.display === "none";
+                durBody.style.display = isHidden ? "block" : "none";
+                if (durChevron) durChevron.textContent = isHidden ? "▾" : "▸";
+            });
+        }
+
         loadThresholds();
+        loadDurations();
     });
 })();

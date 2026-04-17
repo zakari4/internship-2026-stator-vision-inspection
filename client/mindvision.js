@@ -86,7 +86,7 @@
                     .map(
                         (d) =>
                             `<div class="detection-item">
-                                <span class="det-class">${d.class || "chignon"}</span>
+                                <span class="det-class">${d.class_name || d.class || "—"}</span>
                                 <span class="det-conf">${(d.confidence * 100).toFixed(1)}%</span>
                                 ${d.bbox ? `<span class="det-bbox">[${d.bbox.map((v) => Math.round(v)).join(", ")}]</span>` : ""}
                             </div>`

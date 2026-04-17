@@ -125,6 +125,16 @@
                     <span class="page-subtitle">Real-time stator inspection</span>
                 </div>
                 <div class="page-header-right">
+                    <div class="domain-switcher" id="modeSwitcher" role="group" aria-label="Detection mode">
+                        <button class="domain-btn active" data-mode="normal" title="Pick a single domain and run continuous detection">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                            Normal
+                        </button>
+                        <button class="domain-btn" data-mode="inspection" title="Run the 12s automated stator → chignon → file sequence">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            Inspection
+                        </button>
+                    </div>
                     <div class="domain-switcher" id="domainSwitcher" role="group" aria-label="Detection domain">
                         <button class="domain-btn active" data-domain="stator">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="2" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="22" y2="12"/></svg>
@@ -711,6 +721,39 @@
                         <div class="settings-actions">
                             <button id="btnSaveThresholds" class="btn btn-primary btn-sm">Save Thresholds</button>
                             <span id="thresholdsSaved" class="saved-indicator" style="display:none;">✓ Saved</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Inspection Stage Durations ── -->
+                <div class="settings-card">
+                    <div class="settings-card-header settings-card-toggle" id="durationsToggle">
+                        <span style="display:flex;align-items:center;gap:8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            Inspection Stage Durations
+                        </span>
+                        <span class="card-chevron" id="durationsChevron">▾</span>
+                    </div>
+                    <div class="settings-card-body" id="durationsBody">
+                        <p class="settings-hint">Seconds spent on each stage during an automated inspection run. Values must be between 0.5 and 120 seconds.</p>
+                        <div class="threshold-grid">
+                            <div class="threshold-row">
+                                <label>Stator</label>
+                                <input type="number" step="0.5" min="0.5" max="120" data-dur-key="stator" id="durStator">
+                            </div>
+                            <div class="threshold-row">
+                                <label>Chignon</label>
+                                <input type="number" step="0.5" min="0.5" max="120" data-dur-key="chignon" id="durChignon">
+                            </div>
+                            <div class="threshold-row">
+                                <label>File</label>
+                                <input type="number" step="0.5" min="0.5" max="120" data-dur-key="file" id="durFile">
+                            </div>
+                        </div>
+                        <div class="settings-actions">
+                            <button id="btnSaveDurations" class="btn btn-primary btn-sm">Save Durations</button>
+                            <span id="durationsSaved" class="saved-indicator" style="display:none;">✓ Saved</span>
+                            <span id="durationsError" class="saved-indicator" style="display:none;color:#e55;"></span>
                         </div>
                     </div>
                 </div>

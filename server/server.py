@@ -702,6 +702,15 @@ def _build_openapi_spec() -> dict:
                     "responses": {"200": {"description": "Saved"}},
                 },
             },
+            "/api/inspection/durations": {
+                "get": {"tags": ["Inspection"], "summary": "Get per-stage durations (seconds)", "responses": {"200": {"description": "Durations"}}},
+                "post": {
+                    "tags": ["Inspection"],
+                    "summary": "Update per-stage durations (seconds)",
+                    "requestBody": {"required": True, "content": {"application/json": {"schema": {"type": "object", "properties": {"stator": {"type": "number"}, "chignon": {"type": "number"}, "file": {"type": "number"}}}}}},
+                    "responses": {"200": {"description": "Saved"}, "400": {"description": "Invalid value"}, "409": {"description": "Inspection running"}},
+                },
+            },
         },
     }
 
@@ -1057,6 +1066,9 @@ _mv_proc: "_mv_subprocess.Popen | None" = None
 _mv_proc_lock = _mv_threading.Lock()
 
 
+_MV_LOG_PATH = PROJECT_ROOT / "outputs" / "mindvision_capture.log"
+
+
 @app.route("/api/mindvision/start", methods=["POST"])
 def mv_start():
     """Launch mindvision_capture.py as a managed subprocess."""
@@ -1070,11 +1082,37 @@ def mv_start():
             return jsonify({"ok": False, "msg": "mindvision_capture.py not found"}), 404
 
         try:
+            _MV_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+            log_fh = open(_MV_LOG_PATH, "w")
+            # Point the capture subprocess at this server, regardless of port.
+            # request.host_url looks like "http://localhost:5001/"
+            server_url = request.host_url.rstrip("/")
             _mv_proc = _mv_subprocess.Popen(
-                [sys.executable, script],
-                stdout=_mv_subprocess.DEVNULL,
-                stderr=_mv_subprocess.DEVNULL,
+                [sys.executable, script, "--server-url", server_url],
+                stdout=log_fh,
+                stderr=_mv_subprocess.STDOUT,
             )
+            # Give the child a moment to crash on obvious failures (SDK missing,
+            # camera already open, etc.) so we can report the reason immediately.
+            time.sleep(0.6)
+            if _mv_proc.poll() is not None:
+                log_fh.close()
+                tail = ""
+                try:
+                    with open(_MV_LOG_PATH) as f:
+                        tail = f.read().strip().splitlines()[-6:]
+                        tail = "\n".join(tail)
+                except Exception:
+                    pass
+                rc = _mv_proc.returncode
+                _mv_proc = None
+                return jsonify({
+                    "ok": False,
+                    "running": False,
+                    "msg": f"capture script exited immediately (code {rc})",
+                    "log_tail": tail,
+                    "log_path": str(_MV_LOG_PATH),
+                }), 500
             return jsonify({"ok": True, "running": True, "pid": _mv_proc.pid})
         except Exception as exc:
             return jsonify({"ok": False, "msg": str(exc)}), 500
@@ -1250,6 +1288,9 @@ def mv_depth_stream():
         generate(),
         mimetype="multipart/x-mixed-replace; boundary=frame",
     )
+
+
+@app.route("/api/mindvision/latest")
 def mv_latest():
     """Get the latest annotated frame + detections as JSON."""
     with _mv_frame_lock:
@@ -1301,8 +1342,15 @@ def mv_set_domain():
 import math as _math
 from statistics import mean as _stat_mean, pvariance as _stat_pvariance
 
-_STAGE_DURATIONS = {"stator": 5.0, "chignon": 5.0, "file": 2.0}
+_STAGE_DURATIONS: dict[str, float] = {"stator": 5.0, "chignon": 5.0, "file": 2.0}
+_STAGE_DURATIONS_LOCK = _mv_threading.Lock()
+_STAGE_DURATION_LIMITS = (0.5, 120.0)  # seconds
 _STAGE_ORDER = ["stator", "chignon", "file"]
+
+
+def _stage_duration(stage: str) -> float:
+    with _STAGE_DURATIONS_LOCK:
+        return float(_STAGE_DURATIONS.get(stage, 0.0))
 
 # Optional user-defined validation thresholds (persisted in memory only).
 # Keys:
@@ -1391,7 +1439,7 @@ class InspectionSession:
                 }
             now = time.time()
             stage_elapsed = now - self.stage_started_at
-            stage_total = _STAGE_DURATIONS.get(self.stage or "", 0.0)
+            stage_total = _stage_duration(self.stage or "")
             stage_remaining = max(0.0, stage_total - stage_elapsed)
             # Frame counts
             if self.stage == "stator":
@@ -1465,11 +1513,14 @@ class InspectionSession:
                     self._chignon_samples.setdefault("right", []).append(areas[-1][1])
 
             elif stage == "file":
-                # Binary decision from position message
-                msg = (position_message or "").lower()
-                if "correct position" in msg:
+                # Binary decision from position message. Use prefix match because
+                # "correct position" is a substring of "incorrect position", and
+                # the fallback "Incorrect: need at least 2 ..." also starts with
+                # "incorrect" — both must count as a NOT-OK sample.
+                msg = (position_message or "").strip().lower()
+                if msg.startswith("correct"):
                     self._file_samples.append(True)
-                elif "incorrect position" in msg:
+                elif msg.startswith("incorrect"):
                     self._file_samples.append(False)
                 # No message → skip
 
@@ -1483,7 +1534,7 @@ class InspectionSession:
                 if self._cancel.is_set():
                     break
                 self._enter_stage(stage)
-                end = time.time() + _STAGE_DURATIONS[stage]
+                end = time.time() + _stage_duration(stage)
                 while time.time() < end:
                     if self._cancel.is_set():
                         break
@@ -1663,6 +1714,33 @@ def inspection_thresholds():
     with _inspection_thresholds_lock:
         _inspection_thresholds = cleaned
     return jsonify({"ok": True, "thresholds": cleaned})
+
+
+@app.route("/api/inspection/durations", methods=["GET", "POST"])
+def inspection_durations():
+    """Get or update per-stage durations (seconds) for the inspection session."""
+    if request.method == "GET":
+        with _STAGE_DURATIONS_LOCK:
+            return jsonify(dict(_STAGE_DURATIONS))
+    if _inspection_session.active:
+        return jsonify({"ok": False, "error": "inspection running"}), 409
+    payload = request.get_json(silent=True) or {}
+    lo, hi = _STAGE_DURATION_LIMITS
+    updated: dict[str, float] = {}
+    for stage in _STAGE_ORDER:
+        if stage not in payload:
+            continue
+        try:
+            val = float(payload[stage])
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": f"invalid value for {stage}"}), 400
+        if not (lo <= val <= hi):
+            return jsonify({"ok": False, "error": f"{stage} must be between {lo} and {hi}s"}), 400
+        updated[stage] = val
+    with _STAGE_DURATIONS_LOCK:
+        _STAGE_DURATIONS.update(updated)
+        current = dict(_STAGE_DURATIONS)
+    return jsonify({"ok": True, "durations": current})
 
 
 # ═══════════════════════════════════════════════════════════════════════════
