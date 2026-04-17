@@ -107,6 +107,12 @@ document.addEventListener("DOMContentLoaded", () => {
             settingsDomainContext.value = domainSelect.value;
             loadEnhancements();
         }
+        // Sync MindVision camera domain so live frames use the right model
+        fetch("/api/mindvision/set-domain", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ domain: domainSelect.value }),
+        }).catch(() => {});
     });
 
     if (settingsDomainContext) {
@@ -1386,6 +1392,18 @@ setInterval(async () => {
 
             domainSelect.value = domain;
             syncActive(domain);
+
+            // Sync MindVision camera domain so live frames use the right model
+            fetch("/api/mindvision/set-domain", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ domain }),
+            }).catch(() => {});
+
+            // If WebRTC is connected, reconnect so the new domain takes effect
+            if (pc && pc.connectionState === "connected") {
+                disconnect().then(() => connect());
+            }
 
             // Trigger the same logic as the Settings select
             loadModels();

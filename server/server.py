@@ -1050,6 +1050,7 @@ _mv_latest_detections: list = []               # Latest detection metadata
 _mv_latest_model: str | None = None
 _mv_latest_inference_ms: float = 0
 _mv_frame_lock = _mv_threading.Lock()
+_mv_active_domain: str = "stator"             # Domain used for live MV camera inference
 
 # Subprocess handle for mindvision_capture.py when launched from the UI
 _mv_proc: "_mv_subprocess.Popen | None" = None
@@ -1169,8 +1170,9 @@ def mv_receive_frame():
 
     # If an inspection is running, route the frame through the stage-appropriate
     # model manager (stator / chignon / file) so measurements match each stage.
+    # Otherwise use whichever domain the UI has selected via /api/mindvision/set-domain.
     insp_stage = _inspection_session.stage if _inspection_session.active else None
-    active_mgr = _inspection_manager_for(insp_stage) if insp_stage else model_manager
+    active_mgr = _inspection_manager_for(insp_stage) if insp_stage else _get_manager(_mv_active_domain)
 
     t0 = time.time()
     try:
@@ -1272,6 +1274,18 @@ def mv_status():
         "model": _mv_latest_model,
         "inference_ms": _mv_latest_inference_ms,
     })
+
+
+@app.route("/api/mindvision/set-domain", methods=["POST"])
+def mv_set_domain():
+    """Set the active detection domain for the live MindVision camera stream."""
+    global _mv_active_domain
+    data = request.get_json(force=True)
+    domain = data.get("domain", "stator")
+    if domain not in ("stator", "chignon", "file"):
+        return jsonify({"error": f"Unknown domain: {domain}"}), 400
+    _mv_active_domain = domain
+    return jsonify({"status": "ok", "domain": _mv_active_domain})
 
 
 # ═══════════════════════════════════════════════════════════════════════════
