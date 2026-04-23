@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt -r /app/server/requireme
 # Copy application code and model artifacts required by runtime model discovery.
 COPY server /app/server
 COPY client /app/client
+COPY stator /app/stator
 COPY chignon /app/chignon
 COPY files /app/files
 COPY src /app/src

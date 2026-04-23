@@ -12,9 +12,16 @@
 !server/inference.py
 !server/**
 !client/**
+!stator/__init__.py
+!stator/inference.py
+!stator/postprocessing/**
+!chignon/__init__.py
 !chignon/inference.py
+!chignon/postprocessing/**
 !chignon/results/**
+!files/__init__.py
 !files/inference.py
+!files/postprocessing/**
 !files/results/**
 !src/**
 !outputs/results/**
