@@ -146,8 +146,8 @@ Default MLflow UI: `http://localhost:5002`
 ### Directory Structure
 
 ```
-chignon_detection/
-├── src/                          # Core Python package
+stator-vision-inspection/
+├── src/                          # Core shared Python package
 │   ├── __init__.py
 │   ├── config.py                 # Central configuration (dataclasses)
 │   ├── data/                     # Data loading & augmentation
@@ -178,38 +178,68 @@ chignon_detection/
 │   ├── run_failed_models.py      # Re-run failed model training
 │   └── generate_viz.py           # Generate standalone visualizations
 │
-├── chignon/                      # Chignon domain manager + results
-│   ├── inference.py
-│   └── results/
+├── stator/                       # Stator domain — inference + postprocessing
+│   ├── __init__.py
+│   ├── inference.py              #   ModelManager: model discovery, loading, YOLO/PyTorch predict
+│   └── postprocessing/           #   One file per postprocessing concern
+│       ├── __init__.py           #     Re-exports all public symbols
+│       ├── logging.py            #     InferenceLogger — per-frame JSONL session logging
+│       ├── calibration.py        #     CameraSettings — px→mm conversion methods
+│       ├── filtering.py          #     apply_top_n_filtering, apply_spatial_heuristic_correction
+│       ├── measurements.py       #     7 geometric measurement functions
+│       │                         #       normalize_measurement_family
+│       │                         #       compute_contour_measurements
+│       │                         #       compute_single_contour_measurements
+│       │                         #       compute_edge_center_points
+│       │                         #       compute_edge_center_distances
+│       │                         #       compute_aligned_same_class_distances
+│       │                         #       compute_cross_diametric_opposite_distances
+│       └── drawing.py            #     draw_measurements_on_image
 │
-├── files/                        # File domain manager + results
-│   ├── inference.py
-│   └── results/
+├── chignon/                      # Chignon domain — inference + postprocessing
+│   ├── __init__.py
+│   ├── inference.py              #   ChignonModelManager: YOLO/UNet segmentation
+│   ├── postprocessing/
+│   │   ├── __init__.py
+│   │   ├── mask_overlay.py       #   apply_mask_overlay — colour blend onto frame
+│   │   └── contours.py           #   extract_contour_bboxes — mask → detection dicts
+│   └── results/                  #   Trained weights (yolo_training/ + checkpoints/)
+│
+├── files/                        # File domain — inference + postprocessing
+│   ├── __init__.py
+│   ├── inference.py              #   FileModelManager: UNet-ResNet18 + color validation
+│   ├── postprocessing/
+│   │   ├── __init__.py
+│   │   ├── color_detection.py    #   detect_file_colors — HSV blue/yellow analysis
+│   │   ├── bbox_splitting.py     #   split_dual_color_bbox — dual-colour bbox split
+│   │   └── position_validation.py#   validate_file_positions + build_alert
+│   └── results/                  #   Trained weights (checkpoints/unet_resnet18/)
+│
+├── server/                       # Flask + WebRTC backend
+│   ├── server.py                 #   REST API, WebRTC signaling, MindVision endpoints
+│   ├── inference.py              #   Backward-compat shim → re-exports stator.inference
+│   ├── mindvision_capture.py     #   MindVision SDK USB camera capture subprocess
+│   ├── Dockerfile                #   Multi-stage Docker build
+│   └── docker-compose.yml        #   Docker Compose service definition
+│
+├── client/                       # Browser-based frontend
+│   ├── index.html                #   Single-page UI
+│   ├── app.js                    #   WebRTC, model selection, settings, save
+│   ├── style.css                 #   Dark-themed responsive styles
+│   └── mindvision.js             #   MindVision camera MJPEG stream viewer
 │
 ├── data/                         # Raw dataset (LabelMe images + JSON)
 ├── weights/                      # Pretrained model weights (.pt files)
 ├── outputs/                      # All generated outputs
 │   ├── augmented_data/           #   72x augmented images + annotations
 │   ├── yolo_dataset/             #   YOLO-format dataset (images + labels + data.yaml)
+│   ├── inference_logs/           #   Per-session JSONL inference logs (auto-rotated at 10 MB)
 │   └── results/                  #   Training logs, plots, visualizations
 │       ├── training_logs/        #     Per-model training history (JSON)
 │       ├── plots/                #     Loss curves, IoU charts, comparisons
 │       ├── visualizations/       #     Prediction overlays, heatmaps
 │       ├── checkpoints/          #     PyTorch model checkpoints (best_model.pth)
-│       └── logs/                 #     Text logs
-│
-├── server/                       # Flask + WebRTC backend
-│   ├── server.py                 #   REST API, WebRTC signaling, MindVision endpoints
-│   ├── inference.py              #   Model discovery, loading, inference, measurements
-│   ├── mindvision_capture.py     #   MindVision SDK USB camera capture
-│   ├── Dockerfile                #   Multi-stage Docker build
-│   └── docker-compose.yml        #   Docker Compose configuration
-│
-├── client/                       # Browser-based frontend
-│   ├── index.html                #   Single-page UI
-│   ├── app.js                    #   WebRTC, model selection, settings, save
-│   ├── style.css                 #   Dark-themed responsive styles
-│   └── mindvision.js             #   MindVision MJPEG stream viewer
+│       └── yolo_training/        #     YOLO training runs (weights/best.pt)
 │
 ├── docs/                         # Documentation
 │   └── benchmark_report.md       #   Generated benchmark report
@@ -222,7 +252,7 @@ chignon_detection/
 
 ### Package Overview
 
-The project is organized as a standard Python package under `src/`:
+#### Shared training / evaluation library (`src/`)
 
 | Package | Module | Purpose |
 |---------|--------|---------|
@@ -240,6 +270,26 @@ The project is organized as a standard Python package under `src/`:
 | `src.utils` | `preprocessing.py` | `PreprocessingPipeline` with bilateral filtering, CLAHE, morphological cleanup |
 | `src.utils` | `contour.py` | `ContourExtractor` and `GeometryFitter` for post-processing |
 | `src.utils` | `measurements.py` | `MeasurementComputer`, `CalibrationManager` (ArUco PPM, camera intrinsics, ML depth estimation), lens undistortion, checkerboard calibration |
+
+#### Domain inference packages
+
+Each domain has its own top-level package. Postprocessing is split into one file per concern so every step is independently readable and testable.
+
+| Package | Module | Purpose |
+|---------|--------|---------|
+| `stator` | `inference.py` | `ModelManager` — YOLO & PyTorch inference, model discovery, calibration |
+| `stator.postprocessing` | `logging.py` | `InferenceLogger` — rotating JSONL session logs + MLflow summaries |
+| `stator.postprocessing` | `calibration.py` | `CameraSettings` — px→mm via intrinsics, reference label, MiDaS, or manual factor |
+| `stator.postprocessing` | `filtering.py` | `apply_top_n_filtering`, `apply_spatial_heuristic_correction` |
+| `stator.postprocessing` | `measurements.py` | 7 geometric measurement functions (contour metrics, edge/center distances, aligned pairs, cross-diametric pairs) |
+| `stator.postprocessing` | `drawing.py` | `draw_measurements_on_image` — annotates lines, circles, and text on frames |
+| `chignon` | `inference.py` | `ChignonModelManager` — YOLO v8/v11 and UNet-ResNet18 segmentation |
+| `chignon.postprocessing` | `mask_overlay.py` | `apply_mask_overlay` — blends a coloured segmentation mask onto a frame |
+| `chignon.postprocessing` | `contours.py` | `extract_contour_bboxes` — converts a binary mask to detection dicts |
+| `files` | `inference.py` | `FileModelManager` — UNet-ResNet18 with HSV colour validation |
+| `files.postprocessing` | `color_detection.py` | `detect_file_colors` — HSV-based blue/yellow detection with morphological denoising |
+| `files.postprocessing` | `bbox_splitting.py` | `split_dual_color_bbox` — splits a dual-colour bbox into two labelled detections |
+| `files.postprocessing` | `position_validation.py` | `validate_file_positions`, `build_alert` — checks blue-left / yellow-right arrangement |
 
 ### Data Flow
 
@@ -1131,11 +1181,34 @@ A full-stack **Flask + WebRTC** application for interactive, real-time chignon d
 ### Architecture
 
 ```
-chignon_detection/
-├── server/                       # Backend (Python / Flask)
-│   ├── server.py                 #   Flask app, REST API, WebRTC signaling (aiortc)
-│   ├── inference.py              #   Model discovery, loading, inference, measurement post-processing
-│   ├── mindvision_capture.py     #   MindVision SDK industrial USB camera capture
+stator-vision-inspection/
+│
+├── stator/                       # Stator inference engine
+│   ├── inference.py              #   ModelManager (YOLO + PyTorch predict loops)
+│   └── postprocessing/           #   One file per postprocessing concern
+│       ├── logging.py            #     InferenceLogger
+│       ├── calibration.py        #     CameraSettings (px→mm)
+│       ├── filtering.py          #     Top-N filter + spatial heuristic correction
+│       ├── measurements.py       #     All 7 geometric measurement functions
+│       └── drawing.py            #     Measurement annotation renderer
+│
+├── chignon/                      # Chignon inference engine
+│   ├── inference.py              #   ChignonModelManager
+│   └── postprocessing/
+│       ├── mask_overlay.py       #     apply_mask_overlay
+│       └── contours.py           #     extract_contour_bboxes
+│
+├── files/                        # File inference engine
+│   ├── inference.py              #   FileModelManager
+│   └── postprocessing/
+│       ├── color_detection.py    #     detect_file_colors
+│       ├── bbox_splitting.py     #     split_dual_color_bbox
+│       └── position_validation.py#     validate_file_positions + build_alert
+│
+├── server/                       # Flask + WebRTC backend
+│   ├── server.py                 #   REST API, WebRTC signaling (aiortc), MindVision endpoints
+│   ├── inference.py              #   Backward-compat shim → re-exports stator.inference
+│   ├── mindvision_capture.py     #   MindVision SDK industrial USB camera capture subprocess
 │   ├── Dockerfile                #   Multi-stage Docker build (python:3.11-slim)
 │   └── docker-compose.yml        #   Docker Compose service definition
 │
@@ -1256,8 +1329,10 @@ Alerts are pushed to the client via the WebRTC DataChannel (with a REST polling 
 
 ### Post-Processing & Heuristic Filters
 
-All predictions streaming from active YOLO and PyTorch networks bypass standard unconstrained rendering. Instead, they run through a rigorous custom engine (`apply_top_n_filtering` and `apply_spatial_heuristic_correction` in `inference.py`) that enforces physical laws natively on the stator structure:
+All predictions streaming from active YOLO and PyTorch networks bypass standard unconstrained rendering. Instead, they run through a rigorous custom engine that enforces physical laws natively on the stator structure. Each postprocessing step lives in its own file under `stator/postprocessing/`:
 
-1. **Top-N Limits**: Noises and hallucinations are dropped dynamically by enforcing absolute limits sorted by highest confidence bounding probabilities: Limit `1x Circle`, `2x Magnets`, `4x Mechanical Parts`.
-2. **Spatial Autocorrection (PyTorch)**: Resolves semantic segmentation ambiguity by tracking the rotational geometry around the Stator. Components detected on the pure Cardinals (Top/Bottom/Left/Right ±25°) are hardcoded to **Magnet**, while Diagonals automatically parse to **Mechanical Part**. 
-3. **Overlaid Text Annotations**: Live YOLO and PyTorch output screens stream `cv2.putText` tags directly detailing parsed classifications and accurate confidences natively on the backend streams.
+1. **Top-N Limits** (`stator/postprocessing/filtering.py` → `apply_top_n_filtering`): Noises and hallucinations are dropped dynamically by enforcing absolute limits sorted by highest confidence: `1× Circle`, `2× Magnets`, `4× Mechanical Parts`.
+2. **Spatial Autocorrection** (`stator/postprocessing/filtering.py` → `apply_spatial_heuristic_correction`): Resolves semantic segmentation ambiguity by tracking the rotational geometry around the stator. Components detected on the pure cardinals (Top/Bottom/Left/Right ± 25°) are reassigned to **Magnet**; diagonals become **Mechanical Part**.
+3. **Geometric Measurements** (`stator/postprocessing/measurements.py`): Per-contour bounding width/height, diameter, area, perimeter, pairwise minimum distances, aligned same-class distances, and cross-diametric opposite-pair distances — all in pixels and calibrated mm.
+4. **Measurement Rendering** (`stator/postprocessing/drawing.py` → `draw_measurements_on_image`): Annotates measurement lines, endpoint circles, and value labels directly onto frames with per-type colour coding.
+5. **File Colour Validation** (`files/postprocessing/`): Colour detection (`color_detection.py`), dual-colour bbox splitting (`bbox_splitting.py`), and left-blue / right-yellow position validation (`position_validation.py`) run sequentially inside `FileModelManager._postprocess_file_layout`.
