@@ -66,3 +66,6 @@ scripts/md_to_pdf.py
 
 
 CHANGE_CONTEXT.md
+
+# ---- Vendor SDKs ----
+sdkmindvision/
