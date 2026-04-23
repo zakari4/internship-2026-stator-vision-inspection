@@ -56,6 +56,15 @@ import time
 import uuid
 from pathlib import Path
 
+# Ensure project root is in sys.path so that stator.*, chignon.*, files.* are importable
+_PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", Path(__file__).resolve().parent.parent))
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+# Also keep the server directory itself in sys.path for any local server modules
+_SERVER_DIR = Path(__file__).resolve().parent
+if str(_SERVER_DIR) not in sys.path:
+    sys.path.insert(0, str(_SERVER_DIR))
+
 import base64
 import io
 
@@ -68,7 +77,7 @@ from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
 from aiortc.contrib.media import MediaRelay
 from av import VideoFrame
 
-from inference import ModelManager
+from stator.inference import ModelManager
 
 from chignon.inference import ChignonModelManager
 from files.inference import FileModelManager

@@ -23,6 +23,8 @@ CHIGNON_RESULTS_DIR = PROJECT_ROOT / "chignon" / "results"
 
 logger = logging.getLogger(__name__)
 
+from chignon.postprocessing import apply_mask_overlay, extract_contour_bboxes
+
 
 # ─── Color palette ────────────────────────────────────────────────────────
 CLASS_COLORS = {
@@ -277,11 +279,9 @@ class ChignonModelManager:
                 m = mask_data.cpu().numpy()
                 m_resized = cv2.resize(m, (w, h))
                 m_bin = (m_resized > 0.5).astype(np.uint8) * 255
-                
+
                 if self.draw_masks:
-                    color_layer = np.zeros_like(frame)
-                    color_layer[m_bin > 127] = color
-                    annotated = cv2.addWeighted(annotated, 1.0, color_layer, 0.35, 0)
+                    annotated = apply_mask_overlay(annotated, m_bin, color)
 
         # Cleanup
         for det in detections:
@@ -320,49 +320,28 @@ class ChignonModelManager:
                 if cls_mask.sum() < 100:
                     continue
                 color = CLASS_COLORS.get("chignon", DEFAULT_COLOR)
-                color_layer = np.zeros_like(frame)
-                color_layer[cls_mask > 127] = color
-                overlay = cv2.addWeighted(overlay, 1.0, color_layer, 0.35, 0)
 
-                cnts, _ = cv2.findContours(cls_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                for cnt in cnts:
-                    if cv2.contourArea(cnt) > 50:
-                        x, y, bw, bh = cv2.boundingRect(cnt)
-                        detections.append({
-                            "class_id": cls_id,
-                            "class_name": "chignon",
-                            "confidence": 0.99,
-                            "bbox": [x, y, x + bw, y + bh],
-                            "measurements": [],
-                        })
-                        cv2.rectangle(overlay, (x, y), (x + bw, y + bh), color, 2)
-                        cv2.putText(overlay, "chignon", (x, max(15, y - 5)),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+                overlay   = apply_mask_overlay(overlay, cls_mask, color)
+                new_dets  = extract_contour_bboxes(cls_mask, cls_id, "chignon", min_area=50)
+                detections.extend(new_dets)
+
+                for det in new_dets:
+                    x1, y1, x2, y2 = [int(v) for v in det["bbox"]]
+                    cv2.rectangle(overlay, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(overlay, "chignon", (x1, max(15, y1 - 5)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
 
             return overlay, detections
 
         # Single-channel fallback
         mask = torch.sigmoid(output).squeeze().cpu().numpy()
         mask_resized = cv2.resize(mask, (w, h))
-        m_bin = (mask_resized > 0.5).astype(np.uint8) * 255
+        m_bin   = (mask_resized > 0.5).astype(np.uint8) * 255
         overlay = frame.copy()
-        color = CLASS_COLORS.get("chignon", DEFAULT_COLOR)
-        color_layer = np.zeros_like(frame)
-        color_layer[m_bin > 127] = color
-        overlay = cv2.addWeighted(overlay, 1.0, color_layer, 0.35, 0)
+        color   = CLASS_COLORS.get("chignon", DEFAULT_COLOR)
 
-        detections = []
-        cnts, _ = cv2.findContours(m_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        for cnt in cnts:
-            if cv2.contourArea(cnt) > 50:
-                x, y, bw, bh = cv2.boundingRect(cnt)
-                detections.append({
-                    "class_id": 1,
-                    "class_name": "chignon",
-                    "confidence": 0.99,
-                    "bbox": [x, y, x + bw, y + bh],
-                    "measurements": [],
-                })
+        overlay    = apply_mask_overlay(overlay, m_bin, color)
+        detections = extract_contour_bboxes(m_bin, 1, "chignon", min_area=50)
         return overlay, detections
 
     # ──────────────────────────────────────────────────────────────────
