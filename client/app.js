@@ -174,6 +174,9 @@ async function loadModels() {
         if (rowHeuristic) {
             rowHeuristic.style.display = domainSelect.value === "chignon" ? "none" : "block";
         }
+        if (rowFileColorValidation) {
+            rowFileColorValidation.style.display = domainSelect.value === "file" ? "block" : "none";
+        }
     } catch (err) {
         console.error("Failed to load models:", err);
         modelSelect.innerHTML = '<option value="">Error loading models</option>';
@@ -1055,7 +1058,6 @@ async function loadEnhancements() {
         if (enableFileColorValidation) {
             enableFileColorValidation.checked = s.enable_file_color_validation ?? true;
         }
-        
         // Hide/Show heuristic based on domain (Stator only)
         if (rowHeuristic) {
             rowHeuristic.style.display = domain === "stator" ? "block" : "none";
@@ -1613,6 +1615,7 @@ document.addEventListener("DOMContentLoaded", loadPastSessions);
 let _iaOnConfirm = null;
 let _iaOnCancel  = null;
 let _iaSourceImg = new Image();
+let _iaRotation  = 0;   // degrees: 0, 90, 180, 270
 
 /**
  * Open the image adjustment modal.
@@ -1627,11 +1630,12 @@ function openImageAdjust(src, onConfirm, onCancel) {
     const overlay = document.getElementById("iaOverlay");
     if (!overlay) return;
 
-    // Reset sliders to neutral
+    // Reset sliders and rotation to neutral
     ["iaBrightness", "iaContrast", "iaSaturation", "iaSharpness"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = id === "iaSharpness" ? 0 : 100;
     });
+    _iaRotation = 0;
     _iaUpdateLabels();
 
     _iaSourceImg = new Image();
@@ -1669,16 +1673,24 @@ function _iaRender() {
     if (!canvas || !_iaSourceImg.naturalWidth) return;
     const ctx = canvas.getContext("2d");
 
-    canvas.width  = _iaSourceImg.naturalWidth;
-    canvas.height = _iaSourceImg.naturalHeight;
+    const sw = _iaSourceImg.naturalWidth;
+    const sh = _iaSourceImg.naturalHeight;
+    const rotated90 = _iaRotation === 90 || _iaRotation === 270;
 
-    const b  = document.getElementById("iaBrightness")?.value  ?? 100;
-    const c  = document.getElementById("iaContrast")?.value    ?? 100;
-    const s  = document.getElementById("iaSaturation")?.value  ?? 100;
+    canvas.width  = rotated90 ? sh : sw;
+    canvas.height = rotated90 ? sw : sh;
 
+    const b = document.getElementById("iaBrightness")?.value ?? 100;
+    const c = document.getElementById("iaContrast")?.value   ?? 100;
+    const s = document.getElementById("iaSaturation")?.value ?? 100;
+
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((_iaRotation * Math.PI) / 180);
     ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
-    ctx.drawImage(_iaSourceImg, 0, 0);
+    ctx.drawImage(_iaSourceImg, -sw / 2, -sh / 2);
     ctx.filter = "none";
+    ctx.restore();
 
     // Simple unsharp mask via sharpness slider
     const sharp = parseFloat(document.getElementById("iaSharpness")?.value ?? 0);
@@ -1722,6 +1734,8 @@ function _iaUpdateLabels() {
         const l = document.getElementById(labelId);
         if (s && l) l.textContent = s.value + suffix;
     });
+    const rotLabel = document.getElementById("iaRotationVal");
+    if (rotLabel) rotLabel.textContent = _iaRotation + "°";
 }
 
 (function initImageAdjust() {
@@ -1742,6 +1756,19 @@ function _iaUpdateLabels() {
         });
         const sharp = document.getElementById("iaSharpness");
         if (sharp) sharp.value = 0;
+        _iaRotation = 0;
+        _iaUpdateLabels();
+        _iaRender();
+    });
+
+    document.getElementById("iaRotLeft")?.addEventListener("click", () => {
+        _iaRotation = (_iaRotation - 90 + 360) % 360;
+        _iaUpdateLabels();
+        _iaRender();
+    });
+
+    document.getElementById("iaRotRight")?.addEventListener("click", () => {
+        _iaRotation = (_iaRotation + 90) % 360;
         _iaUpdateLabels();
         _iaRender();
     });
