@@ -834,11 +834,25 @@
         <div class="ia-body">
             <!-- Canvas preview -->
             <div class="ia-preview-wrap">
-                <canvas id="iaCanvas"></canvas>
+                <div class="ia-sel-toolbar">
+                    <button id="iaSelectToggle" class="ia-sel-btn" title="Draw a rectangle on the image to apply filters to that region only">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18" stroke-dasharray="4 2"/></svg>
+                        Select Region
+                    </button>
+                    <span class="ia-sel-chip" id="iaSelChip"></span>
+                    <button class="ia-sel-clear" id="iaSelClear" title="Clear selection" style="display:none">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        Clear
+                    </button>
+                </div>
+                <div class="ia-canvas-wrap">
+                    <canvas id="iaCanvas"></canvas>
+                </div>
             </div>
 
             <!-- Sliders -->
             <div class="ia-controls">
+                <div class="ia-controls-section-label">Luminosity</div>
                 <div class="ia-slider-row">
                     <label class="ia-slider-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -849,12 +863,22 @@
                 </div>
                 <div class="ia-slider-row">
                     <label class="ia-slider-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="4" stroke-dasharray="3 2"/></svg>
+                        Exposure
+                    </label>
+                    <input type="range" class="ia-range" id="iaGamma" min="25" max="400" value="100">
+                    <span class="ia-range-val" id="iaGammaVal">1.0×</span>
+                </div>
+                <div class="ia-slider-row">
+                    <label class="ia-slider-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>
                         Contrast
                     </label>
                     <input type="range" class="ia-range" id="iaContrast" min="0" max="300" value="100">
                     <span class="ia-range-val" id="iaContrastVal">100%</span>
                 </div>
+
+                <div class="ia-controls-section-label">Color</div>
                 <div class="ia-slider-row">
                     <label class="ia-slider-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
@@ -865,12 +889,32 @@
                 </div>
                 <div class="ia-slider-row">
                     <label class="ia-slider-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+                        Hue Shift
+                    </label>
+                    <input type="range" class="ia-range" id="iaHue" min="-180" max="180" value="0">
+                    <span class="ia-range-val" id="iaHueVal">0°</span>
+                </div>
+
+                <div class="ia-controls-section-label">Detail</div>
+                <div class="ia-slider-row">
+                    <label class="ia-slider-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                         Sharpness
                     </label>
                     <input type="range" class="ia-range" id="iaSharpness" min="0" max="100" value="0">
                     <span class="ia-range-val" id="iaSharpnessVal">0</span>
                 </div>
+                <div class="ia-slider-row">
+                    <label class="ia-slider-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="3 2"/><circle cx="12" cy="12" r="5"/></svg>
+                        Blur / Denoise
+                    </label>
+                    <input type="range" class="ia-range" id="iaBlur" min="0" max="20" value="0">
+                    <span class="ia-range-val" id="iaBlurVal">0</span>
+                </div>
+
+                <div class="ia-controls-section-label">Transform</div>
                 <div class="ia-slider-row">
                     <label class="ia-slider-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>

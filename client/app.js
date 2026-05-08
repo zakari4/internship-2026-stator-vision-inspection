@@ -1612,10 +1612,14 @@ document.addEventListener("DOMContentLoaded", loadPastSessions);
 // Image Adjustment Modal
 // ═══════════════════════════════════════════════════════════════
 
-let _iaOnConfirm = null;
-let _iaOnCancel  = null;
-let _iaSourceImg = new Image();
-let _iaRotation  = 0;   // degrees: 0, 90, 180, 270
+let _iaOnConfirm  = null;
+let _iaOnCancel   = null;
+let _iaSourceImg  = new Image();
+let _iaRotation   = 0;      // degrees: 0, 90, 180, 270
+let _iaSelection   = null;   // {x,y,w,h} in canvas pixel coords, or null
+let _iaSelectMode  = false;  // true → canvas drag draws selection
+let _iaDragStart   = null;   // {x,y} canvas coords while dragging
+let _iaDragPreview = null;   // live {x,y,w,h} during drag, for rendering
 
 /**
  * Open the image adjustment modal.
@@ -1630,13 +1634,21 @@ function openImageAdjust(src, onConfirm, onCancel) {
     const overlay = document.getElementById("iaOverlay");
     if (!overlay) return;
 
-    // Reset sliders and rotation to neutral
-    ["iaBrightness", "iaContrast", "iaSaturation", "iaSharpness"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = id === "iaSharpness" ? 0 : 100;
+    // Reset sliders, rotation, and selection to neutral
+    ["iaBrightness", "iaContrast", "iaSaturation"].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = 100;
     });
-    _iaRotation = 0;
+    ["iaSharpness", "iaBlur", "iaHue"].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = 0;
+    });
+    const gammaEl = document.getElementById("iaGamma");
+    if (gammaEl) gammaEl.value = 100;
+    _iaRotation   = 0;
+    _iaSelection  = null;
+    _iaSelectMode = false;
+    _iaDragStart  = null;
     _iaUpdateLabels();
+    _iaUpdateSelUI();
 
     _iaSourceImg = new Image();
     _iaSourceImg.crossOrigin = "anonymous";
@@ -1670,32 +1682,103 @@ function _iaClose(confirmed) {
 
 function _iaRender() {
     const canvas = document.getElementById("iaCanvas");
-    if (!canvas || !_iaSourceImg.naturalWidth) return;
+    if (!canvas || !_iaSourceImg || !_iaSourceImg.naturalWidth) return;
     const ctx = canvas.getContext("2d");
 
     const sw = _iaSourceImg.naturalWidth;
     const sh = _iaSourceImg.naturalHeight;
     const rotated90 = _iaRotation === 90 || _iaRotation === 270;
-
     canvas.width  = rotated90 ? sh : sw;
     canvas.height = rotated90 ? sw : sh;
+    const cw = canvas.width, ch = canvas.height;
 
-    const b = document.getElementById("iaBrightness")?.value ?? 100;
-    const c = document.getElementById("iaContrast")?.value   ?? 100;
-    const s = document.getElementById("iaSaturation")?.value ?? 100;
+    const b     = parseFloat(document.getElementById("iaBrightness")?.value ?? 100);
+    const c     = parseFloat(document.getElementById("iaContrast")?.value   ?? 100);
+    const s     = parseFloat(document.getElementById("iaSaturation")?.value ?? 100);
+    const hue   = parseFloat(document.getElementById("iaHue")?.value        ?? 0);
+    const blur  = parseFloat(document.getElementById("iaBlur")?.value       ?? 0);
+    const sharp = parseFloat(document.getElementById("iaSharpness")?.value  ?? 0);
+    const gamma = parseFloat(document.getElementById("iaGamma")?.value      ?? 100) / 100;
 
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate((_iaRotation * Math.PI) / 180);
-    ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
-    ctx.drawImage(_iaSourceImg, -sw / 2, -sh / 2);
-    ctx.filter = "none";
-    ctx.restore();
+    const blurStr  = blur > 0 ? ` blur(${blur * 0.5}px)` : "";
+    const filterStr = `brightness(${b}%) contrast(${c}%) saturate(${s}%) hue-rotate(${hue}deg)${blurStr}`;
 
-    // Simple unsharp mask via sharpness slider
-    const sharp = parseFloat(document.getElementById("iaSharpness")?.value ?? 0);
-    if (sharp > 0) {
-        _iaApplyUnsharpMask(ctx, canvas, sharp / 100);
+    // Draw image with rotation applied to a ctx, using given CSS filter string
+    function drawRotated(targetCtx, filterValue) {
+        targetCtx.save();
+        targetCtx.translate(cw / 2, ch / 2);
+        targetCtx.rotate((_iaRotation * Math.PI) / 180);
+        targetCtx.filter = filterValue;
+        targetCtx.drawImage(_iaSourceImg, -sw / 2, -sh / 2);
+        targetCtx.filter = "none";
+        targetCtx.restore();
+    }
+
+    if (!_iaSelection) {
+        // ── Global mode: apply filters to whole image ──────────────
+        drawRotated(ctx, filterStr);
+        if (sharp > 0)    _iaApplyUnsharpMask(ctx, canvas, sharp / 100);
+        if (gamma !== 1.0) _iaApplyGamma(ctx, canvas, gamma);
+    } else {
+        // ── Region mode: neutral base + filtered ROI composite ─────
+        // Step 1: draw original (unfiltered) full image as base
+        drawRotated(ctx, "none");
+
+        // Step 2: build fully-filtered version in an offscreen canvas
+        const off  = document.createElement("canvas");
+        off.width  = cw; off.height = ch;
+        const octx = off.getContext("2d");
+        drawRotated(octx, filterStr);
+        if (sharp > 0)    _iaApplyUnsharpMask(octx, off, sharp / 100);
+        if (gamma !== 1.0) _iaApplyGamma(octx, off, gamma);
+
+        // Step 3: clip to selection and composite filtered version on top
+        const {x, y, w, h} = _iaSelection;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, w, h);
+        ctx.clip();
+        ctx.drawImage(off, 0, 0);
+        ctx.restore();
+
+        // Step 4: dim the unselected area subtly
+        const dimOff = document.createElement("canvas");
+        dimOff.width = cw; dimOff.height = ch;
+        const dctx = dimOff.getContext("2d");
+        dctx.fillStyle = "rgba(0,0,0,0.32)";
+        dctx.fillRect(0, 0, cw, ch);
+        dctx.clearRect(x, y, w, h);
+        ctx.drawImage(dimOff, 0, 0);
+
+        // Step 5: draw selection border + corner handles
+        ctx.save();
+        ctx.strokeStyle = "#00d4ff";
+        ctx.lineWidth   = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(x + 0.5, y + 0.5, w, h);
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#00d4ff";
+        const hs = 6;
+        [
+            [x, y], [x + w / 2, y], [x + w, y],
+            [x, y + h / 2],                      [x + w, y + h / 2],
+            [x, y + h], [x + w / 2, y + h], [x + w, y + h],
+        ].forEach(([hx, hy]) => ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs));
+        ctx.restore();
+    }
+
+    // Live drag preview: draw in-progress selection rect (before mouse-up)
+    if (_iaDragStart && _iaDragPreview) {
+        const {x, y, w, h} = _iaDragPreview;
+        ctx.save();
+        ctx.strokeStyle = "#00d4ff";
+        ctx.lineWidth   = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.strokeRect(x + 0.5, y + 0.5, w, h);
+        ctx.fillStyle = "rgba(0, 212, 255, 0.08)";
+        ctx.fillRect(x, y, w, h);
+        ctx.setLineDash([]);
+        ctx.restore();
     }
 }
 
@@ -1722,40 +1805,95 @@ function _iaApplyUnsharpMask(ctx, canvas, amount) {
     ctx.putImageData(out, 0, 0);
 }
 
+function _iaApplyGamma(ctx, canvas, gamma) {
+    if (gamma === 1.0) return;
+    const w = canvas.width, h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    // Build LUT for speed
+    const invGamma = 1.0 / gamma;
+    const lut = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) lut[i] = Math.round(255 * Math.pow(i / 255, invGamma));
+    for (let i = 0; i < d.length; i += 4) {
+        d[i]   = lut[d[i]];
+        d[i+1] = lut[d[i+1]];
+        d[i+2] = lut[d[i+2]];
+    }
+    ctx.putImageData(imgData, 0, 0);
+}
+
+function _iaGetCanvasPos(e) {
+    const canvas = document.getElementById("iaCanvas");
+    const rect   = canvas.getBoundingClientRect();
+    const scaleX = canvas.width  / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const src    = e.touches ? e.touches[0] : e;
+    return {
+        x: (src.clientX - rect.left) * scaleX,
+        y: (src.clientY - rect.top)  * scaleY,
+    };
+}
+
+function _iaNormalizeRect(x1, y1, x2, y2, cw, ch) {
+    const x = Math.max(0, Math.min(cw, Math.min(x1, x2)));
+    const y = Math.max(0, Math.min(ch, Math.min(y1, y2)));
+    const w = Math.min(Math.abs(x2 - x1), cw - x);
+    const h = Math.min(Math.abs(y2 - y1), ch - y);
+    return {x, y, w, h};
+}
+
+function _iaUpdateSelUI() {
+    const btn   = document.getElementById("iaSelectToggle");
+    const chip  = document.getElementById("iaSelChip");
+    const clear = document.getElementById("iaSelClear");
+    const canvas = document.getElementById("iaCanvas");
+    if (btn)   btn.classList.toggle("active", _iaSelectMode);
+    if (canvas) canvas.classList.toggle("ia-selecting", _iaSelectMode);
+    if (_iaSelection) {
+        const {w, h} = _iaSelection;
+        if (chip)  { chip.textContent = `${Math.round(w)}×${Math.round(h)} px`; chip.classList.add("visible"); }
+        if (clear) clear.style.display = "inline-flex";
+    } else {
+        if (chip)  { chip.textContent = ""; chip.classList.remove("visible"); }
+        if (clear) clear.style.display = "none";
+    }
+}
+
 function _iaUpdateLabels() {
     const pairs = [
         ["iaBrightness", "iaBrightnessVal", "%"],
         ["iaContrast",   "iaContrastVal",   "%"],
         ["iaSaturation", "iaSaturationVal", "%"],
         ["iaSharpness",  "iaSharpnessVal",  ""],
+        ["iaHue",        "iaHueVal",        "°"],
+        ["iaBlur",       "iaBlurVal",       ""],
     ];
     pairs.forEach(([sliderId, labelId, suffix]) => {
         const s = document.getElementById(sliderId);
         const l = document.getElementById(labelId);
         if (s && l) l.textContent = s.value + suffix;
     });
+    const gammaEl = document.getElementById("iaGamma");
+    const gammaLbl = document.getElementById("iaGammaVal");
+    if (gammaEl && gammaLbl) gammaLbl.textContent = (parseFloat(gammaEl.value) / 100).toFixed(1) + "×";
     const rotLabel = document.getElementById("iaRotationVal");
     if (rotLabel) rotLabel.textContent = _iaRotation + "°";
 }
 
 (function initImageAdjust() {
-    // Wire sliders → re-render
-    ["iaBrightness", "iaContrast", "iaSaturation", "iaSharpness"].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener("input", () => {
-            _iaUpdateLabels();
-            _iaRender();
-        });
+    // Wire all sliders → re-render
+    ["iaBrightness", "iaContrast", "iaSaturation", "iaSharpness", "iaHue", "iaBlur", "iaGamma"].forEach(id => {
+        document.getElementById(id)?.addEventListener("input", () => { _iaUpdateLabels(); _iaRender(); });
     });
 
     document.getElementById("iaReset")?.addEventListener("click", () => {
         ["iaBrightness", "iaContrast", "iaSaturation"].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = 100;
+            const el = document.getElementById(id); if (el) el.value = 100;
         });
-        const sharp = document.getElementById("iaSharpness");
-        if (sharp) sharp.value = 0;
+        ["iaSharpness", "iaBlur", "iaHue"].forEach(id => {
+            const el = document.getElementById(id); if (el) el.value = 0;
+        });
+        const gammaEl = document.getElementById("iaGamma"); if (gammaEl) gammaEl.value = 100;
         _iaRotation = 0;
         _iaUpdateLabels();
         _iaRender();
@@ -1763,26 +1901,86 @@ function _iaUpdateLabels() {
 
     document.getElementById("iaRotLeft")?.addEventListener("click", () => {
         _iaRotation = (_iaRotation - 90 + 360) % 360;
-        _iaUpdateLabels();
+        // Selection no longer valid after rotation
+        _iaSelection = null; _iaSelectMode = false;
+        _iaUpdateLabels(); _iaUpdateSelUI(); _iaRender();
+    });
+    document.getElementById("iaRotRight")?.addEventListener("click", () => {
+        _iaRotation = (_iaRotation + 90) % 360;
+        _iaSelection = null; _iaSelectMode = false;
+        _iaUpdateLabels(); _iaUpdateSelUI(); _iaRender();
+    });
+
+    // ── Region selection wiring ──────────────────────────────────────
+    document.getElementById("iaSelectToggle")?.addEventListener("click", () => {
+        _iaSelectMode = !_iaSelectMode;
+        if (!_iaSelectMode) { _iaDragStart = null; _iaDragPreview = null; }
+        _iaUpdateSelUI();
         _iaRender();
     });
 
-    document.getElementById("iaRotRight")?.addEventListener("click", () => {
-        _iaRotation = (_iaRotation + 90) % 360;
-        _iaUpdateLabels();
+    document.getElementById("iaSelClear")?.addEventListener("click", () => {
+        _iaSelection  = null;
+        _iaSelectMode = false;
+        _iaDragStart  = null;
+        _iaDragPreview = null;
+        _iaUpdateSelUI();
         _iaRender();
     });
+
+    // Canvas mouse events for region drawing
+    const canvas = document.getElementById("iaCanvas");
+    if (canvas) {
+        function onDragStart(e) {
+            if (!_iaSelectMode) return;
+            e.preventDefault();
+            _iaDragStart   = _iaGetCanvasPos(e);
+            _iaDragPreview = null;
+        }
+        function onDragMove(e) {
+            if (!_iaDragStart) return;
+            e.preventDefault();
+            const pos  = _iaGetCanvasPos(e);
+            _iaDragPreview = _iaNormalizeRect(
+                _iaDragStart.x, _iaDragStart.y, pos.x, pos.y,
+                canvas.width, canvas.height
+            );
+            _iaRender();
+        }
+        function onDragEnd(e) {
+            if (!_iaDragStart) return;
+            e.preventDefault();
+            const pos = e.changedTouches
+                ? { x: (e.changedTouches[0].clientX - canvas.getBoundingClientRect().left) * (canvas.width / canvas.getBoundingClientRect().width),
+                    y: (e.changedTouches[0].clientY - canvas.getBoundingClientRect().top)  * (canvas.height / canvas.getBoundingClientRect().height) }
+                : _iaGetCanvasPos(e);
+            const sel = _iaNormalizeRect(
+                _iaDragStart.x, _iaDragStart.y, pos.x, pos.y,
+                canvas.width, canvas.height
+            );
+            _iaSelection   = (sel.w > 5 && sel.h > 5) ? sel : null;
+            _iaDragStart   = null;
+            _iaDragPreview = null;
+            _iaUpdateSelUI();
+            _iaRender();
+        }
+        canvas.addEventListener("mousedown",  onDragStart);
+        canvas.addEventListener("mousemove",  onDragMove);
+        canvas.addEventListener("mouseup",    onDragEnd);
+        canvas.addEventListener("mouseleave", (e) => { if (_iaDragStart) onDragEnd(e); });
+        canvas.addEventListener("touchstart", onDragStart, { passive: false });
+        canvas.addEventListener("touchmove",  onDragMove,  { passive: false });
+        canvas.addEventListener("touchend",   onDragEnd,   { passive: false });
+    }
 
     document.getElementById("iaDetect")?.addEventListener("click", () => _iaClose(true));
     document.getElementById("iaClose")?.addEventListener("click",  () => _iaClose(false));
     document.getElementById("iaCancel")?.addEventListener("click", () => _iaClose(false));
 
-    // Close on overlay backdrop click
     document.getElementById("iaOverlay")?.addEventListener("click", (e) => {
         if (e.target === document.getElementById("iaOverlay")) _iaClose(false);
     });
 
-    // Escape key
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && document.getElementById("iaOverlay")?.classList.contains("open")) {
             _iaClose(false);
