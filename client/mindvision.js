@@ -115,6 +115,8 @@
 
     function setDisconnected() {
         if (!connected) return;
+        // Don't hide the layout while a video inspection is streaming
+        if (window._videoInspectionActive) return;
         connected = false;
         mvStatusBadge.textContent = "Disconnected";
         mvStatusBadge.classList.remove("badge-success");

@@ -23,7 +23,7 @@ FILE_RESULTS_DIR = PROJECT_ROOT / "files" / "results"
 
 logger = logging.getLogger(__name__)
 
-from files.postprocessing import detect_file_colors, split_dual_color_bbox, validate_file_positions, build_alert
+from files.postprocessing import detect_file_colors, split_dual_color_bbox, validate_file_positions, build_alert, keep_one_per_color
 
 
 # ─── Color palette ────────────────────────────────────────────────────────
@@ -56,6 +56,7 @@ class FileModelManager:
         # Global Post-processing Settings (Domain Specific)
         self.enable_postprocessing = True
         self.enable_file_color_validation = True
+        self.enable_one_per_color = True   # keep exactly 1 blue + 1 yellow, drop extras
         self.enable_top_n = True
         self.draw_boxes = True
         self.draw_masks = True
@@ -80,27 +81,46 @@ class FileModelManager:
         """Scan files/results/checkpoints for trained PyTorch weights only."""
         self.available_models.clear()
 
-        # PyTorch checkpoints
+        try:
+            import torch as _torch
+            _cuda_ok = _torch.cuda.is_available()
+        except Exception:
+            _cuda_ok = False
+
+        # PyTorch / ONNX checkpoints
         ckpt_dir = FILE_RESULTS_DIR / "checkpoints"
         if ckpt_dir.exists():
             for model_dir in sorted(ckpt_dir.iterdir()):
                 if not model_dir.is_dir():
                     continue
-                best_pth = model_dir / "best_model.pth"
-                best_pt  = model_dir / "best_model.pt"
-                wf = best_pth if best_pth.exists() else (
-                    best_pt if best_pt.exists() else None
+                best_onnx_fp16 = model_dir / "best_model_fp16.onnx"
+                best_onnx      = model_dir / "best_model.onnx"
+                best_pth       = model_dir / "best_model.pth"
+                best_pt        = model_dir / "best_model.pt"
+
+                # Prefer FP16 ONNX on CUDA machines; fall back to FP32 ONNX then .pth
+                wf = (
+                    best_onnx_fp16 if best_onnx_fp16.exists() and _cuda_ok else
+                    best_onnx      if best_onnx.exists()                    else
+                    best_pth       if best_pth.exists()                     else
+                    best_pt        if best_pt.exists()                      else None
                 )
                 if wf is None:
                     continue
 
                 folder = model_dir.name
-                meta = _PYTORCH_META.get(folder, {})
+                meta   = _PYTORCH_META.get(folder, {})
+                display = meta.get("display", folder)
+                if wf.name.endswith("_fp16.onnx"):
+                    display += " (ONNX FP16)"
+                elif wf.suffix == ".onnx":
+                    display += " (ONNX FP32)"
+
                 self.available_models[folder] = {
                     "path": str(wf),
                     "type": "pytorch",
                     "source": "trained",
-                    "display_name": meta.get("display", folder),
+                    "display_name": display,
                     "arch": meta.get("arch", folder),
                 }
 
@@ -135,7 +155,27 @@ class FileModelManager:
             return True
 
         try:
-            if info["type"] == "pytorch":
+            if info["type"] == "pytorch" and model_path.endswith(".onnx"):
+                import onnxruntime as ort
+                so = ort.SessionOptions()
+                so.log_severity_level = 3
+                try:
+                    self.current_model = ort.InferenceSession(
+                        model_path,
+                        sess_options=so,
+                        providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+                    )
+                    active = self.current_model.get_providers()[0]
+                except Exception:
+                    self.current_model = ort.InferenceSession(
+                        model_path,
+                        sess_options=so,
+                        providers=["CPUExecutionProvider"],
+                    )
+                    active = "CPUExecutionProvider"
+                logger.info("[File] Loaded ONNX model: %s via %s", model_name, active)
+
+            elif info["type"] == "pytorch":
                 import torch
                 arch = info.get("arch", model_name)
                 model = self._build_pytorch(arch)
@@ -210,29 +250,37 @@ class FileModelManager:
         return frame, []
 
     def _predict_pytorch(self, frame: np.ndarray) -> Tuple[np.ndarray, List[Dict]]:
-        import torch
-
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         annotated = frame.copy()
         h, w = frame.shape[:2]
 
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (512, 512))
-        tensor = torch.from_numpy(img).permute(2, 0, 1).float().unsqueeze(0) / 255.0
-        tensor = tensor.to(device)
+        img_float = img.astype(np.float32) / 255.0
 
-        with torch.no_grad():
-            output = self.current_model(tensor)
+        model = self.current_model
+        is_ort = hasattr(model, "run")  # ORT InferenceSession
 
-        if isinstance(output, (dict,)):
-            output = output.get("out", list(output.values())[0])
-        if isinstance(output, (tuple, list)):
-            output = output[0]
-
-        if output.shape[1] == 1:
-            pred = (torch.sigmoid(output) > 0.5).long().squeeze(0).squeeze(0).cpu().numpy()
+        if is_ort:
+            inp_name = model.get_inputs()[0].name
+            tensor_np = np.expand_dims(np.transpose(img_float, (2, 0, 1)), axis=0)
+            raw_out = model.run(None, {inp_name: tensor_np})[0]  # (1, C, 512, 512)
+            output_np = raw_out[0]  # (C, 512, 512)
         else:
-            pred = output.argmax(dim=1).squeeze(0).cpu().numpy()
+            import torch
+            device = next((p.device for p in model.parameters()), torch.device("cpu"))
+            tensor = torch.from_numpy(np.transpose(img_float, (2, 0, 1))).unsqueeze(0).to(device)
+            with torch.no_grad():
+                out = model(tensor)
+            if isinstance(out, dict):
+                out = out.get("out", list(out.values())[0])
+            if isinstance(out, (tuple, list)):
+                out = out[0]
+            output_np = out.squeeze(0).cpu().float().numpy()  # (C, 512, 512)
+
+        if output_np.shape[0] == 1:
+            pred = (1 / (1 + np.exp(-output_np[0])) > 0.5).astype(np.uint8)
+        else:
+            pred = output_np.argmax(axis=0).astype(np.uint8)
 
         pred = cv2.resize(pred.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST)
         detections = []
@@ -364,6 +412,13 @@ class FileModelManager:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
         detections = processed_detections
+
+        # ── One-per-colour filter ─────────────────────────────────────
+        # Discard extra candidates so position validation always sees at most
+        # one blue and one yellow detection.  Largest-area detection wins when
+        # there are duplicates of the same colour.
+        if self.enable_one_per_color:
+            detections = keep_one_per_color(detections)
 
         # ── Position validation (position_validation.py) ─────────────
         is_valid, left_det, right_det, msg, level = validate_file_positions(detections)

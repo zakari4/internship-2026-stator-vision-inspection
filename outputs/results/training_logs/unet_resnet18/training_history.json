@@ -1,16 +1,16 @@
 {
   "model_name": "unet_resnet18",
   "best_epoch": 30,
-  "best_val_iou": 0.9662631037442581,
-  "best_val_loss": 0.013780537537177619,
-  "total_train_time_sec": 8761.072839975357,
+  "best_val_iou": 0.9662229975928431,
+  "best_val_loss": 0.013825551961022227,
+  "total_train_time_sec": 8974.557900190353,
   "peak_gpu_memory_mb": 472.5234375,
-  "started_at": "2026-04-07T23:22:21.189528",
-  "ended_at": "2026-04-08T02:09:16.691189",
+  "started_at": "2026-05-07T21:16:22.134330",
+  "ended_at": "2026-05-08T00:07:17.969092",
   "total_epochs": 30,
   "peak_cpu_percent": 0,
   "peak_ram_mb": 0,
-  "avg_gpu_utilization": 56.399044505908975,
-  "best_val_accuracy": 0.996116262415181,
-  "total_val_time_sec": 1249.6052520275116
+  "avg_gpu_utilization": 55.11775682577097,
+  "best_val_accuracy": 0.9960903123669003,
+  "total_val_time_sec": 1276.5361077785492
 }

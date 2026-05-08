@@ -1,0 +1,237 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{long2015fcn}
+\citation{ronneberger2015unet}
+\citation{xie2021segformer}
+\@writefile{toc}{\contentsline {chapter}{\numberline {1}Introduction}{4}{chapter.1}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{toc}{\contentsline {section}{\numberline {1.1}Contexte du projet}{4}{section.1.1}\protected@file@percent }
+\citation{ronneberger2015unet}
+\citation{he2016resnet}
+\citation{xie2021segformer}
+\citation{chen2017deeplabv3}
+\citation{jocher2023yolov8}
+\citation{ranftl2020midas}
+\citation{jocher2023yolov8}
+\citation{ghiasi2021copypaste}
+\citation{kervadec2019boundary}
+\citation{berman2018lovasz}
+\citation{zhang2022bytetrack}
+\@writefile{toc}{\contentsline {section}{\numberline {1.2}Objectifs}{5}{section.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1.3}Technologies utilis\'ees}{5}{section.1.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1.1}{\ignorespaces Stack technologique du projet}}{5}{table.caption.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {2}Architecture du Syst\`eme}{6}{chapter.2}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{toc}{\contentsline {section}{\numberline {2.1}Vue d'ensemble de l'architecture}{6}{section.2.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2.1}{\ignorespaces Architecture multi-domaine --- Routage des requ\^etes vers les modules sp\'ecialis\'es (Stator, Chignon, File) via le serveur central.}}{6}{figure.caption.4}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:multi_domain}{{2.1}{6}{Architecture multi-domaine --- Routage des requ\^etes vers les modules sp\'ecialis\'es (Stator, Chignon, File) via le serveur central}{figure.caption.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.2}Architecture Docker}{6}{section.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2.1}Service Serveur (Backend IA)}{6}{subsection.2.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2.2}Service MLflow}{7}{subsection.2.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2.3}Service Client (Proxy inverse)}{7}{subsection.2.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2.3}Communication temps r\'eel (WebRTC)}{7}{section.2.3}\protected@file@percent }
+\citation{ronneberger2015unet}
+\citation{ronneberger2015unet}
+\@writefile{toc}{\contentsline {section}{\numberline {2.4}Syst\`eme multi-domaine}{8}{section.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {3}Pr\'eparation des Donn\'ees}{9}{chapter.3}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{toc}{\contentsline {section}{\numberline {3.1}Format des annotations}{9}{section.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.2}Division du jeu de donn\'ees}{9}{section.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.3}Pipeline d'augmentation de donn\'ees}{10}{section.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.1}Transformations g\'eom\'etriques ($5\times $)}{10}{subsection.3.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.2}Transformations photom\'etriques ($9\times $)}{10}{subsection.3.3.2}\protected@file@percent }
+\citation{ghiasi2021copypaste}
+\citation{jocher2023yolov8}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.3}Copy-Paste Augmentation (SOTA)}{11}{subsection.3.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.4}Conversion au format YOLO}{11}{section.3.4}\protected@file@percent }
+\citation{ronneberger2015unet}
+\citation{he2016resnet}
+\@writefile{toc}{\contentsline {chapter}{\numberline {4}Pipeline d'Entra\^inement}{12}{chapter.4}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.1}{\ignorespaces Pipeline d'entra\^inement complet en six phases : donn\'ees brutes, augmentation, conversion de format, architectures de mod\`eles, boucle d'entra\^inement, et \'evaluation/sortie. Les deux branches (Ultralytics YOLO et PyTorch personnalis\'e) partagent les m\^emes donn\'ees augment\'ees.}}{12}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:training_pipeline}{{4.1}{12}{Pipeline d'entra\^inement complet en six phases : donn\'ees brutes, augmentation, conversion de format, architectures de mod\`eles, boucle d'entra\^inement, et \'evaluation/sortie. Les deux branches (Ultralytics YOLO et PyTorch personnalis\'e) partagent les m\^emes donn\'ees augment\'ees}{figure.caption.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.1}Architectures de mod\`eles}{12}{section.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1.1}U-Net avec encodeur ResNet-18}{12}{subsection.4.1.1}\protected@file@percent }
+\citation{xie2021segformer}
+\citation{chen2017deeplabv3}
+\citation{howard2019mobilenetv3}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1.2}SegFormer B0}{13}{subsection.4.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1.3}DeepLabV3 MobileNet}{13}{subsection.4.1.3}\protected@file@percent }
+\citation{jocher2023yolov8}
+\citation{jocher2023yolov8}
+\citation{kervadec2019boundary}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1.4}Mod\`eles YOLO (Ultralytics)}{14}{subsection.4.1.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4.2}Boucle d'entra\^inement}{14}{section.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.1}Fonctions de perte composites}{14}{subsection.4.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Binary Cross-Entropy (BCE), $w=0.3$.}{14}{subsection.4.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Dice Loss, $w=0.3$.}{14}{subsection.4.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Boundary Loss~\cite  {kervadec2019boundary}, $w=0.2$.}{14}{subsection.4.2.1}\protected@file@percent }
+\citation{berman2018lovasz}
+\citation{loshchilov2019adamw}
+\@writefile{toc}{\contentsline {paragraph}{Lov\'asz-Hinge~\cite  {berman2018lovasz}, $w=0.2$.}{15}{subsection.4.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Variante multi-classe.}{15}{subsection.4.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.2}Strat\'egie d'optimisation}{15}{subsection.4.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.3}M\'etriques d'\'evaluation}{15}{subsection.4.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.4}Monitoring mat\'eriel}{16}{subsection.4.2.4}\protected@file@percent }
+\citation{ronneberger2015unet}
+\citation{he2016resnet}
+\citation{jocher2023yolov8}
+\@writefile{toc}{\contentsline {chapter}{\numberline {5}R\'esultats d'Entra\^inement}{17}{chapter.5}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{toc}{\contentsline {section}{\numberline {5.1}Domaine Stator}{17}{section.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1.1}R\'esultats comparatifs}{17}{subsection.5.1.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5.1}{\ignorespaces R\'esultats d'entra\^inement --- Domaine Stator (4 classes). UNet ResNet18 surpasse les mod\`eles YOLO en IoU tout en consommant environ $9\times $ moins de VRAM.}}{17}{table.caption.6}\protected@file@percent }
+\newlabel{tab:stator_results}{{5.1}{17}{R\'esultats d'entra\^inement --- Domaine Stator (4 classes). UNet ResNet18 surpasse les mod\`eles YOLO en IoU tout en consommant environ $9\times $ moins de VRAM}{table.caption.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1.2}Courbes d'entra\^inement --- Stator}{18}{subsection.5.1.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.1}{\ignorespaces Courbes de perte (train/validation) --- Domaine Stator. La convergence r\'eguli\`ere confirme l'absence de sur-apprentissage.}}{18}{figure.caption.7}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.2}{\ignorespaces Courbes IoU (train/validation) --- Domaine Stator par mod\`ele.}}{18}{figure.caption.8}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.3}{\ignorespaces Courbes du coefficient Dice --- Domaine Stator par mod\`ele.}}{19}{figure.caption.9}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.4}{\ignorespaces Comparaison du meilleur IoU atteint par chaque mod\`ele --- Domaine Stator.}}{19}{figure.caption.10}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.5}{\ignorespaces Compromis pr\'ecision (IoU) vs. vitesse d'entra\^inement --- Domaine Stator.}}{20}{figure.caption.11}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.6}{\ignorespaces Consommation m\'emoire GPU par mod\`ele --- Domaine Stator.}}{20}{figure.caption.12}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.7}{\ignorespaces Temps d'entra\^inement total par mod\`ele --- Domaine Stator.}}{20}{figure.caption.13}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.8}{\ignorespaces Tableau comparatif complet des mod\`eles --- Domaine Stator.}}{21}{figure.caption.14}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.9}{\ignorespaces Tableaux de bord YOLO Ultralytics --- Domaine Stator.}}{21}{figure.caption.15}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.10}{\ignorespaces Matrices de confusion normalis\'ees YOLO --- Domaine Stator.}}{21}{figure.caption.16}\protected@file@percent }
+\citation{ronneberger2015unet}
+\citation{he2016resnet}
+\citation{jocher2023yolov8}
+\@writefile{toc}{\contentsline {section}{\numberline {5.2}Domaine Chignon}{22}{section.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.1}R\'esultats comparatifs}{22}{subsection.5.2.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5.2}{\ignorespaces R\'esultats d'entra\^inement --- Domaine Chignon (2 classes). Les performances sont globalement plus \'elev\'ees car la segmentation binaire est une t\^ache plus simple.}}{22}{table.caption.17}\protected@file@percent }
+\newlabel{tab:chignon_results}{{5.2}{22}{R\'esultats d'entra\^inement --- Domaine Chignon (2 classes). Les performances sont globalement plus \'elev\'ees car la segmentation binaire est une t\^ache plus simple}{table.caption.17}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.2}Courbes d'entra\^inement --- Chignon}{22}{subsection.5.2.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.11}{\ignorespaces Courbes de perte (train/validation) --- Domaine Chignon.}}{22}{figure.caption.18}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.12}{\ignorespaces Courbes IoU (train/validation) --- Domaine Chignon par mod\`ele.}}{23}{figure.caption.19}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.13}{\ignorespaces Courbes du coefficient Dice --- Domaine Chignon par mod\`ele.}}{23}{figure.caption.20}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.14}{\ignorespaces Comparaison du meilleur IoU atteint par chaque mod\`ele --- Domaine Chignon.}}{24}{figure.caption.21}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.15}{\ignorespaces Compromis pr\'ecision (IoU) vs. vitesse d'entra\^inement --- Domaine Chignon.}}{24}{figure.caption.22}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.16}{\ignorespaces Consommation m\'emoire GPU par mod\`ele --- Domaine Chignon.}}{24}{figure.caption.23}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.17}{\ignorespaces Temps d'entra\^inement total par mod\`ele --- Domaine Chignon.}}{25}{figure.caption.24}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.18}{\ignorespaces Tableau comparatif complet des mod\`eles --- Domaine Chignon.}}{25}{figure.caption.25}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.19}{\ignorespaces Tableaux de bord YOLO Ultralytics --- Domaine Chignon.}}{25}{figure.caption.26}\protected@file@percent }
+\citation{ronneberger2015unet}
+\citation{he2016resnet}
+\citation{jocher2023yolov8}
+\citation{ronneberger2015unet}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.20}{\ignorespaces Matrices de confusion normalis\'ees YOLO --- Domaine Chignon.}}{26}{figure.caption.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5.3}Domaine Files (C\^ables)}{26}{section.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3.1}R\'esultats comparatifs et analyse des \'echecs YOLO}{26}{subsection.5.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5.3}{\ignorespaces R\'esultats d'entra\^inement --- Domaine Files (2 classes). Les mod\`eles YOLO n'ont pas converg\'e pour ce domaine.}}{26}{table.caption.28}\protected@file@percent }
+\newlabel{tab:files_results}{{5.3}{26}{R\'esultats d'entra\^inement --- Domaine Files (2 classes). Les mod\`eles YOLO n'ont pas converg\'e pour ce domaine}{table.caption.28}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3.2}Courbes d'entra\^inement --- Files}{27}{subsection.5.3.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.21}{\ignorespaces Courbes de perte (train/validation) --- Domaine Files.}}{27}{figure.caption.29}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.22}{\ignorespaces Courbes IoU (train/validation) --- Domaine Files par mod\`ele.}}{27}{figure.caption.30}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.23}{\ignorespaces Courbes du coefficient Dice --- Domaine Files par mod\`ele.}}{28}{figure.caption.31}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.24}{\ignorespaces Comparaison du meilleur IoU atteint par chaque mod\`ele --- Domaine Files.}}{28}{figure.caption.32}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.25}{\ignorespaces Compromis pr\'ecision (IoU) vs. vitesse d'entra\^inement --- Domaine Files.}}{29}{figure.caption.33}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.26}{\ignorespaces Consommation m\'emoire GPU par mod\`ele --- Domaine Files.}}{29}{figure.caption.34}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.27}{\ignorespaces Temps d'entra\^inement total par mod\`ele --- Domaine Files.}}{29}{figure.caption.35}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.28}{\ignorespaces Tableau comparatif complet des mod\`eles --- Domaine Files.}}{30}{figure.caption.36}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.29}{\ignorespaces V\'erification visuelle sur le jeu de test --- Domaine Files.}}{31}{figure.caption.37}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.30}{\ignorespaces Tableaux de bord YOLO Ultralytics --- Domaine Files (pas de convergence observ\'ee).}}{32}{figure.caption.38}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.31}{\ignorespaces Matrices de confusion normalis\'ees YOLO --- Domaine Files.}}{32}{figure.caption.39}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {6}Pipeline de D\'etection}{33}{chapter.6}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{lof}{\contentsline {figure}{\numberline {6.1}{\ignorespaces Pipeline de d\'etection complet --- De l'acquisition d'image (WebRTC, upload, cam\'era industrielle) au tableau de bord, en passant par le routage de domaine, l'inf\'erence, le post-traitement et le moteur de mesure g\'eom\'etrique.}}{34}{figure.caption.40}\protected@file@percent }
+\newlabel{fig:detection_pipeline}{{6.1}{34}{Pipeline de d\'etection complet --- De l'acquisition d'image (WebRTC, upload, cam\'era industrielle) au tableau de bord, en passant par le routage de domaine, l'inf\'erence, le post-traitement et le moteur de mesure g\'eom\'etrique}{figure.caption.40}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6.1}Sources d'entr\'ee}{35}{section.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6.2}Pipeline de d\'etection --- Stator}{36}{section.6.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6.2}{\ignorespaces Pipeline de d\'etection d\'etaill\'e pour le domaine Stator, incluant la s\'election du mod\`ele, le post-traitement sp\'ecifique (filtre Top-N, correction heuristique spatiale, ByteTrack, Guided Filter), et le moteur de mesure g\'eom\'etrique \`a quatre m\'ethodes de calibration.}}{36}{figure.caption.41}\protected@file@percent }
+\newlabel{fig:stator_detect}{{6.2}{36}{Pipeline de d\'etection d\'etaill\'e pour le domaine Stator, incluant la s\'election du mod\`ele, le post-traitement sp\'ecifique (filtre Top-N, correction heuristique spatiale, ByteTrack, Guided Filter), et le moteur de mesure g\'eom\'etrique \`a quatre m\'ethodes de calibration}{figure.caption.41}{}}
+\citation{zhang2022bytetrack}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2.1}D\'ecouverte automatique des mod\`eles}{37}{subsection.6.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2.2}Post-traitement sp\'ecifique au stator}{37}{subsection.6.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Filtre Top-N}{37}{subsection.6.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Correction heuristique spatiale}{37}{subsection.6.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Suivi d'objets ByteTrack}{37}{subsection.6.2.2}\protected@file@percent }
+\citation{ranftl2020midas}
+\@writefile{toc}{\contentsline {subsubsection}{Raffinement de bords (Guided Filter)}{38}{subsection.6.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2.3}Syst\`eme de mesure g\'eom\'etrique}{38}{subsection.6.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{M\'ethode 1~: Param\`etres intrins\`eques cam\'era.}{38}{subsection.6.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{M\'ethode 2~: Label de r\'ef\'erence.}{38}{subsection.6.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{M\'ethode 3~: Manuel.}{38}{subsection.6.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{M\'ethode 4~: Estimation de profondeur MiDaS~\cite  {ranftl2020midas}.}{38}{subsection.6.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Mesures calcul\'ees.}{38}{subsection.6.2.3}\protected@file@percent }
+\citation{ronneberger2015unet}
+\@writefile{toc}{\contentsline {section}{\numberline {6.3}Pipeline de d\'etection --- Chignon}{39}{section.6.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6.3}{\ignorespaces Pipeline de d\'etection pour le domaine Chignon. Deux chemins distincts~: inf\'erence YOLO avec extraction de bo\^ites et masques, ou inf\'erence UNet avec sortie binaire. La phase de rendu est partag\'ee.}}{39}{figure.caption.42}\protected@file@percent }
+\newlabel{fig:chignon_detect}{{6.3}{39}{Pipeline de d\'etection pour le domaine Chignon. Deux chemins distincts~: inf\'erence YOLO avec extraction de bo\^ites et masques, ou inf\'erence UNet avec sortie binaire. La phase de rendu est partag\'ee}{figure.caption.42}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6.4}Pipeline de d\'etection --- Files (c\^ables)}{41}{section.6.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6.4}{\ignorespaces Pipeline de d\'etection pour le domaine Files, incluant la segmentation, la classification couleur HSV, la gestion de la fusion, et la validation de la disposition gauche-droite.}}{41}{figure.caption.43}\protected@file@percent }
+\newlabel{fig:files_detect}{{6.4}{41}{Pipeline de d\'etection pour le domaine Files, incluant la segmentation, la classification couleur HSV, la gestion de la fusion, et la validation de la disposition gauche-droite}{figure.caption.43}{}}
+\citation{ronneberger2015unet}
+\citation{he2016resnet}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4.1}Classification par couleur HSV}{42}{subsection.6.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4.2}Gestion de la fusion}{42}{subsection.6.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4.3}Validation de la disposition gauche-droite}{42}{subsection.6.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {7}Application Web}{43}{chapter.7}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{toc}{\contentsline {section}{\numberline {7.1}Interface utilisateur}{43}{section.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7.2}Syst\`eme de monitoring}{43}{section.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7.3}Captures d'\'ecran de l'application}{44}{section.7.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7.1}{\ignorespaces \textbf  {Tableau de bord principal} --- Vue globale de l'interface utilisateur, incluant la s\'election de domaine, le panneau de configuration, les m\'etriques d'inf\'erence temps r\'eel et la zone de visualisation.}}{44}{figure.caption.44}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7.2}{\ignorespaces \textbf  {Inspection Stator (Temps R\'eel)} --- D\'etection des 4 classes avec mesures g\'eom\'etriques dynamiques. Le syst\`eme calcule les dimensions des contours et les distances intra-composants (notamment les distances cross-diam\'etriques) directement sur le flux WebRTC.}}{45}{figure.caption.45}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7.3}{\ignorespaces \textbf  {Inspection Chignon} --- Segmentation binaire isolant les bobinages de cuivre (coloration verte semi-transparente) via le mod\`ele s\'electionn\'e.}}{45}{figure.caption.46}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7.4}{\ignorespaces \textbf  {Inspection C\^ables (Files)} --- Segmentation et validation de la conformit\'e couleur (disposition gauche/droite correcte) avec g\'en\'eration d'un statut "OK" sur le panneau de r\'esultats.}}{46}{figure.caption.47}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7.5}{\ignorespaces \textbf  {Ajustements photom\'etriques} --- Outils int\'egr\'es permettant \`a l'op\'erateur de modifier la luminosit\'e, le contraste et la saturation de l'image avant l'inf\'erence pour compenser les variations d'\'eclairage.}}{46}{figure.caption.48}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7.6}{\ignorespaces \textbf  {Panneau Mod\`eles \& Intelligence Artificielle} --- S\'election \`a la vol\'ee de l'architecture d'inf\'erence (YOLO, UNet) et activation des filtres de post-traitement avanc\'es (ByteTrack, Guided Filter).}}{47}{figure.caption.49}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7.7}{\ignorespaces \textbf  {Panneau Cam\'era \& Calibration g\'eom\'etrique} --- S\'election de la source d'entr\'ee (Webcam, Flux HTTP) et configuration de la m\'ethode de calibration (intrins\`eque, label manuel, etc.) pour la conversion des pixels en millim\`etres.}}{47}{figure.caption.50}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7.8}{\ignorespaces \textbf  {Tol\'erances et r\`egles d'inspection} --- D\'efinition des bornes de d\'ecision (min/max) pour valider automatiquement une pi\`ece. Le syst\`eme inspecte l'aire des chignons gauche/droit et les distances cross-diam\'etriques des p\^oles magn\'etiques et des pi\`eces m\'ecaniques. Toute mesure en dehors des clous d\'eclenche une alerte qualifiante.}}{48}{figure.caption.51}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7.9}{\ignorespaces \textbf  {Documentation API Swagger} --- Interface interactive (accessible via le chemin \texttt  {/apidocs}) d\'etaillant de fa\c {c}on standardis\'ee l'ensemble des endpoints du backend. L'objectif de cette documentation OpenAPI est de fournir un contrat clair et testable pour permettre une int\'egration fluide et universelle de la solution d'inspection avec des syst\`emes d'usine tiers (automates programmables, bases de donn\'ees qualit\'e d'entreprise, ERP) sans n\'ecessiter d'audit du code h\^ote.}}{49}{figure.caption.52}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {8}Optimisations et Am\'eliorations SOTA}{50}{chapter.8}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{toc}{\contentsline {section}{\numberline {8.1}Optimisation de l'inf\'erence}{50}{section.8.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8.2}Entra\^inement sur Kaggle}{50}{section.8.2}\protected@file@percent }
+\citation{ghiasi2021copypaste}
+\citation{kervadec2019boundary}
+\citation{berman2018lovasz}
+\citation{ronneberger2015unet}
+\citation{he2016resnet}
+\citation{zhang2022bytetrack}
+\citation{ranftl2020midas}
+\citation{ronneberger2015unet}
+\citation{he2016resnet}
+\citation{ronneberger2015unet}
+\citation{he2016resnet}
+\citation{ronneberger2015unet}
+\citation{he2016resnet}
+\@writefile{toc}{\contentsline {chapter}{\numberline {9}Conclusion et Perspectives}{51}{chapter.9}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{toc}{\contentsline {section}{\numberline {9.1}Bilan}{51}{section.9.1}\protected@file@percent }
+\citation{xie2021segformer}
+\@writefile{toc}{\contentsline {section}{\numberline {9.2}R\'esum\'e des performances}{52}{section.9.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {9.1}{\ignorespaces R\'esum\'e des meilleurs r\'esultats par domaine. UNet ResNet18 domine les trois domaines, confirmant la sup\'eriorit\'e des architectures encodeur-d\'ecodeur sp\'ecialis\'ees dans les r\'egimes de donn\'ees industrielles limit\'ees.}}{52}{table.caption.53}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9.3}Perspectives}{52}{section.9.3}\protected@file@percent }
+\citation{loshchilov2019adamw}
+\citation{ghiasi2021copypaste}
+\@writefile{toc}{\contentsline {chapter}{\numberline {A}Configuration des hyperparam\`etres}{53}{appendix.A}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{lot}{\contentsline {table}{\numberline {A.1}{\ignorespaces Hyperparam\`etres principaux d'entra\^inement}}{53}{table.caption.54}\protected@file@percent }
+\bibcite{ronneberger2015unet}{1}
+\bibcite{he2016resnet}{2}
+\bibcite{xie2021segformer}{3}
+\bibcite{chen2017deeplabv3}{4}
+\bibcite{jocher2023yolov8}{5}
+\bibcite{ghiasi2021copypaste}{6}
+\bibcite{kervadec2019boundary}{7}
+\bibcite{berman2018lovasz}{8}
+\bibcite{zhang2022bytetrack}{9}
+\bibcite{ranftl2020midas}{10}
+\bibcite{long2015fcn}{11}
+\bibcite{loshchilov2019adamw}{12}
+\bibcite{howard2019mobilenetv3}{13}
+\gdef \@abspage@last{56}

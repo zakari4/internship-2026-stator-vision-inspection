@@ -5,8 +5,8 @@ Automatically determines the dominant axis (X or Y) from the spatial
 spread between the blue and yellow file centroids, then validates the
 colour order along that axis:
 
-  X-axis — blue on the left,  yellow on the right
-  Y-axis — blue on the top,   yellow on the bottom
+  X-axis — yellow on the left,  blue on the right
+  Y-axis — yellow on the top,   blue on the bottom
 
 No manual axis configuration is needed; the system adapts at runtime
 as the physical arrangement changes.
@@ -80,16 +80,16 @@ def validate_file_positions(
         second_det = ordered[-1]   # bottommost
         top_color  = first_det.get("file_color", "unknown")
         bot_color  = second_det.get("file_color", "unknown")
-        is_valid   = (top_color == "blue") and (bot_color == "yellow")
+        is_valid   = (top_color == "yellow") and (bot_color == "blue")
 
         axis_label = "Y-axis"
         if is_valid:
-            msg   = f"Correct position [{axis_label}]: blue on top, yellow on bottom."
+            msg   = f"Correct position [{axis_label}]: yellow on top, blue on bottom."
             level = "info"
         else:
             msg = (
                 f"Incorrect position [{axis_label}]: top is {top_color}, "
-                f"bottom is {bot_color}. Expected blue on top, yellow on bottom."
+                f"bottom is {bot_color}. Expected yellow on top, blue on bottom."
             )
             level = "warn"
     else:
@@ -99,16 +99,16 @@ def validate_file_positions(
         second_det = ordered[-1]   # rightmost
         left_color  = first_det.get("file_color", "unknown")
         right_color = second_det.get("file_color", "unknown")
-        is_valid    = (left_color == "blue") and (right_color == "yellow")
+        is_valid    = (left_color == "yellow") and (right_color == "blue")
 
         axis_label = "X-axis"
         if is_valid:
-            msg   = f"Correct position [{axis_label}]: blue on left, yellow on right."
+            msg   = f"Correct position [{axis_label}]: yellow on left, blue on right."
             level = "info"
         else:
             msg = (
                 f"Incorrect position [{axis_label}]: left is {left_color}, "
-                f"right is {right_color}. Expected blue on left, yellow on right."
+                f"right is {right_color}. Expected yellow on left, blue on right."
             )
             level = "warn"
 

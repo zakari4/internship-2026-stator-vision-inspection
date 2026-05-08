@@ -51,6 +51,7 @@ import json
 import logging
 import os
 import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -1424,6 +1425,24 @@ def api_select_model():
         return jsonify({"error": f"Failed to load model: {model_name}"}), 500
 
 
+@app.route("/api/model/export-onnx", methods=["POST"])
+def api_export_onnx():
+    """Export the current stator YOLO model to ONNX for faster future inference.
+
+    This is a one-time, potentially slow operation (~30-60 s).  After export the
+    ONNX file lives next to the ``.pt`` weight file and is loaded automatically
+    on the next model load.  Returns the output path on success.
+    """
+    domain = (request.get_json(silent=True) or {}).get("domain", "stator")
+    mgr = _get_manager(domain)
+    if not hasattr(mgr, "export_onnx"):
+        return jsonify({"ok": False, "error": "domain does not support ONNX export"}), 400
+    out = mgr.export_onnx()
+    if out is None:
+        return jsonify({"ok": False, "error": "Export failed — check server logs"}), 500
+    return jsonify({"ok": True, "path": out})
+
+
 # ---------- Pipeline Enhancements ---------- #
 
 @app.route("/api/inference-enhancements", methods=["GET", "POST"])
@@ -1836,15 +1855,35 @@ def mv_receive_frame():
         metrics_tracker.add_metric(None, is_error=True, model_name=model_manager.current_model_name)
         return jsonify({"error": "Could not decode frame"}), 400
 
-    # If an inspection is running, route the frame through the stage-appropriate
-    # model manager (stator / chignon / file) so measurements match each stage.
-    # Otherwise use whichever domain the UI has selected via /api/mindvision/set-domain.
+    # Route each frame through the stage-appropriate model(s).
+    # During stator_file both the stator and file managers run per frame;
+    # otherwise a single manager is used.
     insp_stage = _inspection_session.stage if _inspection_session.active else None
     active_mgr = _inspection_manager_for(insp_stage) if insp_stage else _get_manager(_mv_active_domain)
+
+    # When paused: stream the raw frame unchanged and skip all inference/ingestion.
+    if _inspection_session.active and _inspection_session.paused:
+        with _mv_frame_lock:
+            _mv_latest_annotated = file_bytes   # raw JPEG as-is
+        return jsonify({"ok": True, "paused": True})
+
+    # Sync px_to_mm into chignon manager so area measurements use calibrated scale.
+    if insp_stage == "chignon":
+        _px = getattr(getattr(model_manager, "camera_settings", None), "manual_px_to_mm", 0) or 1.0
+        chignon_manager.px_to_mm = _px
 
     t0 = time.time()
     try:
         annotated, detections = active_mgr.predict(img)
+        if insp_stage == "stator_file":
+            # Run file model and composite its annotations onto the stator frame.
+            # Compute the annotation delta (what file added) and overlay it so
+            # both segmentations are visible in the same preview stream.
+            file_annotated, _ = file_manager.predict(img)
+            file_delta = file_annotated.astype(np.int16) - img.astype(np.int16)
+            annotated = np.clip(
+                annotated.astype(np.int16) + file_delta, 0, 255
+            ).astype(np.uint8)
         inference_ms = (time.time() - t0) * 1000
         metrics_tracker.add_metric(inference_ms, is_error=False, model_name=active_mgr.current_model_name)
     except Exception as e:
@@ -1852,7 +1891,8 @@ def mv_receive_frame():
         return jsonify({"error": str(e)}), 500
 
     if insp_stage:
-        pos_msg = getattr(active_mgr, "get_latest_position_message", lambda: "")()
+        pos_msg = getattr(file_manager if insp_stage == "stator_file" else active_mgr,
+                          "get_latest_position_message", lambda: "")()
         _inspection_session.ingest(insp_stage, detections, pos_msg)
 
     # Encode annotated frame
@@ -1962,20 +2002,27 @@ def mv_set_domain():
 # ═══════════════════════════════════════════════════════════════════════════
 # Automated Inspection Session
 # ═══════════════════════════════════════════════════════════════════════════
-# Runs three sequential stages on live MindVision frames:
-#   1. stator  (5 s) — collect cross-diameter distances (magnet, mechanical_part)
-#   2. chignon (5 s) — collect left/right chignon surface areas
-#   3. file    (2 s) — determine OK / NOT OK position (binary)
+# Runs two sequential stages on live MindVision frames:
+#   1. stator_file (5 s) — stator cross-diameter distances + file position (simultaneous)
+#   2. chignon     (5 s) — left/right chignon surface areas
 # Results per measurement group are reported as mean ± variance, optionally
 # compared against user-defined min/max thresholds.
 
 import math as _math
 from statistics import mean as _stat_mean, pvariance as _stat_pvariance
 
-_STAGE_DURATIONS: dict[str, float] = {"stator": 5.0, "chignon": 5.0, "file": 2.0}
+_STAGE_DURATIONS: dict[str, float] = {"stator_file": 5.0, "chignon": 5.0}
 _STAGE_DURATIONS_LOCK = _mv_threading.Lock()
 _STAGE_DURATION_LIMITS = (0.5, 120.0)  # seconds
-_STAGE_ORDER = ["stator", "chignon", "file"]
+_STAGE_ORDER = ["stator_file", "chignon"]
+
+# Human-readable labels for stator cross-diameter keys
+_XDIAM_LABELS: dict[str, str] = {
+    "stator.magnet.diag-asc":           "Magnet — TR↔BL",
+    "stator.magnet.diag-desc":          "Magnet — TL↔BR",
+    "stator.mechanical_part.diag-asc":  "Mechanical — TR↔BL",
+    "stator.mechanical_part.diag-desc": "Mechanical — TL↔BR",
+}
 
 
 def _stage_duration(stage: str) -> float:
@@ -2045,12 +2092,18 @@ class InspectionSession:
         self.started_at: float = 0.0
         self.stage_started_at: float = 0.0
         self._thread: _mv_threading.Thread | None = None
-        self._cancel = _mv_threading.Event()
+        self._cancel     = _mv_threading.Event()
+        self._skip_stage = _mv_threading.Event()
+        self._paused     = _mv_threading.Event()   # set = inference suspended, video runs on
 
         # Per-stage raw buffers
         self._stator_samples: dict[str, list[float]] = {}   # key -> list of mm values
         self._chignon_samples: dict[str, list[float]] = {}  # "left"/"right" -> list of mm² values
         self._file_samples: list[bool] = []                 # True = correct position
+
+        # Latest single-frame values for "current" display
+        self._stator_latest: dict[str, float] = {}
+        self._chignon_latest: dict[str, float] = {}
 
         self.result: dict | None = None
 
@@ -2074,11 +2127,64 @@ class InspectionSession:
             self._stator_samples = {}
             self._chignon_samples = {}
             self._file_samples = []
+            self._stator_latest = {}
+            self._chignon_latest = {}
             self.result = None
             self._cancel.clear()
+            self._skip_stage.clear()
+            self._paused.clear()
         self._thread = _mv_threading.Thread(target=self._run, daemon=True)
         self._thread.start()
         return True, "started"
+
+    def skip_stage(self) -> None:
+        """Advance past the current stage immediately. No-op when idle."""
+        with self.lock:
+            if not self.active:
+                return
+        self._skip_stage.set()
+
+    def set_stage(self, stage_name: str) -> tuple[bool, str]:
+        """Jump to a named stage immediately, resetting that stage's sample buffers.
+
+        Works in both live-camera and video inspection modes; in video mode only
+        forward jumps are honoured (the frame reader cannot rewind).
+        """
+        if stage_name not in _STAGE_ORDER:
+            return False, f"unknown stage: {stage_name!r}"
+        with self.lock:
+            if not self.active:
+                return False, "no active inspection"
+            self.stage = stage_name
+            self.stage_started_at = time.time()
+            if stage_name == "stator_file":
+                self._stator_samples = {}
+                self._file_samples = []
+                self._stator_latest = {}
+            elif stage_name == "chignon":
+                self._chignon_samples = {}
+                self._chignon_latest = {}
+        self._skip_stage.set()
+        return True, f"stage set to {stage_name}"
+
+    def pause(self) -> None:
+        """Suspend inference without stopping the stream.
+
+        Video frames continue to be read and displayed; detection and sample
+        collection are skipped until :meth:`resume` is called.
+        """
+        with self.lock:
+            if not self.active:
+                return
+        self._paused.set()
+
+    def resume(self) -> None:
+        """Resume inference after a :meth:`pause`."""
+        self._paused.clear()
+
+    @property
+    def paused(self) -> bool:
+        return self._paused.is_set()
 
     def cancel(self) -> None:
         """Signal the worker thread to abort between stages. No-op when idle."""
@@ -2086,6 +2192,36 @@ class InspectionSession:
             if not self.active:
                 return
             self._cancel.set()
+
+    def start_from_video(self, video_path: str) -> tuple[bool, str]:
+        """Begin an inspection run driven by a pre-recorded video file.
+
+        Frames are split proportionally across stages using the current
+        ``_STAGE_DURATIONS``, then processed as fast as possible.  The
+        annotated frames are pushed into the shared MJPEG buffer so the
+        live preview reflects what the pipeline sees.
+        """
+        with self.lock:
+            if self.active:
+                return False, "inspection already running"
+            self.active = True
+            self.stage = _STAGE_ORDER[0]
+            self.started_at = time.time()
+            self.stage_started_at = self.started_at
+            self._stator_samples = {}
+            self._chignon_samples = {}
+            self._file_samples = []
+            self._stator_latest = {}
+            self._chignon_latest = {}
+            self.result = None
+            self._cancel.clear()
+            self._skip_stage.clear()
+            self._paused.clear()
+        self._thread = _mv_threading.Thread(
+            target=self._run_video, args=(video_path,), daemon=True
+        )
+        self._thread.start()
+        return True, "started"
 
     def status(self) -> dict:
         """Return a snapshot suitable for ``GET /api/inspection/status``."""
@@ -2101,16 +2237,16 @@ class InspectionSession:
             stage_total = _stage_duration(self.stage or "")
             stage_remaining = max(0.0, stage_total - stage_elapsed)
             # Frame counts
-            if self.stage == "stator":
-                frame_count = max((len(v) for v in self._stator_samples.values()), default=0)
+            if self.stage == "stator_file":
+                stator_n = max((len(v) for v in self._stator_samples.values()), default=0)
+                frame_count = max(stator_n, len(self._file_samples))
             elif self.stage == "chignon":
                 frame_count = max((len(v) for v in self._chignon_samples.values()), default=0)
-            elif self.stage == "file":
-                frame_count = len(self._file_samples)
             else:
                 frame_count = 0
             return {
                 "active": True,
+                "paused": self._paused.is_set(),
                 "stage": self.stage,
                 "stage_elapsed": round(stage_elapsed, 2),
                 "stage_total": stage_total,
@@ -2129,8 +2265,8 @@ class InspectionSession:
         with self.lock:
             if not self.active or self.stage != stage:
                 return
-            if stage == "stator":
-                # Aggregate one sample per cross-diameter key per frame
+            if stage == "stator_file":
+                # --- Stator: one sample per cross-diameter key per frame ---
                 frame_vals: dict[str, float] = {}
                 for det in detections or []:
                     for m in det.get("measurements", []) or []:
@@ -2140,17 +2276,22 @@ class InspectionSession:
                         if key is None:
                             continue
                         val = m.get("value_mm")
-                        if val is None:
-                            continue
-                        # Each cross-diameter appears twice (once per detection);
-                        # dedupe per frame by key.
-                        frame_vals[key] = float(val)
+                        if val is not None:
+                            frame_vals[key] = float(val)
                 for key, val in frame_vals.items():
                     self._stator_samples.setdefault(key, []).append(val)
+                if frame_vals:
+                    self._stator_latest = dict(frame_vals)
+
+                # --- File: binary decision from position message ---
+                msg = (position_message or "").strip().lower()
+                if msg.startswith("correct"):
+                    self._file_samples.append(True)
+                elif msg.startswith("incorrect"):
+                    self._file_samples.append(False)
 
             elif stage == "chignon":
-                # Chignon detections expose area measurements. Sort by x-center
-                # to label left vs right. Collect one area per chignon per frame.
+                # Sort detections by x-center to label left vs right.
                 areas: list[tuple[float, float]] = []  # (x_center, area_mm2)
                 for det in detections or []:
                     if "chignon" not in str(det.get("class_name", "")).lower():
@@ -2168,39 +2309,221 @@ class InspectionSession:
                 areas.sort(key=lambda t: t[0])
                 if len(areas) >= 1:
                     self._chignon_samples.setdefault("left", []).append(areas[0][1])
+                    self._chignon_latest["left"] = areas[0][1]
                 if len(areas) >= 2:
                     self._chignon_samples.setdefault("right", []).append(areas[-1][1])
+                    self._chignon_latest["right"] = areas[-1][1]
 
-            elif stage == "file":
-                # Binary decision from position message. Use prefix match because
-                # "correct position" is a substring of "incorrect position", and
-                # the fallback "Incorrect: need at least 2 ..." also starts with
-                # "incorrect" — both must count as a NOT-OK sample.
-                msg = (position_message or "").strip().lower()
-                if msg.startswith("correct"):
-                    self._file_samples.append(True)
-                elif msg.startswith("incorrect"):
-                    self._file_samples.append(False)
-                # No message → skip
+    def live_stats(self) -> dict:
+        """Return running mean + variance for every accumulated sample so far.
+
+        Safe to call at any time; returns empty lists when no run is active.
+        Designed for the client's 500 ms real-time poll.
+        """
+        with self.lock:
+            if not self.active:
+                return {"active": False, "stage": None, "stator": [], "chignon": [], "file": {}}
+
+            def _running(values: list) -> dict:
+                n = len(values)
+                if n == 0:
+                    return {"count": 0, "mean": None, "variance": None}
+                mu = _stat_mean(values)
+                var = _stat_pvariance(values) if n > 1 else 0.0
+                return {"count": n, "mean": round(mu, 3), "variance": round(var, 4)}
+
+            stator = [
+                {
+                    "key": k, "label": _XDIAM_LABELS.get(k, k), "unit": "mm",
+                    "current": round(self._stator_latest[k], 3) if k in self._stator_latest else None,
+                    **_running(v),
+                }
+                for k, v in sorted(self._stator_samples.items())
+            ]
+            chignon = [
+                {
+                    "label": f"{side.capitalize()} chignon", "unit": "mm²",
+                    "current": round(self._chignon_latest[side], 2) if side in self._chignon_latest else None,
+                    **_running(self._chignon_samples.get(side, [])),
+                }
+                for side in ("left", "right")
+            ]
+            total = len(self._file_samples)
+            ok_n  = sum(1 for b in self._file_samples if b)
+            file_stat = {
+                "samples": total,
+                "ok_ratio": round(ok_n / total, 3) if total else None,
+                "decision": (("OK" if ok_n / total >= 0.5 else "NOT OK") if total else None),
+            }
+            return {
+                "active": True,
+                "stage": self.stage,
+                "stator": stator,
+                "chignon": chignon,
+                "file": file_stat,
+            }
 
     # ------------------------------------------------------------------
     # Stage transitions (background thread)
     # ------------------------------------------------------------------
 
-    def _run(self) -> None:
-        """Worker-thread entry point. Drives the stage sequence and aggregates."""
+    def _run_video(self, video_path: str) -> None:
+        """Worker: read a video file and drive the inspection pipeline frame-by-frame."""
+        global _mv_latest_annotated, _mv_latest_frame
         try:
+            cap = cv2.VideoCapture(video_path)
+            if not cap.isOpened():
+                raise RuntimeError(f"Cannot open video: {video_path}")
+
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            if total_frames < 1:
+                raise RuntimeError("Video has no readable frames")
+            # Target playback interval so the viewer sees annotated frames at
+            # approximately the video's native frame rate.
+            native_fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+            target_interval = 1.0 / max(1.0, native_fps)
+
+            # Allocate frames per stage proportional to stage durations
+            total_dur = sum(_stage_duration(s) for s in _STAGE_ORDER)
+            stage_frame_counts: dict[str, int] = {}
+            allocated = 0
+            for i, stage in enumerate(_STAGE_ORDER):
+                if i < len(_STAGE_ORDER) - 1:
+                    n = max(1, int(total_frames * _stage_duration(stage) / total_dur))
+                    stage_frame_counts[stage] = n
+                    allocated += n
+                else:
+                    stage_frame_counts[stage] = max(1, total_frames - allocated)
+
+            frame_idx = 0
             for stage in _STAGE_ORDER:
                 if self._cancel.is_set():
                     break
                 self._enter_stage(stage)
-                end = time.time() + _stage_duration(stage)
-                while time.time() < end:
+                if stage == "chignon":
+                    _px = getattr(getattr(model_manager, "camera_settings", None), "manual_px_to_mm", 0) or 1.0
+                    chignon_manager.px_to_mm = _px
+                mgr = _inspection_manager_for(stage)
+                budget = stage_frame_counts[stage]
+                processed = 0
+                while processed < budget:
                     if self._cancel.is_set():
                         break
-                    time.sleep(0.05)
-            if not self._cancel.is_set():
+                    if self._skip_stage.is_set():
+                        self._skip_stage.clear()
+                        break
+                    ok_read, raw_frame = cap.read()
+                    if not ok_read:
+                        break
+                    frame_idx += 1
+                    frame_start = time.time()
+
+                    # Paused: show the raw frame so the video keeps moving,
+                    # but skip inference and don't count toward the stage budget.
+                    if self._paused.is_set():
+                        _, buf = cv2.imencode(".jpg", raw_frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                        with _mv_frame_lock:
+                            _mv_latest_annotated = buf.tobytes()
+                        elapsed = time.time() - frame_start
+                        sleep_t = target_interval - elapsed
+                        if sleep_t > 0:
+                            time.sleep(sleep_t)
+                        continue
+
+                    processed += 1
+                    try:
+                        annotated, detections = mgr.predict(raw_frame)
+                        if stage == "stator_file":
+                            # Composite file segmentation onto stator annotated frame
+                            # so the video preview shows both detections together.
+                            file_annotated, _ = file_manager.predict(raw_frame)
+                            file_delta = file_annotated.astype(np.int16) - raw_frame.astype(np.int16)
+                            annotated = np.clip(
+                                annotated.astype(np.int16) + file_delta, 0, 255
+                            ).astype(np.uint8)
+                        _, buf = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                        pos_src = file_manager if stage == "stator_file" else mgr
+                        pos_msg = getattr(pos_src, "get_latest_position_message", lambda: "")()
+                        self.ingest(stage, detections, pos_msg)
+                        with _mv_frame_lock:
+                            # Only update annotated — leave _mv_latest_frame untouched so that
+                            # /api/mindvision/status stays "disconnected" and the live-camera
+                            # panel does not appear alongside the video preview.
+                            _mv_latest_annotated = buf.tobytes()
+                        # Pace to native video FPS so the preview is watchable
+                        elapsed = time.time() - frame_start
+                        sleep_t = target_interval - elapsed
+                        if sleep_t > 0:
+                            time.sleep(sleep_t)
+                    except Exception:
+                        logger.exception("Video frame %d inference failed", frame_idx)
+
+            cap.release()
+
+            if self._stator_samples or self._chignon_samples:
                 result = self._aggregate()
+                if self._cancel.is_set():
+                    result["partial"] = True
+            elif self._cancel.is_set():
+                result = {"cancelled": True}
+            else:
+                result = self._aggregate()
+        except Exception as exc:
+            logger.exception("Video inspection run failed")
+            result = {"error": str(exc)}
+        finally:
+            try:
+                os.unlink(video_path)
+            except Exception:
+                pass
+            with self.lock:
+                self.result = result
+                self.active = False
+                self.stage = None
+
+    def _run(self) -> None:
+        """Worker for live-camera inspection.
+
+        Stages run indefinitely — no auto-timeout.  The user advances manually
+        via :meth:`skip_stage` (next stage) or :meth:`set_stage` (jump to any
+        stage).  :meth:`cancel` stops immediately.  Partial results are
+        aggregated whenever any samples have been collected.
+        """
+        try:
+            current_idx = 0
+            self._enter_stage(_STAGE_ORDER[current_idx])
+
+            while True:
+                if self._cancel.is_set():
+                    break
+
+                if self._skip_stage.is_set():
+                    self._skip_stage.clear()
+                    # Detect whether this was a manual set_stage jump or a
+                    # natural "advance to next" skip.
+                    with self.lock:
+                        requested = self.stage
+                    current_stage = _STAGE_ORDER[current_idx]
+                    if requested != current_stage:
+                        # set_stage() already wrote the new stage name; honour it.
+                        new_idx = _STAGE_ORDER.index(requested)
+                        current_idx = new_idx
+                        self._enter_stage(_STAGE_ORDER[current_idx])
+                    else:
+                        # Natural advance: move to next stage or finish.
+                        current_idx += 1
+                        if current_idx >= len(_STAGE_ORDER):
+                            break
+                        self._enter_stage(_STAGE_ORDER[current_idx])
+                    continue
+
+                time.sleep(0.05)
+
+            # Aggregate even on cancel so the user always sees partial results.
+            if self._stator_samples or self._chignon_samples:
+                result = self._aggregate()
+                if self._cancel.is_set():
+                    result["partial"] = True
             else:
                 result = {"cancelled": True}
         except Exception as exc:
@@ -2259,13 +2582,13 @@ class InspectionSession:
                 reason = f"above max {hi}"
             return {"valid": ok, "reason": reason, "min": lo, "max": hi}
 
-        # --- Stator ---
+        # --- Stator (collected during stator_file stage) ---
         stator_results = []
         for key, values in sorted(self._stator_samples.items()):
             summ = _summary(values)
             stator_results.append({
                 "key": key,
-                "label": key.replace("stator.", "").replace(".", " "),
+                "label": _XDIAM_LABELS.get(key, key.replace("stator.", "").replace(".", " ")),
                 "unit": "mm",
                 **summ,
                 "validation": _validate(key, summ["mean"]),
@@ -2311,12 +2634,14 @@ _inspection_session = InspectionSession()
 
 
 def _inspection_manager_for(stage: str | None):
-    """Return the model manager used during a given inspection stage."""
+    """Return the primary model manager for a given inspection stage.
+
+    For ``stator_file`` the stator manager is primary (drives the annotated
+    preview); the file manager is run separately in frame-processing code.
+    """
     if stage == "chignon":
         return chignon_manager
-    if stage == "file":
-        return file_manager
-    return model_manager
+    return model_manager  # stator_file and default
 
 
 @app.route("/api/inspection/start", methods=["POST"])
@@ -2335,11 +2660,76 @@ def inspection_start():
     return jsonify({"ok": True, "status": _inspection_session.status()})
 
 
+@app.route("/api/inspection/upload-video", methods=["POST"])
+def inspection_upload_video():
+    """Start an inspection run from an uploaded video file (no live camera needed).
+
+    Accepts a ``video`` file field in a multipart/form-data POST.  The video
+    is written to a temporary file, processed frame-by-frame in a background
+    thread, and cleaned up automatically when done.
+    Returns ``409`` when a run is already in progress.
+    """
+    if "video" not in request.files:
+        return jsonify({"ok": False, "error": "No 'video' field in request"}), 400
+    upload = request.files["video"]
+    if not upload.filename:
+        return jsonify({"ok": False, "error": "Empty filename"}), 400
+
+    suffix = os.path.splitext(upload.filename)[1].lower() or ".mp4"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    upload.save(tmp.name)
+    tmp.close()
+
+    ok, msg = _inspection_session.start_from_video(tmp.name)
+    if not ok:
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
+        return jsonify({"ok": False, "error": msg}), 409
+    return jsonify({"ok": True, "status": _inspection_session.status()})
+
+
 @app.route("/api/inspection/cancel", methods=["POST"])
 def inspection_cancel():
     """Request cancellation of the active inspection run (idempotent)."""
     _inspection_session.cancel()
     return jsonify({"ok": True})
+
+
+@app.route("/api/inspection/skip-stage", methods=["POST"])
+def inspection_skip_stage():
+    """Skip the remainder of the current stage and advance to the next one immediately."""
+    _inspection_session.skip_stage()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/inspection/pause", methods=["POST"])
+def inspection_pause():
+    """Suspend detection while keeping the video stream running."""
+    _inspection_session.pause()
+    return jsonify({"ok": True, "paused": True})
+
+
+@app.route("/api/inspection/resume", methods=["POST"])
+def inspection_resume():
+    """Resume detection after a pause."""
+    _inspection_session.resume()
+    return jsonify({"ok": True, "paused": False})
+
+
+@app.route("/api/inspection/set-stage", methods=["POST"])
+def inspection_set_stage():
+    """Jump to a specific stage by name, resetting that stage's sample buffers.
+
+    Body: ``{"stage": "stator_file" | "chignon"}``
+    """
+    body = request.get_json(silent=True) or {}
+    stage = body.get("stage", "")
+    ok, msg = _inspection_session.set_stage(stage)
+    if not ok:
+        return jsonify({"ok": False, "error": msg}), 400
+    return jsonify({"ok": True, "stage": stage})
 
 
 @app.route("/api/inspection/status")
@@ -2353,6 +2743,16 @@ def inspection_result():
     """Return the latest inspection report (or ``null`` if none has completed)."""
     with _inspection_session.lock:
         return jsonify({"result": _inspection_session.result, "active": _inspection_session.active})
+
+
+@app.route("/api/inspection/live-measurements")
+def inspection_live_measurements():
+    """Return running mean + variance for every key collected so far in the active run.
+
+    Designed for 500 ms polling from the client to power a real-time stats panel.
+    Returns the same structure when idle (active=False, empty lists).
+    """
+    return jsonify(_inspection_session.live_stats())
 
 
 @app.route("/api/inspection/thresholds", methods=["GET", "POST"])

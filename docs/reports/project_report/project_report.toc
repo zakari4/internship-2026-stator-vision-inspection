@@ -1,0 +1,78 @@
+\contentsline {chapter}{\numberline {1}Introduction}{4}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Contexte du projet}{4}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Objectifs}{5}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Technologies utilis\'ees}{5}{section.1.3}%
+\contentsline {chapter}{\numberline {2}Architecture du Syst\`eme}{6}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Vue d'ensemble de l'architecture}{6}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Architecture Docker}{6}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Service Serveur (Backend IA)}{6}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Service MLflow}{7}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Service Client (Proxy inverse)}{7}{subsection.2.2.3}%
+\contentsline {section}{\numberline {2.3}Communication temps r\'eel (WebRTC)}{7}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Syst\`eme multi-domaine}{8}{section.2.4}%
+\contentsline {chapter}{\numberline {3}Pr\'eparation des Donn\'ees}{9}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Format des annotations}{9}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Division du jeu de donn\'ees}{9}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Pipeline d'augmentation de donn\'ees}{10}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Transformations g\'eom\'etriques ($5\times $)}{10}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Transformations photom\'etriques ($9\times $)}{10}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Copy-Paste Augmentation (SOTA)}{11}{subsection.3.3.3}%
+\contentsline {section}{\numberline {3.4}Conversion au format YOLO}{11}{section.3.4}%
+\contentsline {chapter}{\numberline {4}Pipeline d'Entra\^inement}{12}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Architectures de mod\`eles}{12}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}U-Net avec encodeur ResNet-18}{12}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}SegFormer B0}{13}{subsection.4.1.2}%
+\contentsline {subsection}{\numberline {4.1.3}DeepLabV3 MobileNet}{13}{subsection.4.1.3}%
+\contentsline {subsection}{\numberline {4.1.4}Mod\`eles YOLO (Ultralytics)}{14}{subsection.4.1.4}%
+\contentsline {section}{\numberline {4.2}Boucle d'entra\^inement}{14}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Fonctions de perte composites}{14}{subsection.4.2.1}%
+\contentsline {paragraph}{Binary Cross-Entropy (BCE), $w=0.3$.}{14}{subsection.4.2.1}%
+\contentsline {paragraph}{Dice Loss, $w=0.3$.}{14}{subsection.4.2.1}%
+\contentsline {paragraph}{Boundary Loss~\cite {kervadec2019boundary}, $w=0.2$.}{14}{subsection.4.2.1}%
+\contentsline {paragraph}{Lov\'asz-Hinge~\cite {berman2018lovasz}, $w=0.2$.}{15}{subsection.4.2.1}%
+\contentsline {paragraph}{Variante multi-classe.}{15}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Strat\'egie d'optimisation}{15}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}M\'etriques d'\'evaluation}{15}{subsection.4.2.3}%
+\contentsline {subsection}{\numberline {4.2.4}Monitoring mat\'eriel}{16}{subsection.4.2.4}%
+\contentsline {chapter}{\numberline {5}R\'esultats d'Entra\^inement}{17}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Domaine Stator}{17}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}R\'esultats comparatifs}{17}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Courbes d'entra\^inement --- Stator}{18}{subsection.5.1.2}%
+\contentsline {section}{\numberline {5.2}Domaine Chignon}{22}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}R\'esultats comparatifs}{22}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Courbes d'entra\^inement --- Chignon}{22}{subsection.5.2.2}%
+\contentsline {section}{\numberline {5.3}Domaine Files (C\^ables)}{26}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}R\'esultats comparatifs et analyse des \'echecs YOLO}{26}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Courbes d'entra\^inement --- Files}{27}{subsection.5.3.2}%
+\contentsline {chapter}{\numberline {6}Pipeline de D\'etection}{33}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Sources d'entr\'ee}{35}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Pipeline de d\'etection --- Stator}{36}{section.6.2}%
+\contentsline {subsection}{\numberline {6.2.1}D\'ecouverte automatique des mod\`eles}{37}{subsection.6.2.1}%
+\contentsline {subsection}{\numberline {6.2.2}Post-traitement sp\'ecifique au stator}{37}{subsection.6.2.2}%
+\contentsline {subsubsection}{Filtre Top-N}{37}{subsection.6.2.2}%
+\contentsline {subsubsection}{Correction heuristique spatiale}{37}{subsection.6.2.2}%
+\contentsline {subsubsection}{Suivi d'objets ByteTrack}{37}{subsection.6.2.2}%
+\contentsline {subsubsection}{Raffinement de bords (Guided Filter)}{38}{subsection.6.2.2}%
+\contentsline {subsection}{\numberline {6.2.3}Syst\`eme de mesure g\'eom\'etrique}{38}{subsection.6.2.3}%
+\contentsline {paragraph}{M\'ethode 1~: Param\`etres intrins\`eques cam\'era.}{38}{subsection.6.2.3}%
+\contentsline {paragraph}{M\'ethode 2~: Label de r\'ef\'erence.}{38}{subsection.6.2.3}%
+\contentsline {paragraph}{M\'ethode 3~: Manuel.}{38}{subsection.6.2.3}%
+\contentsline {paragraph}{M\'ethode 4~: Estimation de profondeur MiDaS~\cite {ranftl2020midas}.}{38}{subsection.6.2.3}%
+\contentsline {paragraph}{Mesures calcul\'ees.}{38}{subsection.6.2.3}%
+\contentsline {section}{\numberline {6.3}Pipeline de d\'etection --- Chignon}{39}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Pipeline de d\'etection --- Files (c\^ables)}{41}{section.6.4}%
+\contentsline {subsection}{\numberline {6.4.1}Classification par couleur HSV}{42}{subsection.6.4.1}%
+\contentsline {subsection}{\numberline {6.4.2}Gestion de la fusion}{42}{subsection.6.4.2}%
+\contentsline {subsection}{\numberline {6.4.3}Validation de la disposition gauche-droite}{42}{subsection.6.4.3}%
+\contentsline {chapter}{\numberline {7}Application Web}{43}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Interface utilisateur}{43}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Syst\`eme de monitoring}{43}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Captures d'\'ecran de l'application}{44}{section.7.3}%
+\contentsline {chapter}{\numberline {8}Optimisations et Am\'eliorations SOTA}{50}{chapter.8}%
+\contentsline {section}{\numberline {8.1}Optimisation de l'inf\'erence}{50}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Entra\^inement sur Kaggle}{50}{section.8.2}%
+\contentsline {chapter}{\numberline {9}Conclusion et Perspectives}{51}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Bilan}{51}{section.9.1}%
+\contentsline {section}{\numberline {9.2}R\'esum\'e des performances}{52}{section.9.2}%
+\contentsline {section}{\numberline {9.3}Perspectives}{52}{section.9.3}%
+\contentsline {chapter}{\numberline {A}Configuration des hyperparam\`etres}{53}{appendix.A}%

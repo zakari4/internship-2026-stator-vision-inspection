@@ -61,6 +61,8 @@ class ChignonModelManager:
         self.draw_labels = True
         self.conf_threshold = 0.05
 
+        self.px_to_mm: float = 1.0   # mm per pixel — synced from camera settings at runtime
+
         self._frame_fps = 0.0
         self._fps_frame_count = 0
         self._fps_window_start = time.monotonic()
@@ -246,47 +248,69 @@ class ChignonModelManager:
 
         if result.boxes is not None:
             for i, box in enumerate(result.boxes):
+                has_mask = result.masks is not None and i < len(result.masks)
+                area_px = 0.0
+                m_bin = None
+                if has_mask:
+                    m = result.masks.data[i].cpu().numpy()
+                    m_resized = cv2.resize(m, (w, h))
+                    m_bin_arr = (m_resized > 0.5).astype(np.uint8)
+                    area_px = float(np.sum(m_bin_arr))
+                    m_bin = m_bin_arr * 255
+
+                area_mm2 = round(area_px * (self.px_to_mm ** 2), 2) if area_px > 0 else None
+                measurements = (
+                    [{"type": "area", "value_px": round(area_px, 1), "value_mm": area_mm2}]
+                    if area_mm2 is not None else []
+                )
                 detections.append({
-                    "class_id": int(box.cls.item()),
+                    "class_id":   int(box.cls.item()),
                     "class_name": result.names.get(int(box.cls.item()), "unknown"),
                     "confidence": round(float(box.conf.item()), 4),
-                    "bbox": [round(v, 1) for v in box.xyxy[0].tolist()],
-                    "has_mask": result.masks is not None and i < len(result.masks),
-                    "measurements": [],
-                    "idx": i,
+                    "bbox":       [round(v, 1) for v in box.xyxy[0].tolist()],
+                    "measurements": measurements,
+                    "_mask_bin":  m_bin,
                 })
 
-        # 4. Rendering
-        for det_idx, det in enumerate(detections):
+        # Assign Left/Right labels by sorting chignon detections by x-center
+        chignon_dets = [d for d in detections if "chignon" in d.get("class_name", "").lower()]
+        chignon_dets.sort(key=lambda d: (d["bbox"][0] + d["bbox"][2]) / 2.0)
+        for i, det in enumerate(chignon_dets):
+            if len(chignon_dets) <= 1:
+                det["side"] = "Left"
+            elif i == 0:
+                det["side"] = "Left"
+            elif i == len(chignon_dets) - 1:
+                det["side"] = "Right"
+            else:
+                det["side"] = f"Mid{i}"
+
+        # Rendering
+        for det in detections:
             cls_name = det.get("class_name", "unknown")
             color = CLASS_COLORS.get(cls_name.lower(), DEFAULT_COLOR)
-            
-            # Draw Box & Label
             x1, y1, x2, y2 = det["bbox"]
+            m_bin = det.get("_mask_bin")
+
+            if self.draw_masks and m_bin is not None:
+                annotated = apply_mask_overlay(annotated, m_bin, color)
             if self.draw_boxes:
                 cv2.rectangle(annotated, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
             if self.draw_labels:
-                label = f"{cls_name} {det['confidence']:.2f}"
+                side = det.get("side", "")
+                area_mm2 = next(
+                    (m.get("value_mm") for m in det.get("measurements", []) if m.get("type") == "area"),
+                    None,
+                )
+                base = side if side else cls_name
+                area_str = f" {area_mm2:.0f}mm²" if area_mm2 is not None else ""
+                label = f"{base}{area_str} {det['confidence']:.2f}"
                 cv2.putText(annotated, label, (int(x1), max(15, int(y1) - 5)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
 
-            # Mask Processing
-            if result.masks is not None:
-                orig_idx = det["idx"]
-                if not det["has_mask"]:
-                    continue
-                mask_data = result.masks.data[orig_idx]
-                m = mask_data.cpu().numpy()
-                m_resized = cv2.resize(m, (w, h))
-                m_bin = (m_resized > 0.5).astype(np.uint8) * 255
-
-                if self.draw_masks:
-                    annotated = apply_mask_overlay(annotated, m_bin, color)
-
-        # Cleanup
+        # Remove temp rendering fields
         for det in detections:
-            det.pop("idx", None)
-            det.pop("has_mask", None)
+            det.pop("_mask_bin", None)
 
         return annotated, detections
 
@@ -322,14 +346,24 @@ class ChignonModelManager:
                 color = CLASS_COLORS.get("chignon", DEFAULT_COLOR)
 
                 overlay   = apply_mask_overlay(overlay, cls_mask, color)
-                new_dets  = extract_contour_bboxes(cls_mask, cls_id, "chignon", min_area=50)
+                new_dets  = extract_contour_bboxes(cls_mask, cls_id, "chignon", min_area=50, px_to_mm=self.px_to_mm)
                 detections.extend(new_dets)
 
-                for det in new_dets:
-                    x1, y1, x2, y2 = [int(v) for v in det["bbox"]]
-                    cv2.rectangle(overlay, (x1, y1), (x2, y2), color, 2)
-                    cv2.putText(overlay, "chignon", (x1, max(15, y1 - 5)),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+            # Assign Left/Right and draw labels
+            detections.sort(key=lambda d: (d["bbox"][0] + d["bbox"][2]) / 2.0)
+            color = CLASS_COLORS.get("chignon", DEFAULT_COLOR)
+            for i, det in enumerate(detections):
+                side = "Left" if i == 0 else ("Right" if i == len(detections) - 1 else f"Mid{i}")
+                det["side"] = side
+                x1, y1, x2, y2 = [int(v) for v in det["bbox"]]
+                cv2.rectangle(overlay, (x1, y1), (x2, y2), color, 2)
+                area_mm2 = next(
+                    (m.get("value_mm") for m in det.get("measurements", []) if m.get("type") == "area"),
+                    None,
+                )
+                area_str = f" {area_mm2:.0f}mm²" if area_mm2 is not None else ""
+                cv2.putText(overlay, f"{side}{area_str}", (x1, max(15, y1 - 5)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
 
             return overlay, detections
 
@@ -341,7 +375,19 @@ class ChignonModelManager:
         color   = CLASS_COLORS.get("chignon", DEFAULT_COLOR)
 
         overlay    = apply_mask_overlay(overlay, m_bin, color)
-        detections = extract_contour_bboxes(m_bin, 1, "chignon", min_area=50)
+        detections = extract_contour_bboxes(m_bin, 1, "chignon", min_area=50, px_to_mm=self.px_to_mm)
+        detections.sort(key=lambda d: (d["bbox"][0] + d["bbox"][2]) / 2.0)
+        for i, det in enumerate(detections):
+            side = "Left" if i == 0 else ("Right" if i == len(detections) - 1 else f"Mid{i}")
+            det["side"] = side
+            x1, y1 = int(det["bbox"][0]), int(det["bbox"][1])
+            area_mm2 = next(
+                (m.get("value_mm") for m in det.get("measurements", []) if m.get("type") == "area"),
+                None,
+            )
+            area_str = f" {area_mm2:.0f}mm²" if area_mm2 is not None else ""
+            cv2.putText(overlay, f"{side}{area_str}", (x1, max(15, y1 - 5)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
         return overlay, detections
 
     # ──────────────────────────────────────────────────────────────────

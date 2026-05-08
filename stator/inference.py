@@ -178,21 +178,30 @@ class ModelManager:
                 }
 
         # 2. Trained PyTorch checkpoints
+        try:
+            import torch as _torch
+            _cuda_ok = _torch.cuda.is_available()
+        except Exception:
+            _cuda_ok = False
+
         ckpt_dir = MODEL_BASE_DIR / "outputs" / "results" / "checkpoints"
         if ckpt_dir.exists():
             for model_dir in sorted(ckpt_dir.iterdir()):
                 if not model_dir.is_dir():
                     continue
-                best_engine = model_dir / "best_model.engine"
-                best_onnx   = model_dir / "best_model.onnx"
-                best_pth    = model_dir / "best_model.pth"
-                best_pt     = model_dir / "best_model.pt"
+                best_engine    = model_dir / "best_model.engine"
+                best_onnx_fp16 = model_dir / "best_model_fp16.onnx"
+                best_onnx      = model_dir / "best_model.onnx"
+                best_pth       = model_dir / "best_model.pth"
+                best_pt        = model_dir / "best_model.pt"
 
+                # Prefer FP16 ONNX on CUDA machines; fall back to FP32 ONNX then .pth
                 weight_file = (
-                    best_engine if best_engine.exists() else
-                    best_onnx   if best_onnx.exists()   else
-                    best_pth    if best_pth.exists()     else
-                    best_pt     if best_pt.exists()      else None
+                    best_engine    if best_engine.exists()                      else
+                    best_onnx_fp16 if best_onnx_fp16.exists() and _cuda_ok     else
+                    best_onnx      if best_onnx.exists()                        else
+                    best_pth       if best_pth.exists()                         else
+                    best_pt        if best_pt.exists()                          else None
                 )
                 if weight_file is None:
                     continue
@@ -204,10 +213,12 @@ class ModelManager:
 
                 if weight_file.suffix == ".engine":
                     display += " (TensorRT FP16)"
-                elif weight_file.suffix == ".onnx":
+                elif weight_file.name.endswith("_fp16.onnx"):
                     display += " (ONNX FP16)"
+                elif weight_file.suffix == ".onnx":
+                    display += " (ONNX FP32)"
                 else:
-                    display += " (PyTorch FP16+Compile)"
+                    display += " (PyTorch)"
 
                 self.available_models[folder] = {
                     "path": str(weight_file),
@@ -263,19 +274,40 @@ class ModelManager:
         try:
             if info["type"] == "yolo":
                 from ultralytics import YOLO
-                self.current_model = YOLO(model_path, task="segment")
-                logger.info("Loaded YOLO model: %s from %s", model_name, model_path)
+                # Prefer a pre-exported ONNX file (same dir, same stem) — ONNX Runtime
+                # gives 1.5-3× faster CPU inference with no accuracy loss.
+                import os as _os
+                _onnx_candidate = _os.path.splitext(model_path)[0] + ".onnx"
+                if not model_path.endswith(".onnx") and _os.path.exists(_onnx_candidate):
+                    self.current_model = YOLO(_onnx_candidate)
+                    logger.info("Loaded YOLO ONNX model (faster): %s", _onnx_candidate)
+                else:
+                    self.current_model = YOLO(model_path, task="segment")
+                    logger.info("Loaded YOLO model: %s from %s", model_name, model_path)
 
             elif info["type"] == "pytorch":
                 if model_path.endswith(".onnx"):
                     import onnxruntime as ort
-                    providers = (
-                        ["CUDAExecutionProvider"]
-                        if "CUDAExecutionProvider" in ort.get_available_providers()
-                        else ["CPUExecutionProvider"]
-                    )
-                    self.current_model = ort.InferenceSession(model_path, providers=providers)
-                    logger.info("Loaded ONNX model: %s via %s", model_name, providers[0])
+                    # Silence ORT's C-level CUDA-library-missing spam before probing.
+                    so = ort.SessionOptions()
+                    so.log_severity_level = 3   # 3 = ERROR; suppresses WARNING noise
+                    # Pass both providers; ORT silently drops CUDA if its libraries
+                    # are absent and falls back to CPU automatically.
+                    try:
+                        self.current_model = ort.InferenceSession(
+                            model_path,
+                            sess_options=so,
+                            providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+                        )
+                        active = self.current_model.get_providers()[0]
+                    except Exception:
+                        self.current_model = ort.InferenceSession(
+                            model_path,
+                            sess_options=so,
+                            providers=["CPUExecutionProvider"],
+                        )
+                        active = "CPUExecutionProvider"
+                    logger.info("Loaded ONNX model: %s via %s", model_name, active)
                 else:
                     import torch
                     arch  = info.get("arch", model_name)
@@ -298,12 +330,8 @@ class ModelManager:
 
                     model.eval()
                     if torch.cuda.is_available():
-                        model.to("cuda").half()
-                        try:
-                            model = torch.compile(model, mode="reduce-overhead")
-                            logger.info("Applied torch.compile() for faster inference")
-                        except Exception as e:
-                            logger.warning("torch.compile() not available: %s", e)
+                        model.to("cuda")
+                        logger.info("PyTorch model on CUDA (FP32)")
 
                     self.current_model = model
                     logger.info("Loaded PyTorch model: %s from %s", model_name, model_path)
@@ -317,6 +345,31 @@ class ModelManager:
         except Exception:
             logger.exception("Failed to load model %s", model_name)
             return False
+
+    def export_onnx(self) -> Optional[str]:
+        """Export the currently-loaded YOLO model to ONNX for faster future inference.
+
+        Saves ``best.onnx`` next to the ``.pt`` file.  On subsequent loads the
+        ONNX version is preferred automatically.  Returns the output path, or
+        ``None`` if the model is not a YOLO ``.pt`` file or export fails.
+        """
+        info = self.available_models.get(self.current_model_name)
+        if not info or info.get("type") != "yolo":
+            logger.warning("export_onnx: only YOLO .pt models can be exported")
+            return None
+        path = info["path"]
+        if path.endswith(".onnx"):
+            logger.info("export_onnx: model is already ONNX (%s)", path)
+            return path
+        try:
+            from ultralytics import YOLO as _YOLO
+            tmp = _YOLO(path, task="segment")
+            out = tmp.export(format="onnx", imgsz=640, simplify=True)
+            logger.info("Exported ONNX model to: %s", out)
+            return str(out)
+        except Exception as exc:
+            logger.error("ONNX export failed: %s", exc)
+            return None
 
     # ------------------------------------------------------------------
     # Inference
@@ -560,15 +613,19 @@ class ModelManager:
                 verbose=False, persist=True, tracker="bytetrack.yaml",
             )
         else:
+            # Always attempt FP16 — on GPU this halves memory and boosts throughput;
+            # Ultralytics silently falls back to FP32 on CPU-only builds.
             try:
                 results = self.current_model.predict(
-                    frame, imgsz=yolo_imgsz, conf=yolo_conf, verbose=False, half=use_half,
+                    frame, imgsz=yolo_imgsz, conf=yolo_conf, verbose=False, half=True,
                 )
-            except RuntimeError as e:
-                if "binding" in str(e).lower() or "device" in str(e).lower():
-                    logger.warning("YOLO GPU/ONNX failed, falling back to CPU: %s", e)
+            except (RuntimeError, Exception) as e:
+                _emsg = str(e).lower()
+                if any(k in _emsg for k in ("half", "fp16", "binding", "device", "cuda")):
+                    logger.debug("FP16/GPU predict failed (%s), retrying FP32 CPU", e)
                     results = self.current_model.predict(
-                        frame, imgsz=yolo_imgsz, conf=yolo_conf, verbose=False, device="cpu",
+                        frame, imgsz=yolo_imgsz, conf=yolo_conf, verbose=False,
+                        half=False, device="cpu",
                     )
                 else:
                     raise
@@ -834,7 +891,7 @@ class ModelManager:
                     cls_name     = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
                     detections.append({
                         "class_id":    cls_id,
-                        "class_name":  cls_name.replace("_", " "),
+                        "class_name":  cls_name,   # keep underscore so filtering/heuristic match
                         "confidence":  round(conf, 4),
                         "bbox":        [float(x), float(y), float(x + cw), float(y + ch)],
                         "has_mask":    True,
@@ -884,7 +941,7 @@ class ModelManager:
                 if self.draw_boxes:
                     cv2.rectangle(overlay, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
                 if self.draw_labels:
-                    cv2.putText(overlay, f"{cls_name} {det['confidence']:.2f}",
+                    cv2.putText(overlay, f"{cls_name.replace('_', ' ')} {det['confidence']:.2f}",
                                 (int(x1), max(15, int(y1) - 5)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
 

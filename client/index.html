@@ -213,6 +213,8 @@
                     <!-- Tab: MindVision -->
                     <div id="tab-mindvision" class="tab-pane active">
                         <div class="mv-feed-container">
+
+                            <!-- ── Live camera feed (shown when camera is connected) ── -->
                             <div id="mvFeedWrapper" style="display:none;">
                                 <div class="video-card primary">
                                     <div class="video-label">MindVision — Live Detection</div>
@@ -234,36 +236,87 @@
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                                         Adjust Frame
                                     </button>
-                                    <button id="btnRunInspection" class="btn btn-measure btn-sm" title="Run a 12-second automated inspection: stator → chignon → file">
+                                    <button id="btnRunInspection" class="btn btn-measure btn-sm" title="Run the automated inspection: Stator+File → Chignon">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                                         Run Inspection
                                     </button>
+                                    <button id="btnTestVideo" class="btn btn-sm" title="Upload a video to test the inspection pipeline offline">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                        Test with Video
+                                    </button>
                                 </div>
                                 <div id="mvDetections" class="detections-list" style="margin-top:10px;"></div>
-                                <div id="inspectionPanel" class="inspection-panel" style="display:none;">
-                                    <div class="inspection-header">
-                                        <strong id="inspectionTitle">Automated inspection</strong>
-                                        <button id="btnCancelInspection" class="btn btn-sm">Cancel</button>
-                                    </div>
-                                    <div class="inspection-progress">
-                                        <div class="inspection-stages">
-                                            <span class="stage-chip" data-stage="stator">1. Stator · 5s</span>
-                                            <span class="stage-chip" data-stage="chignon">2. Chignon · 5s</span>
-                                            <span class="stage-chip" data-stage="file">3. File · 2s</span>
+                            </div>
+
+                            <!-- ── Video test preview (shown during video inspection) ── -->
+                            <div id="videoPreviewWrapper" style="display:none;">
+                                <div class="video-card primary">
+                                    <div class="video-label" style="display:flex;align-items:center;justify-content:space-between;">
+                                        <span>Video — Inspection Preview</span>
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span id="videoPreviewStage" style="font-size:0.78rem;opacity:0.65;"></span>
+                                            <button id="btnSkipToChignon" class="btn btn-sm" title="Skip current stage and jump to Chignon detection" style="display:none;font-size:11px;padding:2px 8px;">
+                                                Skip → Chignon
+                                            </button>
                                         </div>
-                                        <div class="inspection-bar"><div class="inspection-bar-fill" id="inspectionBarFill"></div></div>
-                                        <div class="inspection-status" id="inspectionStatusText">Idle</div>
                                     </div>
-                                    <div id="inspectionResult" class="inspection-result" style="display:none;"></div>
+                                    <img id="videoTestStream" alt="Video Inspection Stream" style="width:100%;display:block;border-radius:8px;">
                                 </div>
                             </div>
+
+                            <!-- ── No-camera placeholder ── -->
                             <div class="mv-placeholder" id="mvPlaceholder">
                                 <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25">
                                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
                                 </svg>
                                 <p class="mv-placeholder-title">No camera connected</p>
                                 <p class="mv-placeholder-hint">Enable the camera in <strong>Settings → Camera &amp; Measurements</strong></p>
+                                <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;">
+                                    <button id="btnTestVideoPlaceholder" class="btn btn-primary btn-sm">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                        Test with Video
+                                    </button>
+                                </div>
                             </div>
+
+                            <!-- ── Shared hidden file input ── -->
+                            <input type="file" id="videoInspectionInput" accept="video/*" style="display:none;">
+
+                            <!-- ── Live measurements panel (shown during active run) ── -->
+                            <div id="liveMeasurementsPanel" style="display:none;margin-top:10px;">
+                                <div class="inspection-header" style="margin-bottom:6px;">
+                                    <strong>Live measurements</strong>
+                                    <span id="liveMeasStage" class="meta-chip" style="font-size:0.75rem;"></span>
+                                </div>
+                                <div id="liveMeasBody"></div>
+                            </div>
+
+                            <!-- ── Inspection panel (always outside camera wrapper) ── -->
+                            <div id="inspectionPanel" class="inspection-panel" style="display:none;">
+                                <div class="inspection-header">
+                                    <strong id="inspectionTitle">Automated inspection</strong>
+                                    <div style="display:flex;gap:6px;align-items:center;">
+                                        <button id="btnPauseInspection" class="btn btn-sm" title="Pause detection (video keeps running)" style="display:none;">Pause</button>
+                                        <button id="btnCancelInspection" class="btn btn-sm">Stop &amp; Results</button>
+                                    </div>
+                                </div>
+                                <div class="inspection-progress">
+                                    <div class="inspection-stages">
+                                        <span class="stage-chip" data-stage="stator_file">1. Stator + File</span>
+                                        <span class="stage-chip" data-stage="chignon">2. Chignon</span>
+                                    </div>
+                                    <div class="inspection-bar"><div class="inspection-bar-fill" id="inspectionBarFill"></div></div>
+                                    <div class="inspection-status" id="inspectionStatusText">Idle</div>
+                                </div>
+                                <!-- Manual stage switch (visible during live-camera runs) -->
+                                <div id="manualStageControls" style="display:none;gap:6px;margin-top:8px;flex-wrap:wrap;">
+                                    <span style="font-size:11px;opacity:0.6;align-self:center;">Switch stage:</span>
+                                    <button id="btnGoStatorFile" class="btn btn-sm" title="Switch to Stator + File detection">Stator + File</button>
+                                    <button id="btnGoChignon"    class="btn btn-sm" title="Switch to Chignon detection">Chignon</button>
+                                </div>
+                                <div id="inspectionResult" class="inspection-result" style="display:none;"></div>
+                            </div>
+
                         </div>
                     </div>
 
@@ -738,16 +791,12 @@
                         <p class="settings-hint">Seconds spent on each stage during an automated inspection run. Values must be between 0.5 and 120 seconds.</p>
                         <div class="threshold-grid">
                             <div class="threshold-row">
-                                <label>Stator</label>
-                                <input type="number" step="0.5" min="0.5" max="120" data-dur-key="stator" id="durStator">
+                                <label>Stator + File</label>
+                                <input type="number" step="0.5" min="0.5" max="120" data-dur-key="stator_file" id="durStatorFile">
                             </div>
                             <div class="threshold-row">
                                 <label>Chignon</label>
                                 <input type="number" step="0.5" min="0.5" max="120" data-dur-key="chignon" id="durChignon">
-                            </div>
-                            <div class="threshold-row">
-                                <label>File</label>
-                                <input type="number" step="0.5" min="0.5" max="120" data-dur-key="file" id="durFile">
                             </div>
                         </div>
                         <div class="settings-actions">

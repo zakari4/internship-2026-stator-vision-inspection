@@ -5,7 +5,7 @@ data: /kaggle/working/outputs/yolo_dataset/data.yaml
 epochs: 30
 time: null
 patience: 20
-batch: 16
+batch: 8
 imgsz: 512
 save: true
 save_period: -1
@@ -80,6 +80,7 @@ warmup_momentum: 0.8
 warmup_bias_lr: 0.1
 box: 7.5
 cls: 0.5
+cls_pw: 0.0
 dfl: 1.5
 pose: 12.0
 kobj: 1.0
